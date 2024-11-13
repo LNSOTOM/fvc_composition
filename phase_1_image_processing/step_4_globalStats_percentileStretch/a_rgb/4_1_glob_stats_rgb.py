@@ -7,7 +7,6 @@ import numpy as np
 import time
 import json
 
-
 # Path to first raster file
 #site1 - supersite [MEDIUM]
 first_image_path  = '/home/laura/Documents/uas_data/Calperum/site1_supersite_DD0001/orthomosaic/20220519_SASMDD0001_p1_ortho_01.tif'
