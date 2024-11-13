@@ -11,7 +11,6 @@ from osgeo import gdal
 # ['Blue', 'Green', 'Red', 'Red edge', 'NIR']
 # [475.0, 560.0, 668.0, 717.0, 842.0]
 
-
 ####### VERSION IMPROVED TO ONLY STORE 5B AND NOT ALL 10B
 import rasterio
 import os
