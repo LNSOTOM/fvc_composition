@@ -79,8 +79,6 @@ plt.tight_layout()
 plt.show()
 
 
-
-
 # %%
 import matplotlib.pyplot as plt
 import numpy as np
@@ -737,5 +735,3 @@ plot = (ggplot(df, aes(x='class', y='frequency', fill='class'))
 
 # Save the plot as a high-resolution PNG file
 plot.save("class_frequency.png", dpi=300, width=12, height=8)
-
-# %%
