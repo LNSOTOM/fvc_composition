@@ -107,9 +107,10 @@ NUM_EPOCHS = 2 #120 # try also --> 100 and 20 for test and 40 minimum
 BATCH_SIZE =  16 #12  # minimum 16) | 32 
 ##PATCH_SIZE = 256  # Used in dataset preprocessing, if applicable
 NUM_WORKERS = 4
+
 ##5bands
 CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low'  #low
-# CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/ecosystem_composition/phase_3_models/unet_model/ecosytems/medium/1024/no_aug/120ep/raw' #medium
+# CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
 # CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/ecosystem_composition/phase_3_models/unet_model/ecosytems/dense/1024/no_aug/120ep/raw' #dense
 
 #  OPTIMIZER (configuration for loss functions)
@@ -180,12 +181,12 @@ DATA_TRANSFORM = transforms.Compose([
 
 
 #save Data augmentation
-AUGMENTED_DATA_DIR = '/media/laura/Extreme SSD/code/ecosystem_composition/phase_3_models/unet_model/ecosytems/sites/augmented_data'
-os.makedirs(AUGMENTED_DATA_DIR, exist_ok=True)
+# AUGMENTED_DATA_DIR = '/media/laura/Extreme SSD/code/ecosystem_composition/phase_3_models/unet_model/ecosytems/sites/augmented_data'
+# os.makedirs(AUGMENTED_DATA_DIR, exist_ok=True)
 
-# Directory for loading or saving GeoParquet files
-SUBSAMPLE_DATA_DIR = '/media/laura/Extreme SSD/code/ecosystem_composition/phase_3_models/unet_model/ecosytems/sites/subsample_data'
-os.makedirs(SUBSAMPLE_DATA_DIR, exist_ok=True)
+# # Directory for loading or saving GeoParquet files
+# SUBSAMPLE_DATA_DIR = '/media/laura/Extreme SSD/code/ecosystem_composition/phase_3_models/unet_model/ecosytems/sites/subsample_data'
+# os.makedirs(SUBSAMPLE_DATA_DIR, exist_ok=True)
 
 
 # Directory for loading or saving raster images + masks files

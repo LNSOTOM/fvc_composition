@@ -50,8 +50,8 @@ def log_message(message, log_file):
 def setup_logging_and_checkpoints():
     ## logs outputs site-specific-models:
     tb_logs_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low' #low
-    # tb_logs_path = '/media/laura/Extreme SSD/code/ecosystem_composition/phase_3_models/unet_model/ecosytems/medium/1024/no_aug/120ep/raw' #medium
-    # tb_logs_path = '/media/laura/Extreme SSD/code/ecosystem_composition/phase_3_models/unet_model/ecosytems/dense/1024/no_aug/120ep/raw' #dense    
+    # tb_logs_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
+    # tb_logs_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense    
     os.makedirs(tb_logs_path, exist_ok=True)
     logger = TensorBoardLogger(save_dir=tb_logs_path, name="UNetModel_5b_v100")
     
@@ -198,8 +198,8 @@ def main():
     
     ## outputs site-specific-models:
     output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low' #low
-    # output_dir = '/media/laura/Extreme SSD/code/ecosystem_composition/phase_3_models/unet_model/ecosytems/medium/1024/no_aug/120ep/raw' #medium
-    # output_dir = '/media/laura/Extreme SSD/code/ecosystem_composition/phase_3_models/unet_model/ecosytems/dense/1024/no_aug/120ep/raw' #dense
+    # output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
+    # output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense
     os.makedirs(output_dir, exist_ok=True)
 
     image_dirs = config_param.IMAGE_FOLDER
