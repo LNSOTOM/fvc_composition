@@ -1,6 +1,4 @@
 
-
-#%%
 #STEP 1 (option a)
 # Step 1_2:  Convert a single TIFF file to Cloud Optimized GeoTIFF (COG) format (aimed at being hosted on a HTTP file server)
 import subprocess
