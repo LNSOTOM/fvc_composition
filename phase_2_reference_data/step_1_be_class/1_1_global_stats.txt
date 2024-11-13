@@ -1,4 +1,4 @@
-## PHASE 2_Reference data
+## PHASE 2_Reference data: steps
 #STEP 1
 ##1_1_Compute global statistics
 #a/ run phase_1_image_processing/step_4_globalStats_percentileStretch/a_rgb/4_1_glob_stats_rgb.py
