@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Feb  2 16:07:13 2024
-
 @author: lauransotomayor
 """
 ## PHASE 1_Image Processing
