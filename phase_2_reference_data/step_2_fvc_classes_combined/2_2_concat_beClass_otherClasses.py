@@ -6,6 +6,7 @@
 import geopandas as gpd
 import pandas as pd
 
+
 # Paths to your shapefiles
 ## low site
 shapefile_path_1 = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/masks/tiles_3072/glob_stats/be_class/annotation_shp/mask_be_globStat_percentile_tiles_multispectral.79.shp'
@@ -330,4 +331,3 @@ reference_raster_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_
 
 
 shapefile_to_raster(shapefile_path, output_raster_path, reference_raster_path)
-# %%
