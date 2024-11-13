@@ -60,7 +60,7 @@ fonttools @ file:///home/conda/feedstock_root/build_artifacts/fonttools_17203590
 fqdn @ file:///home/conda/feedstock_root/build_artifacts/fqdn_1638810296540/work/dist
 fsspec @ file:///home/conda/feedstock_root/build_artifacts/fsspec_1719514913127/work
 gast @ file:///home/conda/feedstock_root/build_artifacts/gast_1719403123000/work
-GDAL @ file:///home/conda/feedstock_root/build_artifacts/libgdal-core_1721926999228/work/build/swig/python
+GDAL @ file:///home/conda/feedstock_root/build_artifacts/libgdal-core_1728291243981/work/build/swig/python
 gdown @ file:///home/conda/feedstock_root/build_artifacts/gdown_1715510831822/work
 geojson @ file:///home/conda/feedstock_root/build_artifacts/geojson_1699269511365/work
 geopandas @ file:///home/conda/feedstock_root/build_artifacts/geopandas_1719933282653/work
@@ -76,7 +76,7 @@ httpx @ file:///home/conda/feedstock_root/build_artifacts/httpx_1708530890843/wo
 humanfriendly==10.0
 hyperframe @ file:///home/conda/feedstock_root/build_artifacts/hyperframe_1619110129307/work
 idna @ file:///home/conda/feedstock_root/build_artifacts/idna_1713279365350/work
-imagecodecs @ file:///home/conda/feedstock_root/build_artifacts/imagecodecs_1719236120441/work
+imagecodecs @ file:///home/conda/feedstock_root/build_artifacts/imagecodecs_1726939408988/work
 imageio==2.31.1
 importlib_metadata @ file:///home/conda/feedstock_root/build_artifacts/importlib-metadata_1721856510709/work
 importlib_resources @ file:///home/conda/feedstock_root/build_artifacts/importlib_resources_1711040877059/work
@@ -115,7 +115,6 @@ kiwisolver @ file:///home/conda/feedstock_root/build_artifacts/kiwisolver_169537
 lazy_loader==0.3
 leafmap==0.35.11
 lightning-utilities @ file:///home/conda/feedstock_root/build_artifacts/lightning-utilities_1721751555632/work
-localtileserver @ file:///home/conda/feedstock_root/build_artifacts/localtileserver_1715949430986/work
 locket @ file:///home/conda/feedstock_root/build_artifacts/locket_1650660393415/work
 lonboard==0.3.0
 lz4 @ file:///home/conda/feedstock_root/build_artifacts/lz4_1704831084136/work
@@ -129,7 +128,6 @@ mdurl @ file:///home/conda/feedstock_root/build_artifacts/mdurl_1704317613764/wo
 mistune @ file:///home/conda/feedstock_root/build_artifacts/mistune_1698947099619/work
 mizani @ file:///home/conda/feedstock_root/build_artifacts/mizani_1716556324931/work
 ml-dtypes @ file:///home/conda/feedstock_root/build_artifacts/ml_dtypes_1715895562521/work
-morecantile @ file:///home/conda/feedstock_root/build_artifacts/morecantile_1722241632499/work
 mpmath @ file:///home/conda/feedstock_root/build_artifacts/mpmath_1678228039184/work
 msgpack @ file:///home/conda/feedstock_root/build_artifacts/msgpack-python_1715670632672/work
 munkres==1.1.4
@@ -180,7 +178,7 @@ pydantic_core @ file:///home/conda/feedstock_root/build_artifacts/pydantic-core_
 Pygments @ file:///home/conda/feedstock_root/build_artifacts/pygments_1714846767233/work
 pyogrio @ file:///home/conda/feedstock_root/build_artifacts/pyogrio_1718695835874/work
 pyparsing @ file:///home/conda/feedstock_root/build_artifacts/pyparsing_1709721012883/work
-pyproj @ file:///home/conda/feedstock_root/build_artifacts/pyproj_1717792533042/work
+pyproj @ file:///home/conda/feedstock_root/build_artifacts/pyproj_1727795308773/work
 pyshp @ file:///home/conda/feedstock_root/build_artifacts/pyshp_1659002966020/work
 PySocks @ file:///home/conda/feedstock_root/build_artifacts/pysocks_1661604839144/work
 pystac @ file:///home/conda/feedstock_root/build_artifacts/pystac_1714752034200/work
@@ -195,14 +193,12 @@ pytz @ file:///home/conda/feedstock_root/build_artifacts/pytz_1706886791323/work
 PyWavelets==1.4.1
 PyYAML @ file:///home/conda/feedstock_root/build_artifacts/pyyaml_1695373428874/work
 pyzmq @ file:///home/conda/feedstock_root/build_artifacts/pyzmq_1715024398995/work
-rasterio @ file:///home/conda/feedstock_root/build_artifacts/rasterio_1717805609494/work
+rasterio @ file:///home/conda/feedstock_root/build_artifacts/rasterio_1727779754823/work
 referencing @ file:///home/conda/feedstock_root/build_artifacts/referencing_1714619483868/work
 requests @ file:///home/conda/feedstock_root/build_artifacts/requests_1717057054362/work
 rfc3339-validator @ file:///home/conda/feedstock_root/build_artifacts/rfc3339-validator_1638811747357/work
 rfc3986-validator @ file:///home/conda/feedstock_root/build_artifacts/rfc3986-validator_1598024191506/work
 rich @ file:///home/conda/feedstock_root/build_artifacts/rich-split_1709150387247/work/dist
-rio-cogeo @ file:///home/conda/feedstock_root/build_artifacts/rio-cogeo_1720855957365/work
-rio-tiler @ file:///home/conda/feedstock_root/build_artifacts/rio-tiler_1716207466946/work
 rpds-py @ file:///home/conda/feedstock_root/build_artifacts/rpds-py_1721860942725/work
 ruamel.yaml @ file:///home/conda/feedstock_root/build_artifacts/ruamel.yaml_1707298115475/work
 ruamel.yaml.clib @ file:///home/conda/feedstock_root/build_artifacts/ruamel.yaml.clib_1707314473442/work
