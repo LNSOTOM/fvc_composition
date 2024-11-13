@@ -7,6 +7,7 @@ import numpy as np
 import rasterio
 import json
 
+
 #site1
 stats_json_path = '/home/laura/Documents/code/ecosystem_composition/phase_1_image_processing/step_5_percentile_normalisedPixels_model/global_statistics/site1_DD0001_statistics_multispectral.json'
 with open(stats_json_path, 'r') as infile:
