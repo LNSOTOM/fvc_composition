@@ -1,4 +1,4 @@
-name: eco_composition
+name: fvc_composition
 channels:
   - pytorch
   - nvidia
@@ -510,4 +510,4 @@ dependencies:
       - pyarrow==13.0.0
       - python-dotenv==1.0.1
       - torch-summary==1.4.5
-prefix: /home/laura/miniconda3/envs/eco_composition
+prefix: /home/laura/miniconda3/envs/fvc_composition
