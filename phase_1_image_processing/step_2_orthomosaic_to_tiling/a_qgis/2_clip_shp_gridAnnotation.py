@@ -154,4 +154,3 @@ annotated_value = 1  # The value in the 'annotated' field used for filtering
 
 clip_vector_and_raster_by_annotated_grid(input_shapefile_path, input_raster_path, input_raster_path_2, grid_shapefile_path, output_vector_folder, output_raster_folder, output_raster_folder_2, grid_id_field, annotated_field, annotated_value)
 
-# %%
