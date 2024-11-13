@@ -122,12 +122,6 @@ output_folder_msavi  = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_D
 output_folder_binary  = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/glob_stats/be_class/annotation_raster/new'
 output_folder_shapefile = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/glob_stats/be_class/annotation_shp/new'
 
-#site1_2 - similar to supersite - DD0010_18
-# input_folder = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site2_DD0010_18/inputs/predictors/tiles_3072/glob_stats/tiles_multispectral'
-# output_folder_msavi  = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site2_DD0010_18/inputs/masks/tiles_3072/glob_stats/be_class/msavi'
-# output_folder_binary  = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site2_DD0010_18/inputs/masks/tiles_3072/glob_stats/be_class/annotation_raster'
-# output_folder_shapefile = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site2_DD0010_18/inputs/masks/tiles_3072/glob_stats/be_class/annotation_shp'
-
 #site2_1 -  Vegetation - DD0011 [LOW] 
 # input_folder = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site4_DD0011/inputs/predictors/global_stats/tiles_multispectral'
 # output_folder_msavi  = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site4_DD0011/inputs/masks/tiles_3072/glob_stats/be_class/msavi'
@@ -139,12 +133,6 @@ output_folder_shapefile = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_
 # output_folder_msavi  = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site3_DD0012/inputs/masks/tiles_3072/glob_stats/be_class/msavi'
 # output_folder_binary  = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site3_DD0012/inputs/masks/tiles_3072/glob_stats/be_class/annotation_raster'
 # output_folder_shapefile = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site3_DD0012/inputs/masks/tiles_3072/glob_stats/be_class/annotation_shp'
-
-#site3_2 -similar to site 12 - DD0008 [DENSE]
-# input_folder = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site5_DD0008/inputs/predictors/glob_stats/tiles_multispectral'
-# output_folder_msavi  = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site5_DD0008/inputs/masks/tiles_3072/glob_stats/be_class/msavi'
-# output_folder_binary  = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site5_DD0008/inputs/masks/tiles_3072/glob_stats/be_class/annotation_raster'
-# output_folder_shapefile = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site5_DD0008/inputs/masks/tiles_3072/glob_stats/be_class/annotation_shp'
 
 
 # Ensure the output folders exist
@@ -586,5 +574,3 @@ def calculate_overall_statistics(folder_path):
 
 # Run the function on the MSAVI files folder
 calculate_overall_statistics(input_folder)
-
-# %%
