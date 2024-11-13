@@ -6,6 +6,7 @@ import rasterio
 import numpy as np
 import os
 
+
 # Define your input and output folders
 ## sample 30
 input_folder = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site1_supersite_DD0001/inputs/predictors/tiles_3072/raw/tiles_multispectral'
