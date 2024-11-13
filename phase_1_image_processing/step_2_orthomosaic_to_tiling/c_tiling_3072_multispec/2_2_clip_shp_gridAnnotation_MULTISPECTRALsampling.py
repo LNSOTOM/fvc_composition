@@ -84,6 +84,5 @@ grid_id_field = "id"  # Replace with your grid ID field name
 annotated_field = "annotated"  # The name of the field used for filtering
 annotated_value = 1  # The value in the 'annotated' field used for filtering
 
-# Inside your loop in clip_raster_by_annotated_grid function, the call should look like this:
 
 clip_raster_by_annotated_grid(input_raster_path, grid_shapefile_path, output_raster_folder, grid_id_field, annotated_field, annotated_value)

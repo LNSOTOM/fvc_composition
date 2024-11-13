@@ -1,6 +1,5 @@
 """
 Created on Fri Sep  8 14:46:42 2023
-
 @author: lauransotomayor
 """
 ## PHASE 1_Image Processing
