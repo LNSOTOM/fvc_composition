@@ -216,14 +216,14 @@ NUM_BLOCKS = 3
 # Define lists of paths to your saved JSON files
 INDICES_SAVE_PATHS = [
     '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/subsampled_indices.json',
-    # '/media/laura/Extreme SSD/code/ecosystem_composition/phase_3_models/unet_model/ecosytems/medium/1024/no_aug/120ep/raw/subsampled_indices.json'
-    # '/media/laura/Extreme SSD/code/ecosystem_composition/phase_3_models/unet_model/ecosytems/dense/1024/no_aug/120ep/raw/subsampled_indices.json'
+    # '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/subsampled_indices.json'
+    # '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/subsampled_indices.json'
 ]
 
 COMBINED_INDICES_SAVE_PATHS = [
     '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/combined_indices.json'
-    # '/media/laura/Extreme SSD/code/ecosystem_composition/phase_3_models/unet_model/ecosytems/medium/1024/no_aug/120ep/raw/combined_indices.json'
-    # '/media/laura/Extreme SSD/code/ecosystem_composition/phase_3_models/unet_model/ecosytems/dense/1024/no_aug/120ep/raw/combined_indices.json'
+    # '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/combined_indices.json'
+    # '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/combined_indices.json'
 ]
 
 ## Display tensorboard
