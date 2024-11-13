@@ -1,4 +1,4 @@
-## PHASE 2_Reference data
+## PHASE 2_Reference data: steps
 #STEP 1
 ##1_2_Applied Percentile stretch to tiles (30.72 x 30.72 m)
 #a/ run phase_1_image_processing/step_4_globalStats_percentileStretch/a_rgb/4_2_apply_percentile_stretch_rgb.py
