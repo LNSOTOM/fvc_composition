@@ -2,14 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Aug 28 17:18:54 2023
-
 @author: lauransotomayor
 """
 
-#%%
 ####### concatenate shp 
-
-
 #%%
 '''multi-class mask, each class is represented by a unique integer value.'''
 import tifffile as tiff
