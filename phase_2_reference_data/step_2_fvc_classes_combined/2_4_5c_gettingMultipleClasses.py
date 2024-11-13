@@ -647,8 +647,6 @@ output_image_path = '/home/laura/Documents/code/ecosystem_composition/phase_2_re
 plot_raster(raster_file_path, rgb_file_path1, rgb_file_path2, output_image_path)
 
 
-
-
 # %%
 ### be class (gradient)
 import rasterio
