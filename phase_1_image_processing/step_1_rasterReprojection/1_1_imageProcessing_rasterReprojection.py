@@ -21,21 +21,14 @@ import subprocess
 # input_image_fn = '/media/laura/Extreme SSD/uas_data/Calperum/SASMDD0001/20220519/micasense_dual/level_1/20220519_SASMDD0001_dual_ortho_05.tif'
 # output_raster_fn = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_supersite_DD0001/20220519_SASMDD001_dual_ortho_01_bilinear.tif'
 
-#site1_2 - similar to supersite [MEDIUM] DONE ~40min
-# input_image_fn = '/media/laura/Extreme SSD/uas_data/Calperum/SASMD0010_18/20220518/micasense_dual/level_1/20220518_SASMDD0010_18_dual_ortho_05.tif'
-# output_raster_fn = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_DD0010_18/orthomosaic/20220518_SASMDD0010_18_dual_ortho_01_bilinear.tif'
-
 #site2_1 -  Vegetation [LOW] (potentially site DD0013)
-# input_image_fn = '/media/laura/Extreme SSD/uas_data/Calperum/SASMDD0011/20220517/micasense_dual/level_1/20220517_SASMDD0011_dual_ortho_06.tif'
-# output_raster_fn = '/media/laura/Extreme SSD/qgis/calperumResearch/site4_DD0011/orthomosaic/20220517_SASMDD0011_dual_ortho_01_bilinear.tif'
+input_image_fn = '/media/laura/Extreme SSD/uas_data/Calperum/SASMDD0011/20220517/micasense_dual/level_1/20220517_SASMDD0011_dual_ortho_06.tif'
+output_raster_fn = '/media/laura/Extreme SSD/qgis/calperumResearch/site4_DD0011/orthomosaic/20220517_SASMDD0011_dual_ortho_01_bilinear.tif'
 
 #site3_1 - with water  [DENSE] DONE
 # input_image_fn = '/media/laura/Extreme SSD/uas_data/Calperum/SASMDD0012/20220517/micasense_dual/level_1/20220517_SASMDD0012_dual_ortho_05.tif'
 # output_raster_fn = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_DD0012/20220517_SASMDD0012_dual_ortho_01_bilinear.tif'
 
-#site3_2 -similar to site 12 [DENSE]
-input_image_fn = '/media/laura/Extreme SSD/uas_data/Calperum/SASMDD0008/20220516/micasense/level_1/20220516_SASMDD0008_dual_ortho_05.tif'
-output_raster_fn = '/media/laura/Extreme SSD/qgis/calperumResearch/site5_DD0008/orthomosaic/20220516_SASMDD0008_dual_ortho_01_bilinear.tif'
 
 # Extract the output folder path from the output raster file name
 output_folder = os.path.dirname(output_raster_fn)
