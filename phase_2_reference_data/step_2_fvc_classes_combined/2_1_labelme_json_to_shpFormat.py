@@ -8,6 +8,7 @@ import rasterio
 from shapely.geometry import Polygon
 import geopandas as gpd
 
+
 def pixel_to_geo(points, transform):
     """Convert pixel coordinates to geographic coordinates using the affine transform."""
     return [(transform * point)[:2] for point in points]
