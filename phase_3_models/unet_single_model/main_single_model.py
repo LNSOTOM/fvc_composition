@@ -504,6 +504,5 @@ def main():
             log_file.write(output_line)  # Write to file
 
 
-
 if __name__ == '__main__':
     main()
