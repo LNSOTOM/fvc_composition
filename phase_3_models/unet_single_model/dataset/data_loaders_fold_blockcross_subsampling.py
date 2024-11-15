@@ -21,13 +21,12 @@ from map.plot_blocks_folds import plot_blocks_folds
 import json
 
 
+
 def log_message(message, log_file):
-    # Ensure the directory for the log file exists
     log_directory = os.path.dirname(log_file)
     if not os.path.exists(log_directory):
         os.makedirs(log_directory, exist_ok=True)
     
-    # Write the log message
     print(message)
     with open(log_file, 'a') as f:
         f.write(message + '\n')
@@ -37,24 +36,27 @@ def combine_and_process_paths(image_dirs, mask_dirs):
 
     for img_dir, mask_dir in zip(image_dirs, mask_dirs):
         region_name = extract_region_name(img_dir)
-        
-        # List and sort image and mask files
         img_files = sorted([f for f in os.listdir(img_dir) if f.endswith('.tif')])
         mask_files = sorted([f for f in os.listdir(mask_dir) if f.endswith('.tif')])
-
-        # Create a dictionary for fast lookup of mask files
+        
         mask_dict = {os.path.basename(mask_file): os.path.join(mask_dir, mask_file) for mask_file in mask_files}
 
         for index, img_file in enumerate(img_files):
-            # Use the exact filenames without changing them
-            mask_file = img_file.replace('tiles_multispectral', 'mask_tiles_multispectral')
-            
-            if mask_file in mask_dict:
-                full_img_path = os.path.join(img_dir, img_file)
-                full_mask_path = mask_dict[mask_file]
-                combined_data.append((index, region_name, full_img_path, full_mask_path))
+            full_img_path = os.path.join(img_dir, img_file)
+            mask_file_original = img_file.replace('tiles_multispectral', 'mask_tiles_multispectral')
+            mask_file_region = f"{region_name}_{mask_file_original}"
+
+            full_mask_path = mask_dict.get(mask_file_original) or mask_dict.get(mask_file_region)
+
+            if full_mask_path:
+                combined_data.append({
+                    "index": index,
+                    "region": region_name,
+                    "img_path": full_img_path,
+                    "mask_path": full_mask_path
+                })
             else:
-                raise ValueError(f"No matching mask found for image {img_file} in directory {mask_dir}")
+                print(f"No matching mask found for image {img_file} in directory {mask_dir} with either naming convention.")
 
     return combined_data
 
@@ -64,7 +66,9 @@ def extract_region_name(path):
 
 def get_site_indices(combined_data):
     site_indices = {}
-    for index, region_name, _, _ in combined_data:
+    for item in combined_data:
+        index = item["index"]
+        region_name = item["region"]
         if region_name not in site_indices:
             site_indices[region_name] = []
         site_indices[region_name].append(index)
@@ -74,25 +78,33 @@ def save_subsampled_data(
     subsampled_images, subsampled_masks, combined_data, subsampled_indices, 
     image_subsample_dir, mask_subsample_dir, indices_save_path, combined_indices_save_path
 ):
-    if isinstance(image_subsample_dir, str):
-        image_subsample_dir = [image_subsample_dir]
-    if isinstance(mask_subsample_dir, str):
-        mask_subsample_dir = [mask_subsample_dir]
     
-    for img_dir in image_subsample_dir:
-        os.makedirs(img_dir, exist_ok=True)
-    for mask_dir in mask_subsample_dir:
-        os.makedirs(mask_dir, exist_ok=True)
+     # Ensure directories are single strings, not lists
+    if isinstance(image_subsample_dir, list):
+        image_subsample_dir = image_subsample_dir[0]
+    if isinstance(mask_subsample_dir, list):
+        mask_subsample_dir = mask_subsample_dir[0]
+
+    os.makedirs(image_subsample_dir, exist_ok=True)
+    os.makedirs(mask_subsample_dir, exist_ok=True)
     
     for original_idx in subsampled_indices:
-        _, _, img_path, mask_path = combined_data[original_idx]
+        item = combined_data[original_idx]
+        region_name, img_path, mask_path = item["region"], item["img_path"], item["mask_path"]
+
+        if not os.path.exists(img_path):
+            print(f"Image path does not exist: {img_path}")
+            continue
+        if not os.path.exists(mask_path):
+            print(f"Mask path does not exist: {mask_path}")
+            continue
+
+        img_filename = f"{region_name}_{os.path.basename(img_path)}"
+        mask_filename = f"{region_name}_{os.path.basename(mask_path)}"
         
-        img_filename = os.path.basename(img_path)
-        mask_filename = os.path.basename(mask_path)
-        
-        img_save_path = os.path.join(image_subsample_dir[0], img_filename)
-        mask_save_path = os.path.join(mask_subsample_dir[0], mask_filename)
-        
+        img_save_path = os.path.join(image_subsample_dir, img_filename)
+        mask_save_path = os.path.join(mask_subsample_dir, mask_filename)
+
         image, image_profile = load_raw_multispectral_image(img_path)
         
         with rasterio.open(mask_path) as src:
@@ -108,25 +120,20 @@ def save_subsampled_data(
     with open(indices_save_path, 'w') as f:
         json.dump(subsampled_indices, f)
     
-    combined_indices = {}
-    for region, indices in get_site_indices(combined_data).items():
-        combined_indices[region] = indices
+    combined_indices = get_site_indices(combined_data)
     with open(combined_indices_save_path, 'w') as f:
         json.dump(combined_indices, f)
 
-    print("Subsampled images saved in the following directories:")
-    for img_dir in image_subsample_dir:
-        print(img_dir)
-    
-    print("Subsampled masks saved in the following directories:")
-    for mask_dir in mask_subsample_dir:
-        print(mask_dir)
+    print("Data saved. Subsampled images and masks are in unified directories.")
+    print(f"Image Directory: {image_subsample_dir}")
+    print(f"Mask Directory: {mask_subsample_dir}")
     print(f"Subsampled indices saved to {indices_save_path}")
     print(f"Combined data indices saved to {combined_indices_save_path}")
-    
+
 def extract_coordinates(combined_data):
     coordinates = []
-    for _, _, img_path, _ in combined_data:
+    for item in combined_data:
+        img_path = item["img_path"]
         try:
             image, profile = load_raw_multispectral_image(img_path)
             transform = profile.get('transform', None)
@@ -137,22 +144,21 @@ def extract_coordinates(combined_data):
             if not isinstance(transform, Affine):
                 raise TypeError(f"Transform for {img_path} is not an Affine object.")
             
-            # Extract coordinates using the transform
             coords = transform * (0, 0)
             coordinates.append(coords)
         except Exception as e:
             print(f"Error processing {img_path}: {e}")
 
     if len(coordinates) == 0:
-        raise ValueError("No coordinates extracted.")
+        raise ValueError("No coordinates extracted. Please check paths in combined_data for errors.")
 
     return np.array(coordinates)
 
 def plot_with_coordinates(dataset, combined_data, indices=None, log_file_path="", crs="EPSG:7854", num_blocks=config_param.NUM_BLOCKS):
     coordinates = []
 
-    # Extract coordinates from combined_data
-    for idx, (_, _, img_path, _) in enumerate(combined_data):
+    for idx, item in enumerate(combined_data):
+        img_path = item["img_path"]
         if indices is None or idx in indices:
             try:
                 image, profile = load_raw_multispectral_image(img_path)
@@ -185,17 +191,8 @@ def plot_with_coordinates(dataset, combined_data, indices=None, log_file_path=""
     kmeans = KMeans(n_clusters=num_blocks, init='k-means++', random_state=42).fit(coordinates)
     block_labels = kmeans.labels_
 
-    # Initialize fold_assignments correctly as a dictionary of lists
-    fold_assignments = {block: [] for block in np.unique(block_labels)}
+    fold_assignments = {block: {"train_indices": [], "val_indices": [], "test_indices": []} for block in np.unique(block_labels)}
 
-    for block in np.unique(block_labels):
-        fold_assignments[block] = {
-            'train_indices': [],  # Initialize as empty lists
-            'val_indices': [],
-            'test_indices': []
-        }
-
-    # Plot using the block labels obtained from KMeans
     plot_blocks_folds(coordinates, block_labels, fold_assignments, crs=crs)
 
 
@@ -245,11 +242,17 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
     log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/sites/logfile.txt' #across sites
     coordinates = []
     
-    for idx, (_, _, img_path, _) in enumerate(combined_data):
+    for idx, item in enumerate(combined_data):
+        img_path = item.get("img_path", None)
+        if not img_path or not os.path.exists(img_path):
+            log_message(f"Image path does not exist at index {idx}: {img_path}", log_file)
+            continue  # Skip if path is invalid or does not exist
+
         try:
+            # Attempt to load the image and extract profile information
             image, profile = load_raw_multispectral_image(img_path)
             transform = profile.get('transform', None)
-            
+
             if transform is None:
                 raise ValueError(f"Transform is missing in the profile for {img_path}.")
             
@@ -259,10 +262,10 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
             coords = transform * (0, 0)
             coordinates.append(coords)
         except Exception as e:
-            log_message(f"Error processing {img_path}: {e}", log_file)
+            log_message(f"Error processing {img_path} at index {idx}: {e}", log_file)
 
     if len(coordinates) == 0:
-        log_message("No coordinates were extracted. Please check the input data.", log_file)
+        log_message("No coordinates were extracted. Please check paths in combined_data for errors.", log_file)
         raise ValueError("No coordinates extracted after subsampling.")
 
     coordinates = np.array(coordinates)

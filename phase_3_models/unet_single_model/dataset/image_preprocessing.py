@@ -1,43 +1,69 @@
+import os
+import rasterio
 import numpy as np
 import torch
-import rasterio
+import re
+
 
 # Function to load raw multispectral data
 def load_raw_multispectral_image(img_name):
     """ Load raw multispectral data using rasterio without normalization or contrast stretching. """
-    with rasterio.open(img_name) as src:
-        image = src.read().astype(np.float32)  # Read the raster data as float32
-        # image = np.round(image, 6)  # Round the float32 array to 6 decimal places
-        profile = src.profile  # Extract the profile containing metadata
+    # Check if the file exists
+    if not os.path.exists(img_name):
+        raise FileNotFoundError(f"File does not exist: {img_name}")
 
-        # Iterate over each channel for additional processing and statistics
-        for i in range(image.shape[0]):  # Assuming the first dimension is the channel dimension
-            channel = image[i]
-            
-            # Calculate statistics for the channel
-            # channel_mean = channel.mean()
-            # channel_std = channel.std()
-            # channel_min = channel.min()
-            # channel_max = channel.max()
-            # Calculate and round statistics for the channel
-            # channel_mean = round(channel.mean(), 6)
-            # channel_std = round(channel.std(), 6)
-            # channel_min = round(channel.min(), 6)
-            # channel_max = round(channel.max(), 6)
+    try:
+        with rasterio.open(img_name) as src:
+            image = src.read().astype(np.float32)
+            profile = src.profile  # Extract the profile containing metadata
+    except rasterio.errors.RasterioIOError as e:
+        print(f"Error opening file with rasterio: {img_name}")
+        raise e
 
-            # Print or log the statistics
-            # print(f"Channel {i+1} statistics:")
-            # print(f"  Mean: {channel_mean}")
-            # print(f"  Standard Deviation: {channel_std}")
-            # print(f"  Min: {channel_min}")
-            # print(f"  Max: {channel_max}")
-
-            # Example: Apply a custom transformation if needed
-            # image[i] = (channel - channel_mean) / channel_std  # Example normalization
-
-    return image, profile  # Return the processed image and the profile
+    return image, profile
 
 
+
+# def load_raw_multispectral_image(img_name, region_name=None):
+#     """
+#     Load raw multispectral data using rasterio without normalization or contrast stretching.
+#     Attempts to load the file with the original name and then with a region-based prefix if specified.
+#     """
+#     image = None
+#     profile = None
+
+#     # Attempt to load the image file as-is
+#     try:
+#         print(f"Attempting to load image with original path: {img_name}")
+#         with rasterio.open(img_name) as src:
+#             image = src.read().astype(np.float32)
+#             profile = src.profile
+#         print(f"Successfully loaded image: {img_name}")
+#         return image, profile
+#     except rasterio.errors.RasterioIOError:
+#         print(f"Failed to load image with original name: {img_name}")
+
+#     # If loading with the original name fails, try with region prefix if provided
+#     if region_name:
+#         # Construct the new filename with region prefix
+#         base_name = os.path.basename(img_name)
+#         img_name_with_region = os.path.join(os.path.dirname(img_name), f"{region_name}_{base_name}")
+        
+#         # Attempt to load with the region-based naming convention
+#         try:
+#             print(f"Attempting region-prefixed load for: {img_name_with_region}")
+#             with rasterio.open(img_name_with_region) as src:
+#                 image = src.read().astype(np.float32)
+#                 profile = src.profile
+#             print(f"Successfully loaded image with region prefix: {img_name_with_region}")
+#             return image, profile
+#         except rasterio.errors.RasterioIOError as e:
+#             print(f"Failed to load image with region prefix: {img_name_with_region} - {e}")
+
+#     # If both attempts fail, raise an error
+#     raise FileNotFoundError(
+#         f"Image file not found with either original name: {img_name} or region-prefixed name: {img_name_with_region if region_name else 'N/A'}"
+#     )
 
 
 ''' Normalisation based on local statistics (drawn from the pixels in each individual tile)
@@ -100,7 +126,7 @@ def convertImg_to_tensor(data, dtype=torch.float32):
         raise TypeError(f"Expected np.ndarray or torch.Tensor, but got {type(data)}")
 
 
-
+########################################################
 ############# RGB imagery
 '''function for RGB 8-bit images'''
 def load_raw_rgb_image(img_name):

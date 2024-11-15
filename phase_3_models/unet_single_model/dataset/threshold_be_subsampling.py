@@ -13,15 +13,6 @@ where the soil cover exceeds a certain threshold.
 The soil cover percentage in each tile. This can be done by counting the number of soil pixels 
 and dividing by the total number of pixels in the tile.
 '''
-# def calculate_soil_cover(mask, soil_class=0):
-#     # Ensure mask is a NumPy array of type float32
-#     if not isinstance(mask, np.ndarray):
-#         mask = np.array(mask, dtype=np.float32)
-    
-#     total_pixels = mask.size
-#     soil_pixels = np.sum(mask == soil_class)
-#     soil_cover_percentage = (soil_pixels / total_pixels) * 100
-#     return soil_cover_percentage
 
 def calculate_soil_cover(mask, soil_class=0):
     """Calculate the percentage of soil cover in a mask, ignoring NaN values."""
@@ -41,22 +32,6 @@ def calculate_soil_cover(mask, soil_class=0):
     soil_cover_percentage = (soil_pixels / total_pixels) * 100
     return soil_cover_percentage
 
-
-# def calculate_soil_cover(mask, soil_class=0):
-#     """Calculate the percentage of soil cover in a mask, ignoring NaN values."""
-#     # Ignore NaN values by using np.isnan
-#     valid_mask = mask[~np.isnan(mask)]
-#     total_pixels = valid_mask.size
-    
-#     # Handle case where no valid pixels are present
-#     if total_pixels == 0:
-#         return 0  # Or another sentinel value or raise an exception, depending on your needs
-    
-#     soil_pixels = np.sum(valid_mask == soil_class)
-#     soil_cover_percentage = (soil_pixels / total_pixels) * 100
-#     return soil_cover_percentage
-
-# 2. Remove Tiles Based on Soil Cover Threshold:
 '''
 Subsample the dataset by removing tiles with high soil cover.
 '''
@@ -77,6 +52,7 @@ def subsample_tiles(images, masks, soil_threshold, soil_class=0, removal_ratio=0
             remaining_masks.append(mask)
             subsampled_indices.append(idx)
         else:
+            # Apply removal ratio to decide if the tile should still be kept
             if random.random() > removal_ratio:
                 print(f"Randomly keeping tile {idx} despite high soil cover {soil_cover}% > threshold {soil_threshold}%")  # Debug statement
                 remaining_images.append(img)
@@ -85,6 +61,10 @@ def subsample_tiles(images, masks, soil_threshold, soil_class=0, removal_ratio=0
             else:
                 print(f"Removing tile {idx} due to high soil cover {soil_cover}% > threshold {soil_threshold}%")  # Debug statement
     
+    # Debug final counts to confirm the alignment of indices, images, and masks
+    print(f"Total subsampled indices: {len(subsampled_indices)}")
+    assert len(remaining_images) == len(remaining_masks) == len(subsampled_indices), \
+        "Mismatch in subsampled images, masks, or indices."
     print(f"Total tiles kept after subsampling: {len(remaining_images)}")  # Debug statement
     return remaining_images, remaining_masks, subsampled_indices
 

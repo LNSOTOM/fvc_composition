@@ -51,8 +51,9 @@ for folder in MASK_FOLDER:
             unique_classes = get_num_classes_from_mask(mask_path)
             all_unique_classes.update(unique_classes.tolist())
 
-# Ensure we only keep valid class labels (0, 1, 2, 3, 4)
-all_unique_classes = {int(cls) for cls in all_unique_classes if int(cls) in class_labels.values()}
+# Ensure we only keep valid class labels (0, 1, 2, 3, 4) and exclude NaN values
+all_unique_classes = {int(cls) for cls in all_unique_classes if not np.isnan(cls) and int(cls) in class_labels.values()}
+
 
 # 1.Network parameters
 IN_CHANNELS = 5
@@ -189,16 +190,12 @@ DATA_TRANSFORM = transforms.Compose([
 
 # Directory for loading or saving raster images + masks files
 SUBSAMPLE_IMAGE_DIR = [
-                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/low/predictors_5b_subsample',
-                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/medium/predictors_5b_subsample',
-                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/dense/predictors_5b_subsample'
+                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites/predictors_5b_subsample'
 ]
 # os.makedirs(SUBSAMPLE_IMAGE_DIR, exist_ok=True)
 
 SUBSAMPLE_MASK_DIR = [
-                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/low/mask_fvc_subsample',
-                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/medium/mask_fvc_subsample',
-                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/dense/mask_fvc_subsample'
+                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites/mask_fvc_subsample'
 ]
 
 # # Single directory for storing combined subsampled images and masks
@@ -221,15 +218,11 @@ NUM_BLOCKS = 3
 
 # Define lists of paths to your saved JSON files
 INDICES_SAVE_PATHS = [
-    '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/low/subsampled_indices.json',
-    '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/medium/subsampled_indices.json',
-    '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/subsampled_indices.json'
+    '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/sites/subsampled_indices.json'
 ]
 
 COMBINED_INDICES_SAVE_PATHS = [
-    '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/low/combined_indices.json',
-    '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/medium/combined_indices.json',
-    '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/combined_indices.json'
+    '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/sites/combined_indices.json'
 ]
 
 # # Paths for combined subsample indices

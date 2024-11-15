@@ -171,5 +171,3 @@ class CalperumDataset(Dataset):
                 masks.append(mask_tensor)
 
         return images, masks
-
-
