@@ -168,8 +168,8 @@ def run_large_area_inference(model, img_path, save_dir, tile_size=256, device='c
     })
     
     # stitched_output_path = os.path.join(save_dir, 'stitched_low_1024_120ep_raw_33.tif') #low
-    stitched_output_path = os.path.join(save_dir, 'stitched_medium_1024_120ep_raw_22.tif') #medium
-    # stitched_output_path = os.path.join(save_dir, 'stitched_dense_1024_120ep_raw_118.tif') #dense
+    # stitched_output_path = os.path.join(save_dir, 'stitched_medium_1024_120ep_raw_22.tif') #medium
+    stitched_output_path = os.path.join(save_dir, 'stitched_dense_1024_120ep_raw_118.tif') #dense
     
     save_geotiff(full_image, full_profile, stitched_output_path)
     logging.info(f"Stitched image saved to {stitched_output_path}")
@@ -178,14 +178,16 @@ def main():
     try:
         # Define parameters
         # img_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/predictors/tiles_3072/stacked/tiles_multispectral.33.tif' #low  (30, '33')
-        img_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/stacked/tiles_multispectral.22.tif' # medium ('22', 26)
-        # img_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/inputs/predictors/tiles_3072/stacked/tiles_multispectral.118.tif'  # dense (30, '118')
+        # img_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/stacked/tiles_multispectral.22.tif' # medium ('22', 26)
+        img_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/inputs/predictors/tiles_3072/stacked/tiles_multispectral.118.tif'  # dense (30, '118')
      
         tile_size = 256  # Size of the tiles
         
         # save_dir = 'wombat_predictions_stitch_low_1024_120ep_raw_bestmodel_96'  # Directory to save the predictions low
-        save_dir = 'wombat_predictions_stitch_low_1024_120ep_raw_bestmodel_55'  # Directory to save the predictions medium
-        # save_dir = 'wombat_predictions_stitch_low_1024_120ep_raw_bestmodel_105'  # Directory to save the predictions dense
+        # save_dir = 'wombat_predictions_stitch_low_1024_120ep_raw_bestmodel_108'  # Directory to save the predictions low - better
+        # save_dir = 'wombat_predictions_stitch_medium_1024_120ep_raw_bestmodel_55'  # Directory to save the predictions medium
+        # save_dir = 'wombat_predictions_stitch_medium_1024_120ep_raw_bestmodel_117'  # Directory to save the predictions medium - better
+        save_dir = 'wombat_predictions_stitch_dense_1024_120ep_raw_bestmodel_105'  # Directory to save the predictions dense
         
         soil_threshold = 50.0
         removal_ratio = 0.9
@@ -248,9 +250,11 @@ def main():
         model = UNetModule().to(config_param.DEVICE)
 
         # Load the saved model state
-        # model_checkpoint_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/block_2_epoch_96.pth' #low  ('105')
-        model_checkpoint_path= '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/block_2_epoch_55.pth' #medium
-        # model_checkpoint_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/block_3_epoch_105.pth' #dense
+        # model_checkpoint_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/block_2_epoch_96.pth' #low  
+        # model_checkpoint_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/block_3_epoch_108.pth' #low  (96, '108')
+        # model_checkpoint_path= '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/block_2_epoch_55.pth' #medium 
+        # model_checkpoint_path= '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/block_3_epoch_117.pth' #medium ('55', 117)
+        model_checkpoint_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/block_3_epoch_105.pth' #dense
         
         model.load_state_dict(torch.load(model_checkpoint_path, map_location=config_param.DEVICE))
         model.eval()
@@ -265,6 +269,9 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
 
 # %%
 ############ 12.c --> improve with subsample indices
