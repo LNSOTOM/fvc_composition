@@ -179,7 +179,7 @@ def main():
         # Define parameters
         # img_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/predictors/tiles_3072/stacked/tiles_multispectral.33.tif' #low  (30, '33')
         # img_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/stacked/tiles_multispectral.22.tif' # medium ('22', 26)
-        img_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/inputs/predictors/tiles_3072/stacked/tiles_multispectral.118.tif'  # dense (30, '118')
+        img_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/inputs/predictors/tiles_3072/stacked/tiles_multispectral.101.tif'  # dense (30, '118', 101)
      
         tile_size = 256  # Size of the tiles
         
@@ -187,7 +187,8 @@ def main():
         # save_dir = 'wombat_predictions_stitch_low_1024_120ep_raw_bestmodel_108'  # Directory to save the predictions low - better
         # save_dir = 'wombat_predictions_stitch_medium_1024_120ep_raw_bestmodel_55'  # Directory to save the predictions medium
         # save_dir = 'wombat_predictions_stitch_medium_1024_120ep_raw_bestmodel_117'  # Directory to save the predictions medium - better
-        save_dir = 'wombat_predictions_stitch_dense_1024_120ep_raw_bestmodel_105'  # Directory to save the predictions dense
+        # save_dir = 'wombat_predictions_stitch_dense_1024_120ep_raw_bestmodel_105'  # Directory to save the predictions dense
+        save_dir = 'wombat_predictions_stitch_dense_1024_120ep_raw_bestmodel_105_tile101' 
         
         soil_threshold = 50.0
         removal_ratio = 0.9
