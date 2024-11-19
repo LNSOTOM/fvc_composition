@@ -49,7 +49,7 @@ def log_message(message, log_file):
 
 def setup_logging_and_checkpoints():
     ## logs outputs site-specific-models:
-    tb_logs_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/sites' #across sites 
+    tb_logs_path = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/sites' #across sites 
     os.makedirs(tb_logs_path, exist_ok=True)
     logger = TensorBoardLogger(save_dir=tb_logs_path, name="UNetModel_5b_v100")
     
@@ -118,7 +118,7 @@ def save_average_loss_plot(train_losses, val_losses, max_epochs, output_dir):
     plt.grid(True)
     plot_file = os.path.join(output_dir, 'average_training_validation_loss_plot_across_blocks.png')
     plt.savefig(plot_file)
-    plt.show()
+    # plt.show()
     print(f"Average loss plot across all blocks saved as {plot_file}")
 
 def save_final_model_metrics(metrics, block_idx, output_dir):
@@ -195,7 +195,7 @@ def main():
     logger, checkpoint_callback = setup_logging_and_checkpoints()
     
     ## outputs site-specific-models:
-    output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/sites' #across sites 
+    output_dir = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/sites' #across sites 
     os.makedirs(output_dir, exist_ok=True)
 
     image_dirs = config_param.IMAGE_FOLDER

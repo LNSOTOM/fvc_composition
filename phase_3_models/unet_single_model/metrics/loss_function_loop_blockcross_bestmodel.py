@@ -128,10 +128,10 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
     plt.legend()
     plt.grid(True)
     plt.savefig(os.path.join(output_dir, f'block_{block_idx + 1}_training_validation_loss_plot.png'))
-    plt.show()
+    # plt.show()
     print(f"Plot saved")
 
-    writer.close()
+    # writer.close()
     
     print(f"Best model saved at {best_model_path} with validation loss: {best_val_loss:.4f}")
     return train_losses_per_epoch, val_losses_per_epoch, best_model_path, best_val_loss

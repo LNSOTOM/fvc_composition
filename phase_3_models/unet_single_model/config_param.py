@@ -35,9 +35,9 @@ def get_num_classes_from_mask(mask_path):
 class_labels = {'BE': 0, 'NPV': 1, 'PV': 2, 'SI': 3, 'WI': 4}
 
 MASK_FOLDER = [
-    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/low/mask_fvc',
-    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/medium/mask_fvc',
-    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/dense/mask_fvc'
+    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/low/sample/mask_fvc',
+    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/medium/sample/mask_fvc',
+    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/dense/sample/mask_fvc'
 ]
 
 # Initialize a set to track all unique classes found across masks
@@ -95,22 +95,24 @@ def extract_region_name(path):
 
 # Paths to images and masks for multiple sites
 IMAGE_FOLDER = [
-    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/low/predictors_5b',
-    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/medium/predictors_5b',
-    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/dense/predictors_5b'
+    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/low/sample/predictors_5b',
+    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/medium/sample/predictors_5b',
+    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/dense/sample/predictors_5b'
 ]
 
 
 # 3.Hyperparameters for training
 '''Num of epochs: how many times the learning algorithm will work through the entire training dataset. Helps to not overfit'''
-NUM_EPOCHS = 120 #120 # try also --> 100 and 20 for test and 40 minimum
+NUM_EPOCHS = 2 #120 # try also --> 100 and 20 for test and 40 minimum
 '''batch_size: number of training samples utilised in one iteration'''
 BATCH_SIZE =  16 #12  # minimum 16) | 32 
 ##PATCH_SIZE = 256  # Used in dataset preprocessing, if applicable
 NUM_WORKERS = 4
 
 ##5bands
-CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/sites' #across sites
+# CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/sites' #across sites
+CHECKPOINT_DIR = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/sites' #across sites
+
 
 #  OPTIMIZER (configuration for loss functions)
 '''optimiser: influence model performance'''
@@ -190,12 +192,12 @@ DATA_TRANSFORM = transforms.Compose([
 
 # Directory for loading or saving raster images + masks files
 SUBSAMPLE_IMAGE_DIR = [
-                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites/predictors_5b_subsample'
+                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites/sample/predictors_5b_subsample'
 ]
 # os.makedirs(SUBSAMPLE_IMAGE_DIR, exist_ok=True)
 
 SUBSAMPLE_MASK_DIR = [
-                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites/mask_fvc_subsample'
+                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites/sample/mask_fvc_subsample'
 ]
 
 # # Single directory for storing combined subsampled images and masks
