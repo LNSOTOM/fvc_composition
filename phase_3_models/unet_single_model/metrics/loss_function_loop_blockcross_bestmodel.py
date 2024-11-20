@@ -7,6 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torch.cuda.amp import autocast, GradScaler
 from torch.optim.lr_scheduler import OneCycleLR
 
+
 # Utility function to print GPU memory usage
 def print_gpu_memory_usage(stage=""):
     allocated = torch.cuda.memory_allocated() / (1024 ** 3)  # Convert bytes to GB

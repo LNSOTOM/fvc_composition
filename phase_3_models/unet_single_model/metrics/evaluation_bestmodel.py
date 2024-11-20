@@ -9,6 +9,7 @@ from torchmetrics.classification import ConfusionMatrix
 from torchmetrics import JaccardIndex
 from torch.utils.data import DataLoader, Subset
 
+
 def initialize_all_metrics(num_blocks):
     """Initialize the metrics structure for all blocks."""
     return [{
