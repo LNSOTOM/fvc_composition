@@ -35,9 +35,9 @@ def get_num_classes_from_mask(mask_path):
 class_labels = {'BE': 0, 'NPV': 1, 'PV': 2, 'SI': 3, 'WI': 4}
 
 MASK_FOLDER = [
-    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/mask_fvc'
+    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/mask_fvc'
     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/mask_fvc'
-    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/mask_fvc'
+    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/mask_fvc'
 ]
 
 # Initialize a set to track all unique classes found across masks
@@ -94,9 +94,9 @@ def extract_region_name(path):
 
 # Paths to images and masks for multiple sites
 IMAGE_FOLDER = [
-    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/predictors_5b'
+    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/predictors_5b'
     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/predictors_5b'
-    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/predictors_5b'
+    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/predictors_5b'
 ]
 
 
@@ -109,9 +109,9 @@ BATCH_SIZE =  16 #12  # minimum 16) | 32
 NUM_WORKERS = 4
 
 ##5bands
-CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low'  #low
+# CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low'  #low
 # CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
-# CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/ecosystem_composition/phase_3_models/unet_model/ecosytems/dense/1024/no_aug/120ep/raw' #dense
+CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense
 
 #  OPTIMIZER (configuration for loss functions)
 '''optimiser: influence model performance'''
@@ -191,16 +191,16 @@ DATA_TRANSFORM = transforms.Compose([
 
 # Directory for loading or saving raster images + masks files
 SUBSAMPLE_IMAGE_DIR = [
-                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/predictors_5b_subsample'
+                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/predictors_5b_subsample'
                     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/predictors_5b_subsample'
-                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/predictors_5b_subsample'
+                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/predictors_5b_subsample'
 ]
 # os.makedirs(SUBSAMPLE_IMAGE_DIR, exist_ok=True)
 
 SUBSAMPLE_MASK_DIR = [
-                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/mask_fvc_subsample',
+                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/mask_fvc_subsample',
                     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/mask_fvc_subsample'
-                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/mask_fvc_subsample'
+                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/mask_fvc_subsample'
 ]
 # os.makedirs(SUBSAMPLE_MASK_DIR, exist_ok=True)
 # Create the directories if they don't exist
@@ -215,15 +215,15 @@ NUM_BLOCKS = 3
 
 # Define lists of paths to your saved JSON files
 INDICES_SAVE_PATHS = [
-    '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/subsampled_indices.json',
+    # '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/subsampled_indices.json',
     # '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/subsampled_indices.json'
-    # '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/subsampled_indices.json'
+    '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/subsampled_indices.json'
 ]
 
 COMBINED_INDICES_SAVE_PATHS = [
-    '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/combined_indices.json'
+    # '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/combined_indices.json'
     # '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/combined_indices.json'
-    # '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/combined_indices.json'
+    '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/combined_indices.json'
 ]
 
 ## Display tensorboard
