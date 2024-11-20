@@ -216,7 +216,6 @@ for directory in SUBSAMPLE_MASK_DIR:
     os.makedirs(directory, exist_ok=True)
 
 NUM_BLOCKS = 3
-# NUM_FOLDS = 5 # Number of splits for GroupKFold
 
 # Define lists of paths to your saved JSON files
 INDICES_SAVE_PATHS = [
