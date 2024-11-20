@@ -21,7 +21,6 @@ from map.plot_blocks_folds import plot_blocks_folds
 import json
 
 
-
 def log_message(message, log_file):
     log_directory = os.path.dirname(log_file)
     if not os.path.exists(log_directory):
