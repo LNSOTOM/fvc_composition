@@ -752,7 +752,7 @@ def plot_raster(raster_path, save_path):
 
 # Example call to the function
 raster_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/glob_stats/be_class/msavi/msavi_globStat_percentile_tiles_multispectral.22.tif'
-output_image_path = '/media/laura/Extreme SSD/code/ecosystem_composition/phase_2_reference_data/step_2_fvc_classes_combined/be_msavi.png'
+output_image_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_2_reference_data/step_2_fvc_classes_combined/be_msavi.png'
 
 plot_raster(raster_file_path, output_image_path)
 
@@ -791,8 +791,8 @@ def plot_raster(raster_path, save_path=None):
 
     # Create a color bar with just two ticks for binary classes
     colorbar = fig.colorbar(im, ax=ax, orientation='vertical', fraction=0.046, pad=0.04)
-    colorbar.set_ticks([0, 1])  # Adjust ticks to match the binary class indices
-    colorbar.ax.set_yticklabels(['Absence of BE Class', 'Presence of BE Class'], fontsize=16)  # Customize the labels
+    colorbar.set_ticks([0, 0.5])  # Adjust ticks to match the binary class indices or chnge to 1 to put it at the top
+    colorbar.ax.set_yticklabels(['Absence BE', 'Presence BE'], fontsize=16)  # Customize the labels
 
     # Adjust layout
     plt.tight_layout()
@@ -808,9 +808,10 @@ def plot_raster(raster_path, save_path=None):
 
 # Example call to the function
 raster_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/glob_stats/be_class/annotation_raster/mask_be_globStat_percentile_tiles_multispectral.22.tif'
-output_image_path = '/media/laura/Extreme SSD/code/ecosystem_composition/phase_2_reference_data/step_2_fvc_classes_combined/c_be_mask.png'
+output_image_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_2_reference_data/step_2_fvc_classes_combined/c_be_mask.png'
 
 plot_raster(raster_file_path, output_image_path)
+
 
 
 #%%
@@ -867,9 +868,71 @@ def plot_raster(raster_path, save_path=None):
 
 # Example call to the function
 raster_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/glob_stats/be_class/be_mask_threshold.22.tif'
-output_image_path = '/media/laura/Extreme SSD/code/ecosystem_composition/phase_2_reference_data/step_2_fvc_classes_combined/d_be_mask_thresholded.png'
+output_image_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_2_reference_data/step_2_fvc_classes_combined/be_mask_thresholded.png'
 
 plot_raster(raster_file_path, output_image_path)
+
+
+#%%
+### be class (binary mask thresholded improved)
+import rasterio
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+
+def plot_raster(raster_path, save_path=None):
+    """
+    Plots a raster mask where '0' (presence of BE) is shown in yellow, and 'NaN' (absence) is shown in white.
+
+    Parameters:
+    - raster_path: Path to the raster file (binary mask).
+    - save_path: Path to save the output image. If None, the plot is displayed instead of saved.
+    """
+    
+    # Open the raster file
+    with rasterio.open(raster_path) as src:
+        # Read the first band (binary mask)
+        data = src.read(1)
+        
+        # Retain 0 for presence and convert non-zero values to NaN
+        data = np.where(data == 0, 0, np.nan)
+
+    # Define a colormap: White for NaN, Yellow for 0
+    class_colors = ['#dae22f']  # Yellow for presence
+    cmap = ListedColormap(['#ffffff', '#dae22f'])  # White for absence, Yellow for presence
+
+    # Create a plot
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    # Display the raster data with the colormap
+    im = ax.imshow(data, cmap=cmap, interpolation='nearest', vmin=-0.5, vmax=0.5)
+    ax.axis('off')  # Hide axes
+
+    # Add a color bar
+    colorbar = fig.colorbar(im, ax=ax, orientation='vertical', fraction=0.046, pad=0.04)
+    
+    # Adjust ticks to place "Presence (BE)" at the top and "Absence (NaN)" at the bottom
+    colorbar.set_ticks([-0.5, 0])  # Ticks: [-0.5: NaN (Absence), 0: Presence]
+    colorbar.ax.set_yticklabels(['Absence BE', 'Presence BE'], fontsize=16)
+
+    # Adjust layout
+    plt.tight_layout()
+
+    # Save the figure if a save path is provided, otherwise show the plot
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight')
+        plt.close(fig)
+        print(f"Image saved as {save_path}")
+    else:
+        plt.show()
+
+# Example call to the function
+raster_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/glob_stats/be_class/be_mask_threshold.22.tif'
+output_image_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_2_reference_data/step_2_fvc_classes_combined/d_be_mask_thresholded.png'
+
+plot_raster(raster_file_path, output_image_path)
+
+
 
 
 #%% be class (composite image)
@@ -915,7 +978,7 @@ def plot_raster(rgb_path, save_path=None):
 
 # Example call to the function
 rgb_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/raw/composite_colour_raster_3b/composite_percentile_tiles_multispectral.22.tif'
-output_image_path = '/media/laura/Extreme SSD/code/ecosystem_composition/phase_2_reference_data/step_2_fvc_classes_combined/be_raster.png'
+output_image_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_2_reference_data/step_2_fvc_classes_combined/be_raster.png'
 
 plot_raster(rgb_file_path, output_image_path)
 
@@ -980,7 +1043,7 @@ def plot_raster(raster_path, rgb_path, save_path):
 # Example call to the function
 raster_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/glob_stats/be_class/annotation_raster/mask_be_globStat_percentile_tiles_multispectral.22.tif'
 rgb_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/raw/composite_colour_raster_3b/composite_percentile_tiles_multispectral.22.tif'
-output_image_path = '/home/laura/Documents/code/ecosystem_composition/phase_2_reference_data/3_pv_npv_be_classes/be_mask.png'
+output_image_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_2_reference_data/step_2_fvc_classes_combined/be_mask.png'
 plot_raster(raster_file_path, rgb_file_path, output_image_path)
 
 # %%
