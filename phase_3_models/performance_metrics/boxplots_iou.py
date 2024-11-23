@@ -2,7 +2,7 @@
 #%%
 ## IoU Scores
 import pandas as pd
-from plotnine import ggplot, aes, geom_violin, geom_boxplot, geom_text, geom_point, labs, theme, element_text, scale_fill_manual, scale_color_manual, coord_cartesian, facet_grid, guide_legend
+from plotnine import ggplot, aes, geom_violin, geom_boxplot, geom_text, geom_point, labs, theme, element_text, scale_fill_manual, scale_color_manual, coord_cartesian, facet_grid, guide_legend, theme_bw, element_rect
 
 # Prepare data function that works independently for each density
 def prepare_data(val_scores, test_scores, classes, density_label):
@@ -90,16 +90,24 @@ plot = (ggplot(combined_data, aes(x='Class', y='IoU', fill='Evaluation set'))
         )     
         + labs(x='Class', y='IoU', title='')
         + facet_grid('.~Density', scales='free_x', space='free_x')  # Free x-scales for each density and enforce facet order
-        + theme(figure_size=(14, 8),
-                axis_text=element_text(size=12),
-                axis_title=element_text(size=14),
-                strip_text=element_text(size=14),
-                legend_title=element_text(size=12),
-                legend_position='right'))
+        + theme_bw()  # Apply the black-and-white theme
+        + theme(
+            panel_background=element_rect(fill='white', color='black'),  # White panel background with a black border
+            plot_background=element_rect(fill='white'),  # White plot background
+            # panel_grid_major=element_line(color='lightgrey'),  # Dotted grid lines for major grids: linetype='dashed'
+            # panel_grid_minor=element_line(color='lightgrey'),  # Dashed grid lines for minor grids
+            strip_background=element_rect(fill='#FFF6E9', color='black'),  # Light blue background for facet grid labels: fill='black', color='white'
+            strip_text=element_text(size=14, color='black'),  # Set font size for the facet labels (LOW, MEDIUM, DENSE): color='white'
+            figure_size=(14, 8),
+            axis_text=element_text(size=12),
+            axis_title=element_text(size=14),
+            # strip_text=element_text(size=14),
+            legend_title=element_text(size=12),
+            legend_position='right'))
 
 
 # Save the plot
-plot.save("boxplot_iou_scores.png", dpi=300, width=14, height=8)
+plot.save("boxplot_iou_scores_v1.png", dpi=300, width=14, height=8)
 
 # Display the plot
 print(plot)
