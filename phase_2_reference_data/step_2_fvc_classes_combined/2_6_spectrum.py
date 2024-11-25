@@ -1145,7 +1145,7 @@ plt.legend(title="Classes:", loc="upper left")  # Legend positioned in top-left 
 plt.grid(axis="x", linestyle="--", alpha=0.0)  # Only gridlines for actual wavelengths
 
 # Save the plot to the specified directory
-output_plot_path = os.path.join(output_dir, "mean_reflectance_sites_bands_v1.png")
+output_plot_path = os.path.join(output_dir, "mean_reflectance_sites_bands.png")
 plt.savefig(output_plot_path, dpi=150)
 plt.show()
 
