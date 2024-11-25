@@ -966,6 +966,7 @@ plt.show()
 
 print(f"\nSaved overall plot to {output_plot_path}")
 
+
 # %%
 ### test 7: imporve plot 
 import os
@@ -975,6 +976,8 @@ import rasterio
 import matplotlib.pyplot as plt
 from scipy.stats import t
 from tqdm import tqdm  # Progress bar for better monitoring
+from matplotlib.ticker import FuncFormatter
+
 
 # List of input directories
 input_dirs = [
@@ -1093,6 +1096,29 @@ xticks_combined = sorted(set(x_axis_wavelengths + bands))
 
 # Plotting mean reflectance and confidence intervals
 plt.figure(figsize=(12, 8))
+
+# Custom formatter for rounding ticks to 2 decimal places
+formatter = FuncFormatter(lambda x, _: f"{x:.2f}")
+plt.gca().xaxis.set_major_formatter(formatter)
+plt.gca().yaxis.set_major_formatter(formatter)
+
+# Set tick parameters to increase size of x-axis and y-axis ticks
+plt.tick_params(axis='both', which='major', labelsize=12)  # Adjust labelsize as needed
+plt.tick_params(axis='both', which='minor', labelsize=12)
+
+# Calculate the upper limit for the y-axis
+y_max = max(
+    max(np.array(mean_reflectance[cls_name]) + np.array(confidence_intervals[cls_name]))
+    for cls_name in mean_reflectance
+)
+
+# Set the y-axis to start at 0 and end just above the maximum data value
+# plt.ylim(0, y_max + 0.01)  # Add a small buffer to the upper limit for better visualization
+y_ticks = np.arange(0, y_max + 0.03, 0.03)  # Define ticks from 0 to y_max with a step of 0.02
+plt.ylim(0, y_ticks[-1])  # Set y-axis limits to the defined range
+plt.yticks(y_ticks)  # Apply the y-axis ticks
+
+
 for idx, (cls_name, color) in enumerate(zip(class_labels.values(), class_colors)):
     if cls_name in mean_reflectance:
         means = mean_reflectance[cls_name]
@@ -1112,14 +1138,14 @@ plt.xticks(xticks_combined, labels=[f"{wl}" for wl in xticks_combined])
 for x in bands:
     plt.axvline(x=x, color="gray", linestyle="--", alpha=0.3)
 
-plt.xlabel("Wavelength (nm)", fontsize=14)
-plt.ylabel("Reflectance", fontsize=14)
-plt.title("Mean reflectance with confidence intervals across all sites")
+# plt.xlabel("Wavelength (nm)", fontsize=14)
+# plt.ylabel("Reflectance", fontsize=14)
+# plt.title("Mean reflectance with confidence intervals across all sites")
 plt.legend(title="Classes:", loc="upper left")  # Legend positioned in top-left corner
 plt.grid(axis="x", linestyle="--", alpha=0.0)  # Only gridlines for actual wavelengths
 
 # Save the plot to the specified directory
-output_plot_path = os.path.join(output_dir, "mean_reflectance_sites_bands.png")
+output_plot_path = os.path.join(output_dir, "mean_reflectance_sites_bands_v1.png")
 plt.savefig(output_plot_path, dpi=150)
 plt.show()
 
