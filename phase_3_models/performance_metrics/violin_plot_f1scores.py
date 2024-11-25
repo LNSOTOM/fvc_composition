@@ -197,4 +197,165 @@ plot.save("violin_boxplots_v1.png", dpi=300, width=20, height=12)
 # Display the plot
 print(plot)
 
+
+
+
+
+# %%
+###################### ACROSS SITES  ##############################################################
+## version 1: F1-Scores SITES
+##test 5
+import pandas as pd
+import numpy as np
+from plotnine import (
+    ggplot, aes, geom_violin, geom_boxplot, geom_text, geom_point, labs, theme, element_text,
+    scale_fill_manual, scale_color_manual, coord_cartesian
+)
+
+# Prepare data function
+def prepare_data(val_scores, test_scores, classes, val_counts, test_counts, density_label):
+    if len(val_scores) != len(classes) or len(test_scores) != len(classes):
+        raise ValueError("The number of rows in val_scores and test_scores must match the number of classes.")
+
+    # Flatten validation and test scores
+    flattened_val_scores = []
+    flattened_test_scores = []
+    for class_idx in range(len(classes)):
+        flattened_val_scores.extend(val_scores[class_idx])
+        flattened_test_scores.extend(test_scores[class_idx])
+
+    # Build DataFrame
+    data = pd.DataFrame({
+        'Class': classes * len(val_scores[0]) + classes * len(test_scores[0]),
+        'F1_Score': flattened_val_scores + flattened_test_scores,
+        'Evaluation set': ['VALIDATION'] * len(flattened_val_scores) +
+                          ['TEST'] * len(flattened_test_scores),
+        'Density': [density_label] * (len(flattened_val_scores) + len(flattened_test_scores))
+    })
+
+    # Calculate mean F1 scores for plotting
+    means_data = data.groupby(['Class', 'Evaluation set'], as_index=False)['F1_Score'].mean()
+    means_data.rename(columns={'F1_Score': 'Mean_F1_Score'}, inplace=True)
+    means_data['Density'] = density_label
+
+    # Prepare counts data
+    counts_data = pd.DataFrame({
+        'Class': classes * 2,
+        'Counts': [f'V= {val_counts[cls]:.2f}%' for cls in classes] +
+                  [f'T= {test_counts[cls]:.2f}%' for cls in classes],
+        'y_position': [1.03] * len(classes) + [1.00] * len(classes),
+        'Evaluation set': ['VALIDATION'] * len(classes) + ['TEST'] * len(classes),
+        'Density': [density_label] * 2 * len(classes)
+    })
+
+    return data, means_data, counts_data
+
+
+# Input data
+test_scores_sites = [
+    [0.0000, 0.0000, 0.3576],  # BE
+    [0.0000, 0.0000, 0.0000],  # NPV
+    [0.4200, 0.5410, 0.0000],  # PV
+    [0.0000, 0.0000, 0.0000],  # SI
+    [0.0000, 0.0000, 0.0000]   # WI
+]
+
+val_scores_sites = [
+    [0.0000, 0.0000, 0.5603],  # BE
+    [0.0000, 0.0000, 0.0000],  # NPV
+    [0.5873, 0.5689, 0.0000],  # PV
+    [0.0000, 0.0000, 0.0000],  # SI
+    [0.0000, 0.0000, 0.0000]   # WI
+]
+
+# Classes
+classes = ['BE', 'NPV', 'PV', 'SI', 'WI']
+
+# Compute averages
+val_averages = [np.mean(row) for row in val_scores_sites]
+test_averages = [np.mean(row) for row in test_scores_sites]
+
+# Link averages to classes
+val_averages_by_class = {cls: avg for cls, avg in zip(classes, val_averages)}
+test_averages_by_class = {cls: avg for cls, avg in zip(classes, test_averages)}
+
+# Print averages for verification
+print("Validation Averages by Class:")
+for cls, avg in val_averages_by_class.items():
+    print(f"{cls}: {avg:.3f}")
+
+print("\nTest Averages by Class:")
+for cls, avg in test_averages_by_class.items():
+    print(f"{cls}: {avg:.3f}")
+
+# Prepare data for plotting
+data = pd.DataFrame({
+    'Class': classes * 2,
+    'F1_Score': val_averages + test_averages,
+    'Evaluation set': ['VALIDATION'] * len(classes) + ['TEST'] * len(classes)
+})
+
+# Counts for each class
+val_counts_sites = {
+    'BE': np.mean([26.85, 26.00, 38.92]),
+    'NPV': np.mean([3.33, 12.16, 17.41]),
+    'PV': np.mean([26.59, 39.75, 30.83]),
+    'SI': np.mean([17.59, 10.44, 12.84]),
+    'WI': np.mean([10.65, 11.64, 0])
+}
+
+test_counts_sites = {
+    'BE': np.mean([36.36, 36.61, 21.77]),
+    'NPV': np.mean([37.05, 4.60, 21.77]),
+    'PV': np.mean([26.59, 37.98, 45.47]),
+    'SI': np.mean([0, 21.71, 13.36]),
+    'WI': np.mean([0, 0, 17.25])
+}
+
+# Add counts to data
+data['Counts'] = (
+    [f"V= {val_counts_sites[cls]:.2f}%" for cls in classes] +
+    [f"T= {test_counts_sites[cls]:.2f}%" for cls in classes]
+)
+data['y_position'] = [1.03] * len(classes) + [1.00] * len(classes)
+
+# Define the color scheme
+class_color_scheme = {'BE': '#dae22f', 'NPV': '#6332ea', 'PV': '#e346ee', 'SI': '#6da4d4', 'WI': '#68e8d3'}
+evaluation_set_colors = {'VALIDATION': '#55d400', 'TEST': '#5f00ff'}
+
+# Generate plot
+plot = (ggplot(data, aes(x='Class', y='F1_Score'))
+        + geom_violin(aes(fill='Class'), width=1, alpha=0.4)
+        + geom_boxplot(aes(color='Evaluation set'), width=0.5, outlier_color='red', fill='white', alpha=1)
+        + geom_point(aes(shape='Evaluation set'), color='black', size=4)
+        + geom_text(aes(y='y_position', label='Counts'), color='black', size=10, ha='center')
+        + scale_fill_manual(values=class_color_scheme)
+        + scale_color_manual(values=evaluation_set_colors)
+        + labs(x='Class', y='F1-Score', title='F1-Score Distribution for SITES Density')
+        + coord_cartesian(ylim=(0.0, 1.0))
+        + theme_bw()  # Apply the black-and-white theme
+        + theme(
+            panel_background=element_rect(fill='white', color='black'),  # White panel background with a black border
+            plot_background=element_rect(fill='white'),  # White plot background
+            # panel_grid_major=element_line(color='lightgrey'),  # Dotted grid lines for major grids: linetype='dashed'
+            # panel_grid_minor=element_line(color='lightgrey'),  # Dashed grid lines for minor grids
+            strip_background=element_rect(fill='#FFF6E9', color='black'),  # Light blue background for facet grid labels: fill='black', color='white'
+            figure_size=(20, 12), 
+            axis_title=element_text(size=18),
+            axis_text=element_text(size=18),
+            axis_text_x=element_text(size=18),
+            axis_text_y=element_text(size=18),
+            strip_text=element_text(size=18),  
+            legend_title=element_text(size=18),
+            legend_text=element_text(size=18),  
+            legend_key_size=20,
+            legend_position='right',
+        )
+    )
+
+# Save and display the plot
+plot.save("violin_boxplot_f1score_sites_corrected.png", dpi=300, width=20, height=12)
+print(plot)
+
+#
 # %%
