@@ -111,4 +111,109 @@ plot.save("boxplot_iou_scores_v1.png", dpi=300, width=14, height=8)
 
 # Display the plot
 print(plot)
+
+
+# %%
+########################### ACROSS SITES
+# IoU Scores for the "DENSE" site only
+import pandas as pd
+from plotnine import ggplot, aes, geom_violin, geom_boxplot, geom_text, geom_point, labs, theme, element_text, scale_fill_manual, scale_color_manual, coord_cartesian, facet_grid, guide_legend, theme_bw, element_rect
+
+# Prepare data function that works independently for each density
+def prepare_data(val_scores, test_scores, classes, density_label):
+    data = pd.DataFrame({
+        'Class': classes * 6,
+        'IoU': sum(val_scores, []) + sum(test_scores, []),
+        'Evaluation set': ['VALIDATION'] * 3 * len(classes) + ['TEST'] * 3 * len(classes),
+        'Density': [density_label] * 6 * len(classes)
+    })
+    
+    # Set order for 'Evaluation set' and 'Density' categories
+    data['Evaluation set'] = pd.Categorical(data['Evaluation set'], categories=['VALIDATION', 'TEST'], ordered=True)
+    data['Density'] = pd.Categorical(data['Density'], categories=['SITES'], ordered=True)
+    
+    # Calculate means for each class and evaluation set
+    means_data = data.groupby(['Class', 'Evaluation set'], as_index=False)['IoU'].mean()
+    means_data.rename(columns={'IoU': 'Mean_IoU'}, inplace=True)
+    means_data['Density'] = density_label
+
+    return data, means_data
+
+# Prepare data for each density level
+data_dense, means_data_dense = prepare_data(
+    [[0.0000, 0.0000, 0.4158, 0.0000, 0.0000], 
+     [0.0000, 0.0000, 0.3975, 0.0000, 0.0000], 
+     [0.3892, 0.0000, 0.0000, 0.0000, 0.0000]],
+    [[0.0000, 0.0000, 0.2659, 0.0000, 0.0000], 
+     [0.0000, 0.0000, 0.3708, 0.0000, 0.0000], 
+     [0.2177, 0.0000, 0.0000, 0.0000, 0.0000]],
+    ['BE', 'NPV', 'PV', 'SI', 'WI'],
+    'SITES'
+)
+
+# Combine data for plotting
+combined_data = pd.concat([data_dense])
+combined_means_data = pd.concat([means_data_dense])
+
+
+# Combine data for plotting
+combined_data['Density'] = pd.Categorical(combined_data['Density'], categories=['SITES'], ordered=True)
+combined_means_data['Density'] = pd.Categorical(combined_means_data['Density'], categories=['SITES'], ordered=True)
+
+class_color_scheme = {
+    'BE': '#dae22f',
+    'NPV': '#6332ea',
+    'PV': '#e346ee',
+    'SI': '#6da4d4',
+    'WI': '#68e8d3'
+}
+boxplot_colors = {
+    'VALIDATION': '#55d400',
+    'TEST': '#5f00ff'
+}
+
+# Create the plot
+plot = (ggplot(combined_data, aes(x='Class', y='IoU', fill='Evaluation set'))
+        # + geom_boxplot(position='dodge', alpha=0.5)
+        + geom_boxplot(aes(color='Evaluation set'), width=0.5, outlier_color='red', fill='white', alpha=1)  # Boxplot with Evaluation set colors
+        + geom_point(data=combined_means_data, mapping=aes(x='Class', y='Mean_IoU', shape='Evaluation set'), color='black', size=4)
+        + scale_fill_manual(values=['#55d400', '#5f00ff'])  # Colors for Validation and Test sets
+        + scale_fill_manual(
+            name="Class",
+            values={**class_color_scheme, **boxplot_colors},
+            breaks=list(class_color_scheme.keys()), # Only show 'Class' items in the legend
+            guide=guide_legend(
+                override_aes={'shape': 's', 'size':8}  # Use 's' for square (rectangle) shapes in the legend for Class
+            )
+        )
+        + scale_color_manual(
+            name="Evaluation set", 
+            values=boxplot_colors,
+            guide=guide_legend(
+                # override_aes={'size':6}
+            )  # Use guide_legend for proper legend control
+        )     
+        + labs(x='Class', y='IoU', title='')
+        + facet_grid('.~Density', scales='free_x', space='free_x')  # Free x-scales for each density and enforce facet order
+        + theme_bw()  # Apply the black-and-white theme
+        + theme(
+            panel_background=element_rect(fill='white', color='black'),  # White panel background with a black border
+            plot_background=element_rect(fill='white'),  # White plot background
+            # panel_grid_major=element_line(color='lightgrey'),  # Dotted grid lines for major grids: linetype='dashed'
+            # panel_grid_minor=element_line(color='lightgrey'),  # Dashed grid lines for minor grids
+            strip_background=element_rect(fill='#FFF6E9', color='black'),  # Light blue background for facet grid labels: fill='black', color='white'
+            strip_text=element_text(size=14, color='black'),  # Set font size for the facet labels (LOW, MEDIUM, DENSE): color='white'
+            figure_size=(14, 8),
+            axis_text=element_text(size=12),
+            axis_title=element_text(size=14),
+            # strip_text=element_text(size=14),
+            legend_title=element_text(size=12),
+            legend_position='right'))
+
+
+# Save the plot
+plot.save("boxplot_iou_scores_sites.png", dpi=300, width=14, height=8)
+
+# Display the plot
+print(plot)
 # %%
