@@ -10,13 +10,16 @@ data = {
     'frequency': [
         # LOW category frequencies
         0.39558546, 0.35216222, 0.25225232, 0.0, 0.0,  # LOW - Before
-        0.36854068, 0.36701858, 0.26444074, 0.0, 0.0,  # LOW - After
+        # 0.36854068, 0.36701858, 0.26444074, 0.0, 0.0,  # LOW - After
+        0.37343581, 0.36456252, 0.26200167, 0.0, 0.0,  # LOW - After (SITES)
         # MEDIUM category frequencies
         0.41197585, 0.03871381, 0.34499355, 0.20431679, 0.0,  # MEDIUM - Before
-        0.35891044, 0.0410812, 0.37744875, 0.22255962, 0.0,  # MEDIUM - After
+        # 0.35891044, 0.0410812, 0.37744875, 0.22255962, 0.0,  # MEDIUM - After
+        0.36272099, 0.04150877, 0.3746632, 0.22110705, 0.0,  # MEDIUM - After (SITES)
         # DENSE category frequencies
         0.24742084, 0.01648553, 0.43895739, 0.13097304, 0.1661632,  # DENSE - Before
-        0.21666717, 0.01612868, 0.45556296, 0.13681792, 0.17482327  # DENSE - After
+        # 0.21666717, 0.01612868, 0.45556296, 0.13681792, 0.17482327  # DENSE - After
+        0.21279133, 0.01636341, 0.45874109, 0.13617722, 0.17592696 # DENSE - After (SITES)
     ],
     'density': (['LOW'] * 5 + ['LOW'] * 5 +  # LOW - Before and After
                 ['MEDIUM'] * 5 + ['MEDIUM'] * 5 +  # MEDIUM - Before and After
@@ -67,7 +70,8 @@ plot = (ggplot(df, aes(x='class', y='frequency', fill='class'))
        )
 
 # Save the plot as a high-resolution PNG file
-plot.save("class_frequency.png", dpi=300, width=12, height=8)
+# plot.save("class_frequency.png", dpi=300, width=12, height=8)
+plot.save("class_frequency_site_specific_sites.png", dpi=300, width=12, height=8)
 
 print(plot)
 
@@ -83,13 +87,16 @@ data = {
     'frequency': [
         # LOW category frequencies
         0.39558546, 0.35216222, 0.25225232, 0.0, 0.0,  # LOW - Before
-        0.36854068, 0.36701858, 0.26444074, 0.0, 0.0,  # LOW - After
+        # 0.36854068, 0.36701858, 0.26444074, 0.0, 0.0,  # LOW - After
+        0.37343581, 0.36456252, 0.26200167, 0.0, 0.0,  # LOW - After (SITES)
         # MEDIUM category frequencies
         0.41197585, 0.03871381, 0.34499355, 0.20431679, 0.0,  # MEDIUM - Before
-        0.35891044, 0.0410812, 0.37744875, 0.22255962, 0.0,  # MEDIUM - After
+        # 0.35891044, 0.0410812, 0.37744875, 0.22255962, 0.0,  # MEDIUM - After
+        0.36272099, 0.04150877, 0.3746632, 0.22110705, 0.0,  # MEDIUM - After (SITES)
         # DENSE category frequencies
         0.24742084, 0.01648553, 0.43895739, 0.13097304, 0.1661632,  # DENSE - Before
-        0.21666717, 0.01612868, 0.45556296, 0.13681792, 0.17482327  # DENSE - After
+        # 0.21666717, 0.01612868, 0.45556296, 0.13681792, 0.17482327  # DENSE - After
+        0.21279133, 0.01636341, 0.45874109, 0.13617722, 0.17592696 # DENSE - After (SITES)
     ],
     'density': (['LOW'] * 5 + ['LOW'] * 5 +  # LOW - Before and After
                 ['MEDIUM'] * 5 + ['MEDIUM'] * 5 +  # MEDIUM - Before and After
@@ -148,7 +155,8 @@ plot = (ggplot(df, aes(x='class', y='frequency', fill='class'))
 
 
 # Save the plot as a high-resolution PNG file
-plot.save("class_frequency.png", dpi=300, width=12, height=8)
+# plot.save("class_frequency.png", dpi=300, width=12, height=8)
+plot.save("class_frequency_site_specific_sites.png", dpi=300, width=12, height=8)
 
 print(plot)
 
@@ -216,7 +224,7 @@ sites_plot = (ggplot(df_sites, aes(x='class', y='frequency', fill='class'))
        )
 
 # Save the plot as a high-resolution PNG file
-sites_plot.save("class_frequency_sites.png", dpi=300, width=12, height=8)
+sites_plot.save("class_frequency_site_specific_sites.png", dpi=300, width=12, height=8)
 
 
 # Display the plot inline
