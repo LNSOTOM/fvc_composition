@@ -35,9 +35,9 @@ def get_num_classes_from_mask(mask_path):
 class_labels = {'BE': 0, 'NPV': 1, 'PV': 2, 'SI': 3, 'WI': 4}
 
 MASK_FOLDER = [
-    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/mask_fvc'
-    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/mask_fvc'
-    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/mask_fvc'
+    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/mask_fvc' #low
+    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/mask_fvc' #medium
+    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/mask_fvc' #dense
 ]
 
 # Initialize a set to track all unique classes found across masks
@@ -94,9 +94,9 @@ def extract_region_name(path):
 
 # Paths to images and masks for multiple sites
 IMAGE_FOLDER = [
-    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/predictors_5b'
-    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/predictors_5b'
-    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/predictors_5b'
+    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/predictors_5b'  #low
+    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/predictors_5b'  #medium
+    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/predictors_5b'  #dense
 ]
 
 
@@ -109,9 +109,9 @@ BATCH_SIZE =  16 #12  # minimum 16) | 32
 NUM_WORKERS = 4
 
 ##5bands
-# CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low'  #low
+CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low'  #low
 # CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
-CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense
+# CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense
 
 #  OPTIMIZER (configuration for loss functions)
 '''optimiser: influence model performance'''
@@ -191,16 +191,22 @@ DATA_TRANSFORM = transforms.Compose([
 
 # Directory for loading or saving raster images + masks files
 SUBSAMPLE_IMAGE_DIR = [
-                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/predictors_5b_subsample'
-                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/predictors_5b_subsample'
-                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/predictors_5b_subsample'
+                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/predictors_5b_subsample'  #low
+                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites_freq/low/predictor_5b_subsample'  #sites_low
+                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/predictors_5b_subsample'  #medium
+                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites_freq/medium/predictors_5b_subsample'  #sites_medium
+                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/predictors_5b_subsample'  #dense
+                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites_freq/dense/predictor_5b_subsample'  #sites_dense
 ]
 # os.makedirs(SUBSAMPLE_IMAGE_DIR, exist_ok=True)
 
 SUBSAMPLE_MASK_DIR = [
-                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/mask_fvc_subsample',
-                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/mask_fvc_subsample'
-                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/mask_fvc_subsample'
+                    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/mask_fvc_subsample'  #low
+                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites_freq/low/mask_fvc_subsample' #sites_low
+                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/mask_fvc_subsample'  #medium
+                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites_freq/medium/mask_fvc_subsample' #sites_medium
+                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/mask_fvc_subsample'
+                    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites_freq/dense/mask_fvc_subsample' #sites_dense
 ]
 # os.makedirs(SUBSAMPLE_MASK_DIR, exist_ok=True)
 # Create the directories if they don't exist
