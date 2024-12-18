@@ -483,20 +483,6 @@ def main():
             output_dir=os.path.join(output_dir, 'best_val_avg')
         )
 
-    # Save aggregated confusion matrices
-    # if conf_matrices:
-    #     evaluator.calculate_and_save_average_confusion_matrix(
-    #         conf_matrices,
-    #         all_preds_across_blocks,
-    #         all_trues_across_blocks,
-    #         class_labels=['BE', 'NPV', 'PV', 'SI', 'WI'],
-    #         output_dir=output_dir
-    #     )
-
-    # Print the best model paths and validation losses for all blocks
-    # for block_idx, (best_model_path, best_val_loss) in enumerate(zip(best_model_paths, best_val_losses)):
-    #     print(f"Best model for Block {block_idx + 1} saved at: {best_model_path} with validation loss: {best_val_loss:.4f}")
-    # Log best model paths and validation losses
     output_log_file = os.path.join(output_dir, "best_model_paths_and_validation_losses.txt")
 
     # Open the file in append mode
