@@ -1,5 +1,5 @@
 # fvc_composition
-Fractional Vegetation Cover (FVC) from RGB and Multispectral data
+Fractional Vegetation Cover (FVC) from drone/UAS RGB and Multispectral imagery
 
 <!-- ![mutlispectralMultipleClasses](https://github.com/LNSOTOM/ecosystem_uas_dl/assets/39131939/4179f2cb-ec43-4e6f-baf3-8586af3c6d0b) -->
 
