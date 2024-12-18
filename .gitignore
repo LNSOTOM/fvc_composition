@@ -160,3 +160,4 @@ dmypy.json
 *.pt*
 *.parquet
 *.json*
+*.csv*
