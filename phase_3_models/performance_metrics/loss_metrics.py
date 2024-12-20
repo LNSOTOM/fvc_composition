@@ -165,3 +165,176 @@ except Exception as e:
 
 
 # %%
+###plot
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+import matplotlib.ticker as mticker
+
+# Define the input CSV file and output directory
+csv_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_low.csv'  # Replace with the actual file path
+output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/'  # Replace with the actual output directory
+
+# Load the data from the CSV file
+loss_data = pd.read_csv(csv_file)
+
+# Extract and round the loss values to 3 decimal places
+epochs = loss_data['Epoch']
+train_losses = loss_data['Average_Training_Loss'].round(3)
+val_losses = loss_data['Average_Validation_Loss'].round(3)
+
+# Adjust the x-axis to start from 0
+x_lin = [0] + epochs.tolist()
+train_losses_extended = [train_losses.iloc[0]] + [round(value, 3) for value in train_losses.tolist()]
+val_losses_extended = [val_losses.iloc[0]] + [round(value, 3) for value in val_losses.tolist()]
+
+# Plotting loss curves
+plt.figure(figsize=(10, 6))
+plt.plot(range(1, len(train_losses_extended) + 1), train_losses_extended, color='#f54a19', label='Average Train Loss Across All Blocks')
+plt.plot(range(1, len(val_losses_extended) + 1), val_losses_extended, color='blue', label='Average Validation Loss Across All Blocks')
+plt.xlabel('Epoch')
+plt.ylabel('Average Loss')
+plt.legend()
+# Use a lighter color for the grid
+plt.grid(True, color='gray', linestyle='--', linewidth=0.5, alpha=0.3)
+
+# Force 3 decimal places on the y-axis
+plt.gca().yaxis.set_major_formatter(mticker.FormatStrFormatter('%.3f'))
+
+# Set the y-axis ticks with a range step of 0.025
+y_min = min(train_losses_extended + val_losses_extended)
+y_max = max(train_losses_extended + val_losses_extended)
+plt.ylim(y_min, y_max)
+plt.yticks([round(i * 0.125, 3) for i in range(int(y_min / 0.125), int(y_max / 0.125) + 2)])
+
+# Save the plot
+plt.savefig(os.path.join(output_dir, 'training_validation_loss_plot_low.png'), dpi=300)
+plt.show()
+print(f"Plot saved")
+
+
+
+# %%
+###plottt a
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+import matplotlib.ticker as mticker
+
+# Define the datasets with their file paths
+datasets = {
+    "Low": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_low.csv",
+    "Medium": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_medium.csv",
+    "Dense": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_dense.csv",
+    "Sites": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_sites.csv"
+}
+
+# Initialize variables to store global min and max values
+global_min = float('inf')
+global_max = float('-inf')
+
+# Loop through datasets to find global min and max for consistent y-axis limits
+for label, file_path in datasets.items():
+    loss_data = pd.read_csv(file_path)
+    train_losses = loss_data['Average_Training_Loss']
+    val_losses = loss_data['Average_Validation_Loss']
+    global_min = min(global_min, train_losses.min(), val_losses.min())
+    global_max = max(global_max, train_losses.max(), val_losses.max())
+
+# Add a buffer to y-axis limits
+buffer = 0.05 * (global_max - global_min)  # 5% of the range as buffer
+y_min = global_min - buffer
+y_max = global_max + buffer
+
+# Plot each dataset independently
+output_dir = "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/plots"
+os.makedirs(output_dir, exist_ok=True)  # Ensure the output directory exists
+
+for label, file_path in datasets.items():
+    loss_data = pd.read_csv(file_path)
+    epochs = loss_data['Epoch']
+    train_losses = loss_data['Average_Training_Loss'].round(3)
+    val_losses = loss_data['Average_Validation_Loss'].round(3)
+
+    # Create the plot
+    plt.figure(figsize=(10, 6))
+    plt.plot(epochs, train_losses, color='#f54a19', label='Average Train Loss')
+    plt.plot(epochs, val_losses, color='blue', label='Average Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Average Loss')
+    plt.title(f'Epoch vs. Average Loss - {label} Site')
+    plt.legend()
+    plt.grid(True, color='gray', linestyle='--', linewidth=0.5, alpha=0.3)
+    plt.ylim(y_min, y_max)  # Apply consistent y-axis limits with buffer
+    plt.gca().yaxis.set_major_formatter(mticker.FormatStrFormatter('%.3f'))
+    
+    # Save the plot
+    output_path = os.path.join(output_dir, f"training_validation_loss_plot_{label.lower()}.png")
+    plt.savefig(output_path, dpi=300)
+    plt.show()
+
+    print(f"Plot saved for {label} Site at: {output_path}")
+
+
+# %%
+###plot b
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+import matplotlib.ticker as mticker
+
+# Define the datasets with their file paths
+datasets = {
+    "Low": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_low.csv",
+    "Medium": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_medium.csv",
+    "Dense": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_dense.csv",
+    "Sites": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_sites.csv"
+}
+
+# Initialize variables to store global min and max values
+global_min = float('inf')
+global_max = float('-inf')
+
+# Loop through datasets to find global min and max for consistent y-axis limits
+for label, file_path in datasets.items():
+    loss_data = pd.read_csv(file_path)
+    train_losses = loss_data['Average_Training_Loss']
+    val_losses = loss_data['Average_Validation_Loss']
+    global_min = min(global_min, train_losses.min(), val_losses.min())
+    global_max = max(global_max, train_losses.max(), val_losses.max())
+
+# Add a reduced buffer to y-axis limits
+buffer = 0.03 * (global_max - global_min)  # 2% of the range as buffer
+y_min = global_min - buffer
+y_max = global_max + buffer
+
+# Plot each dataset independently
+output_dir = "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/plots"
+os.makedirs(output_dir, exist_ok=True)  # Ensure the output directory exists
+
+for label, file_path in datasets.items():
+    loss_data = pd.read_csv(file_path)
+    epochs = loss_data['Epoch']
+    train_losses = loss_data['Average_Training_Loss'].round(3)
+    val_losses = loss_data['Average_Validation_Loss'].round(3)
+
+    # Create the plot
+    plt.figure(figsize=(10, 6))
+    plt.plot(epochs, train_losses, color='#f54a19', label='Average Train Loss Across All Blocks')
+    plt.plot(epochs, val_losses, color='blue', label='Average Validation Loss Across All Blocks')
+    plt.xlabel('Epoch')
+    plt.ylabel('Average Loss')
+    # plt.title(f'Epoch vs. Average Loss - {label} Site')
+    plt.legend()
+    plt.grid(True, color='gray', linestyle='--', linewidth=0.5, alpha=0.3)
+    plt.ylim(y_min, y_max)  # Apply consistent y-axis limits with reduced buffer
+    plt.gca().yaxis.set_major_formatter(mticker.FormatStrFormatter('%.3f'))
+    
+    # Save the plot
+    output_path = os.path.join(output_dir, f"training_validation_loss_plot_{label.lower()}.png")
+    plt.savefig(output_path, dpi=300)
+    plt.show()
+
+    print(f"Plot saved for {label} Site at: {output_path}")
+
+# %%
