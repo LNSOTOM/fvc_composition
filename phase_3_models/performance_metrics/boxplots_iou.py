@@ -216,4 +216,3 @@ plot.save("boxplot_iou_scores_sites.png", dpi=300, width=14, height=8)
 
 # Display the plot
 print(plot)
-# %%

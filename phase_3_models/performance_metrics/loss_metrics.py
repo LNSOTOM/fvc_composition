@@ -336,5 +336,3 @@ for label, file_path in datasets.items():
     plt.show()
 
     print(f"Plot saved for {label} Site at: {output_path}")
-
-# %%

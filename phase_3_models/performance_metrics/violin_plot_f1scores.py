@@ -485,6 +485,3 @@ plot = (ggplot(data, aes(x='Class', y='F1_Score'))
 # Save and display the plot
 plot.save("violin_boxplot_f1score_sites_corrected.png", dpi=300, width=20, height=12)
 print(plot)
-
-#
-# %%
