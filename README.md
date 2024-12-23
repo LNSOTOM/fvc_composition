@@ -1,5 +1,5 @@
 # Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation
-Fractional Vegetation Cover (FVC) from drone/UAS RGB and Multispectral imagery
+CNN-based workflow for FVC mapping application:
 
 ![mutlispectralMultipleClasses](https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/cnn_workflow_sites.png)
 
