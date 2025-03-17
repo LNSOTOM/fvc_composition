@@ -1,8 +1,7 @@
 # fvcCOVER 
 **_Code for image processing, build reference/annotation data and semantic segmentation modelling for mapping fractional vegetation cover in UAS RGB and multispectral imagery._**
 
-# Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation
-CNN-based workflow for FVC mapping application:
+## CNN-based workflow for FVC mapping application:
 
 ![mutlispectralMultipleClasses](https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/cnn_workflow_sites.png)
 
@@ -20,6 +19,8 @@ A sample of the reference data can be found here: [FVC classes based on growth f
 
 ## Cite and use fvcCOVER
 This code can be cited and downloaded from: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036626.svg)](https://doi.org/10.5281/zenodo.15036626)
+
+Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation
 
 ### Check code: Paper2/Chap3
 [LiDAR 3D Voxel Automation to identify trees, shrubs, and grasses using deep learning-based computer vision applications ](https://github.com/LNSOTOM/ecosystem_structure)
