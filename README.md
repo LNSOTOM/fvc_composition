@@ -20,12 +20,6 @@ mamba env create --file environment.yml
 ```
 
 ## Dataset available
-The RGB (1 cm) and multispectral (5 cm) orthomosaics at step A in workflow can be found:
-**TERN Landscapes, TERN Surveillance Monitoring, Stenson, M., Sparrow, B., & Lucieer, A. (2022).**  
-**Drone RGB and Multispectral Imagery from TERN plots across Australia.** Version 1.  
-Terrestrial Ecosystem Research Network. Dataset.  
-[Access dataset here](https://portal.tern.org.au/metadata/TERN/39de90f5-49e3-4567-917c-cf3e3bc93086).
-
 You can find the whole dataset used for step B in workflow:
 
 
@@ -49,6 +43,15 @@ If you use these sample refernce dataset for modelling (step C) in your work, pl
 This code can be cited and downloaded from: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036626.svg)](https://doi.org/10.5281/zenodo.15036626)
 
 Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation
+
+
+## Acknowledgments
+The RGB (1 cm) and multispectral (5 cm) orthomosaics at step A in workflow can be found:
+**TERN Landscapes, TERN Surveillance Monitoring, Stenson, M., Sparrow, B., & Lucieer, A. (2022).**  
+**Drone RGB and Multispectral Imagery from TERN plots across Australia.** Version 1.  
+Terrestrial Ecosystem Research Network. Dataset.  
+[Access dataset here](https://portal.tern.org.au/metadata/TERN/39de90f5-49e3-4567-917c-cf3e3bc93086).
+
 
 ### Check code: Paper2/Chap3
 [LiDAR 3D Voxel Automation to identify trees, shrubs, and grasses using deep learning-based computer vision applications ](https://github.com/LNSOTOM/ecosystem_structure)
