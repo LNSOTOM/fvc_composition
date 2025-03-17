@@ -20,10 +20,10 @@ mamba env create --file environment.yml
 ```
 
 ## Dataset available
-You can find the whole dataset used for step B in workflow:
+You can find the whole dataset used for phase B in workflow:
 
 
-You can find a sample for the reference dataset and CNN modelling purpose (step C):
+You can find a sample for the reference dataset and CNN modelling purpose (phase C):
 
 - [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27776145.v1.svg)](https://doi.org/10.6084/m9.figshare.27776145.v1)  
   **Sotomayor, Laura (2024). Low vegetation site.** figshare. Dataset.  
@@ -45,7 +45,7 @@ This code can be cited and downloaded from: [![DOI](https://zenodo.org/badge/DOI
 Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation
 
 ## Acknowledgments
-The RGB (1 cm) and multispectral (5 cm) orthomosaics at step A in workflow can be found:
+The RGB (1 cm) and multispectral (5 cm) orthomosaics at phase A in workflow can be found:
 
 TERN Landscapes, TERN Surveillance Monitoring, Stenson, M., Sparrow, B., & Lucieer, A. (2022).
 Drone RGB and Multispectral Imagery from TERN plots across Australia. Version 1. Terrestrial Ecosystem Research Network. Dataset. 
