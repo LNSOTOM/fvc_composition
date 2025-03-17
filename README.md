@@ -20,12 +20,12 @@ mamba env create --file environment.yml
 ```
 
 ## Dataset available
-- You can find the whole dataset used for phase B in workflow: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036860.svg)](https://doi.org/10.5281/zenodo.15036860)
+- You can find the whole dataset used for **phase B** in workflow: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036860.svg)](https://doi.org/10.5281/zenodo.15036860)
 
-**Sotomayor, L. N. (2025). Semi-arid Australian Ecosystems Fractional Vegetation Cover map from UAS RGB and Multispectral imagery**[Data set]. Zenodo.
+Sotomayor, L. N. (2025). Semi-arid Australian Ecosystems Fractional Vegetation Cover map from UAS RGB and Multispectral imagery [Data set]. Zenodo.
 
 
-- You can find a sample for the reference dataset and CNN modelling purpose for phase C:
+- You can find a sample for the reference dataset and CNN modelling purpose for **phase C**:
 
 1) [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27776145.v1.svg)](https://doi.org/10.6084/m9.figshare.27776145.v1)  
   Sotomayor, Laura (2024). Low vegetation site. figshare. Dataset.  
@@ -47,7 +47,7 @@ This code can be cited and downloaded from: [![DOI](https://zenodo.org/badge/DOI
 Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation
 
 ## Acknowledgments
-- **Orthomosaics from drone imagery**: the RGB (1 cm) and multispectral (5 cm) orthomosaics at phase A in workflow can be found:
+- **Orthomosaics from drone imagery**: the RGB (1 cm) and multispectral (5 cm) orthomosaics at **phase A** in workflow can be found:
 <img src="https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/orthomosaic_sites.png" width="500">
 
 TERN Landscapes, TERN Surveillance Monitoring, Stenson, M., Sparrow, B., & Lucieer, A. (2022).
