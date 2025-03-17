@@ -59,7 +59,7 @@ Dr Krishna Lamsal (School of Geography, Planning, and Spatial Sciences, UTAS),
 Sophia Hoyer (School of Geography, Planning, and Spatial Sciences, UTAS),
 Molly Marshall (School of Geography, Planning, and Spatial Sciences, UTAS),
 Dr Agustina Barros (Researcher at National Scientific and Technical Research Council) and
-Dr Sebastian Rossi (Researcher at National Scientific and Technical Research Council),
+Dr Sebastian Rossi (Researcher at National Scientific and Technical Research Council).
 
 
 
