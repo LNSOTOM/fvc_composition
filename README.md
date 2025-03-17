@@ -23,7 +23,7 @@ mamba env create --file environment.yml
 You can find the whole dataset used for phase B in workflow:
 
 
-You can find a sample for the reference dataset and CNN modelling purpose (phase C):
+You can find a sample for the reference dataset and CNN modelling purpose for phase C:
 
 - [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27776145.v1.svg)](https://doi.org/10.6084/m9.figshare.27776145.v1)  
   **Sotomayor, Laura (2024). Low vegetation site.** figshare. Dataset.  
