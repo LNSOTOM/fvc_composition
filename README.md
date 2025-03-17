@@ -20,7 +20,21 @@ mamba env create --file environment.yml
 ```
 
 ## Data available
-A sample of the reference data can be found here: [FVC classes based on growth form and structure ](https://figshare.com/projects/Reference_data_for_semi-arid_environments/227859)
+If you use these datasets in your work, please cite them as follows:
+
+- [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27776145.v1.svg)](https://doi.org/10.6084/m9.figshare.27776145.v1)  
+  **Sotomayor, Laura (2024). Low vegetation site.** figshare. Dataset.  
+  DOI: [10.6084/m9.figshare.27776145.v1](https://doi.org/10.6084/m9.figshare.27776145.v1)
+
+- [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27871806.v1.svg)](https://doi.org/10.6084/m9.figshare.27871806.v1)  
+  **Sotomayor, Laura (2024). Medium vegetation site.** figshare. Dataset.  
+  DOI: [10.6084/m9.figshare.27871806.v1](https://doi.org/10.6084/m9.figshare.27871806.v1)
+
+- [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27871893.v1.svg)](https://doi.org/10.6084/m9.figshare.27871893.v1)  
+  **Sotomayor, Laura (2024). Dense vegetation site.** figshare. Dataset.  
+  DOI: [10.6084/m9.figshare.27871893.v1](https://doi.org/10.6084/m9.figshare.27871893.v1)
+
+<!-- [FVC classes based on growth form and structure ](https://figshare.com/projects/Reference_data_for_semi-arid_environments/227859) -->
 
 ## Cite and use fvcCOVER
 This code can be cited and downloaded from: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036626.svg)](https://doi.org/10.5281/zenodo.15036626)
