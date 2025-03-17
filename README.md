@@ -20,22 +20,22 @@ mamba env create --file environment.yml
 ```
 
 ## Dataset available
-You can find the whole dataset used for phase B in workflow: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036860.svg)](https://doi.org/10.5281/zenodo.15036860)
+- You can find the whole dataset used for phase B in workflow: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036860.svg)](https://doi.org/10.5281/zenodo.15036860)
 
 **Sotomayor, L. N. (2025). Semi-arid Australian Ecosystems Fractional Vegetation Cover map from UAS RGB and Multispectral imagery**[Data set]. Zenodo.
 
 
-You can find a sample for the reference dataset and CNN modelling purpose for phase C:
+- You can find a sample for the reference dataset and CNN modelling purpose for phase C:
 
-- [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27776145.v1.svg)](https://doi.org/10.6084/m9.figshare.27776145.v1)  
+1) [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27776145.v1.svg)](https://doi.org/10.6084/m9.figshare.27776145.v1)  
   Sotomayor, Laura (2024). Low vegetation site. figshare. Dataset.  
   <!-- DOI: [10.6084/m9.figshare.27776145.v1](https://doi.org/10.6084/m9.figshare.27776145.v1) -->
 
-- [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27871806.v1.svg)](https://doi.org/10.6084/m9.figshare.27871806.v1)  
+2) [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27871806.v1.svg)](https://doi.org/10.6084/m9.figshare.27871806.v1)  
   Sotomayor, Laura (2024). Medium vegetation site. figshare. Dataset.  
   <!-- DOI: [10.6084/m9.figshare.27871806.v1](https://doi.org/10.6084/m9.figshare.27871806.v1) -->
 
-- [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27871893.v1.svg)](https://doi.org/10.6084/m9.figshare.27871893.v1)  
+3) [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27871893.v1.svg)](https://doi.org/10.6084/m9.figshare.27871893.v1)  
   Sotomayor, Laura (2024). Dense vegetation site. figshare. Dataset.  
   <!-- DOI: [10.6084/m9.figshare.27871893.v1](https://doi.org/10.6084/m9.figshare.27871893.v1) -->
 
