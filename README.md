@@ -54,12 +54,13 @@ Drone RGB and Multispectral Imagery from TERN plots across Australia. Version 1.
 
 - **Contribution for reference/labelling dataset process**: we would like to acknowledge and thank all the individuals who contributed to the labelling process:
 
-Prof. Megan Lewis (School of Biological Sciences, University of Adelaide), Dr
-Agustina Barros (Researcher at National Scientific and Technical Research Council),
-Dr Sebastian Rossi (Researcher at National Scientific and Technical Research Council),
+Prof. Megan Lewis (School of Biological Sciences, University of Adelaide), 
 Dr Krishna Lamsal (School of Geography, Planning, and Spatial Sciences, UTAS), 
-Sophia Hoyer (School of Geography, Planning, and Spatial Sciences, UTAS) and Molly
-Marshall (School of Geography, Planning, and Spatial Sciences, UTAS).
+Sophia Hoyer (School of Geography, Planning, and Spatial Sciences, UTAS),
+Molly Marshall (School of Geography, Planning, and Spatial Sciences, UTAS),
+Dr Agustina Barros (Researcher at National Scientific and Technical Research Council) and
+Dr Sebastian Rossi (Researcher at National Scientific and Technical Research Council),
+
 
 
 <!-- ### Check code: Paper2/Chap3
