@@ -52,7 +52,7 @@ TERN Landscapes, TERN Surveillance Monitoring, Stenson, M., Sparrow, B., & Lucie
 Drone RGB and Multispectral Imagery from TERN plots across Australia. Version 1. Terrestrial Ecosystem Research Network. Dataset. 
 [Access TERN drone RGB and Multispectral orthomosaics here](https://portal.tern.org.au/metadata/TERN/39de90f5-49e3-4567-917c-cf3e3bc93086).
 
-**Contribution for reference/labelling dataset process**: we would like to acknowledge and thank all the individuals who contributed to the labelling process:
+- **Contribution for reference/labelling dataset process**: we would like to acknowledge and thank all the individuals who contributed to the labelling process:
 Prof. Megan Lewis (School of Biological Sciences, University of Adelaide), Dr
 Agustina Barros (Researcher at National Scientific and Technical Research Council),
 Dr Sebastian Rossi (Researcher at National Scientific and Technical Research Council),
