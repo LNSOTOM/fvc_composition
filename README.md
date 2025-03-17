@@ -19,8 +19,21 @@ conda install -c conda-forge mamba
 mamba env create --file environment.yml
 ```
 
-## Data available
-If you use these datasets in your work, please cite them as follows:
+## **Dataset citation for step A**
+
+If you use the TERN dataset, please cite it as:
+
+**TERN Landscapes, TERN Surveillance Monitoring, Stenson, M., Sparrow, B., & Lucieer, A. (2022).**  
+**Drone RGB and Multispectral Imagery from TERN plots across Australia.** Version 1.  
+Terrestrial Ecosystem Research Network. Dataset.  
+[Access dataset here](https://portal.tern.org.au/metadata/TERN/39de90f5-49e3-4567-917c-cf3e3bc93086).
+
+## Data available (sample for building reference data and modelling)
+The RGB (1 cm) and multispectral (5 cm) orthomosaics at step A in workflow can be found:
+
+You can find the whole dataset used for step B in workflow:
+
+If you use these datasets (step C) in your work, please cite them as follows:
 
 - [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27776145.v1.svg)](https://doi.org/10.6084/m9.figshare.27776145.v1)  
   **Sotomayor, Laura (2024). Low vegetation site.** figshare. Dataset.  
@@ -36,7 +49,7 @@ If you use these datasets in your work, please cite them as follows:
 
 <!-- [FVC classes based on growth form and structure ](https://figshare.com/projects/Reference_data_for_semi-arid_environments/227859) -->
 
-## Cite and use fvcCOVER
+## Cite code for fvcCOVER
 This code can be cited and downloaded from: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036626.svg)](https://doi.org/10.5281/zenodo.15036626)
 
 Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation
