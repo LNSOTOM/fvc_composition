@@ -977,8 +977,9 @@ def plot_raster(rgb_path, save_path=None):
         plt.show()
 
 # Example call to the function
-rgb_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/raw/composite_colour_raster_3b/composite_percentile_tiles_multispectral.22.tif'
-output_image_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_2_reference_data/step_2_fvc_classes_combined/be_raster.png'
+# rgb_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/raw/composite_colour_raster_3b/composite_percentile_tiles_multispectral.22.tif'
+rgb_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/raw/tiles_rgb/tiles_rgb.22.tif'
+output_image_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_2_reference_data/step_2_fvc_classes_combined/rgb_raster.png'
 
 plot_raster(rgb_file_path, output_image_path)
 
@@ -1042,7 +1043,8 @@ def plot_raster(raster_path, rgb_path, save_path):
 
 # Example call to the function
 raster_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/glob_stats/be_class/annotation_raster/mask_be_globStat_percentile_tiles_multispectral.22.tif'
-rgb_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/raw/composite_colour_raster_3b/composite_percentile_tiles_multispectral.22.tif'
+# rgb_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/raw/composite_colour_raster_3b/composite_percentile_tiles_multispectral.22.tif'
+rgb_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/raw/tiles_rgb/tiles_rgb.22.tif'
 output_image_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_2_reference_data/step_2_fvc_classes_combined/be_mask.png'
 plot_raster(raster_file_path, rgb_file_path, output_image_path)
 
