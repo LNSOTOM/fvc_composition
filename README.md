@@ -44,7 +44,6 @@ This code can be cited and downloaded from: [![DOI](https://zenodo.org/badge/DOI
 
 Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation
 
-
 ## Acknowledgments
 The RGB (1 cm) and multispectral (5 cm) orthomosaics at step A in workflow can be found:
 TERN Landscapes, TERN Surveillance Monitoring, Stenson, M., Sparrow, B., & Lucieer, A. (2022).
