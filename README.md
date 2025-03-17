@@ -1,3 +1,6 @@
+# fvcCOVER 
+**_Code for image processing, build reference/annotation data and semantic segmentation modelling for mapping fractional vegetation cover in UAS RGB and multispectral imagery._**
+
 # Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation
 CNN-based workflow for FVC mapping application:
 
