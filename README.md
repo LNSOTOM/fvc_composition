@@ -23,7 +23,7 @@ mamba env create --file environment.yml
 You can find the whole dataset used for step B in workflow:
 
 
-If you use these sample refernce dataset for modelling (step C) in your work, please cite them as follows:
+You can find a sample reference dataset for modelling (step C), please cite them as follows:
 
 - [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27776145.v1.svg)](https://doi.org/10.6084/m9.figshare.27776145.v1)  
   **Sotomayor, Laura (2024). Low vegetation site.** figshare. Dataset.  
@@ -52,6 +52,6 @@ Drone RGB and Multispectral Imagery from TERN plots across Australia. Version 1.
 [Access dataset here](https://portal.tern.org.au/metadata/TERN/39de90f5-49e3-4567-917c-cf3e3bc93086).
 
 
-### Check code: Paper2/Chap3
-[LiDAR 3D Voxel Automation to identify trees, shrubs, and grasses using deep learning-based computer vision applications ](https://github.com/LNSOTOM/ecosystem_structure)
+<!-- ### Check code: Paper2/Chap3
+[LiDAR 3D Voxel Automation to identify trees, shrubs, and grasses using deep learning-based computer vision applications ](https://github.com/LNSOTOM/ecosystem_structure) -->
 
