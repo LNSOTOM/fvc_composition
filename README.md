@@ -19,21 +19,17 @@ conda install -c conda-forge mamba
 mamba env create --file environment.yml
 ```
 
-## **Dataset citation for step A**
-
-If you use the TERN dataset, please cite it as:
-
+## Dataset available
+The RGB (1 cm) and multispectral (5 cm) orthomosaics at step A in workflow can be found:
 **TERN Landscapes, TERN Surveillance Monitoring, Stenson, M., Sparrow, B., & Lucieer, A. (2022).**  
 **Drone RGB and Multispectral Imagery from TERN plots across Australia.** Version 1.  
 Terrestrial Ecosystem Research Network. Dataset.  
 [Access dataset here](https://portal.tern.org.au/metadata/TERN/39de90f5-49e3-4567-917c-cf3e3bc93086).
 
-## Data available (sample for building reference data and modelling)
-The RGB (1 cm) and multispectral (5 cm) orthomosaics at step A in workflow can be found:
-
 You can find the whole dataset used for step B in workflow:
 
-If you use these datasets (step C) in your work, please cite them as follows:
+
+If you use these sample refernce dataset for modelling (step C) in your work, please cite them as follows:
 
 - [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27776145.v1.svg)](https://doi.org/10.6084/m9.figshare.27776145.v1)  
   **Sotomayor, Laura (2024). Low vegetation site.** figshare. Dataset.  
