@@ -48,8 +48,7 @@ Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi
 ## Acknowledgments
 The RGB (1 cm) and multispectral (5 cm) orthomosaics at step A in workflow can be found:
 TERN Landscapes, TERN Surveillance Monitoring, Stenson, M., Sparrow, B., & Lucieer, A. (2022).
-Drone RGB and Multispectral Imagery from TERN plots across Australia. Version 1.  
-Terrestrial Ecosystem Research Network. Dataset.  
+Drone RGB and Multispectral Imagery from TERN plots across Australia. Version 1. Terrestrial Ecosystem Research Network. Dataset.  
 [Access dataset here](https://portal.tern.org.au/metadata/TERN/39de90f5-49e3-4567-917c-cf3e3bc93086).
 
 
