@@ -28,15 +28,15 @@ You can find the whole dataset used for phase B in workflow: [![DOI](https://zen
 You can find a sample for the reference dataset and CNN modelling purpose for phase C:
 
 - [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27776145.v1.svg)](https://doi.org/10.6084/m9.figshare.27776145.v1)  
-  **Sotomayor, Laura (2024). Low vegetation site.** figshare. Dataset.  
+  Sotomayor, Laura (2024). Low vegetation site. figshare. Dataset.  
   <!-- DOI: [10.6084/m9.figshare.27776145.v1](https://doi.org/10.6084/m9.figshare.27776145.v1) -->
 
 - [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27871806.v1.svg)](https://doi.org/10.6084/m9.figshare.27871806.v1)  
-  **Sotomayor, Laura (2024). Medium vegetation site.** figshare. Dataset.  
+  Sotomayor, Laura (2024). Medium vegetation site. figshare. Dataset.  
   <!-- DOI: [10.6084/m9.figshare.27871806.v1](https://doi.org/10.6084/m9.figshare.27871806.v1) -->
 
 - [![DOI](https://zenodo.org/badge/DOI/10.6084/m9.figshare.27871893.v1.svg)](https://doi.org/10.6084/m9.figshare.27871893.v1)  
-  **Sotomayor, Laura (2024). Dense vegetation site.** figshare. Dataset.  
+  Sotomayor, Laura (2024). Dense vegetation site. figshare. Dataset.  
   <!-- DOI: [10.6084/m9.figshare.27871893.v1](https://doi.org/10.6084/m9.figshare.27871893.v1) -->
 
 <!-- [FVC classes based on growth form and structure ](https://figshare.com/projects/Reference_data_for_semi-arid_environments/227859) -->
