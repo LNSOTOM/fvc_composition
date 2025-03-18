@@ -22,7 +22,7 @@ mamba env create --file environment.yml
 ## Dataset available
 - **You can find the whole raw dataset used for phase B** in workflow: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036860.svg)](https://doi.org/10.5281/zenodo.15036860)
 
-Sotomayor, L. N. (2025). Fractional Vegetation Cover Mapping from UAS RGB and Multispectral Imagery and Deep Learning, Semi-Arid Australian Ecosystems Coverage [Data set]. Zenodo.
+Sotomayor, L. N. (2025). Fractional Vegetation Cover Mapping - UAS RGB and Multispectral Imagery, CNN algorithms, Semi-Arid Australian Ecosystems Coverage [Data set]. Zenodo.
 
 
 - **You can find a sample for the reference dataset and CNN modelling purpose for phase C**:
