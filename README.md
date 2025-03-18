@@ -44,7 +44,8 @@ Sotomayor, L. N. (2025). Fractional Vegetation Cover Mapping - UAS RGB and Multi
 ## Cite code for fvcCOVER
 This code can be cited and downloaded from: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036626.svg)](https://doi.org/10.5281/zenodo.15036626)
 
-Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation
+### Method
+Coming Paper in Peer Review titled: 'Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation'.
 
 ## Acknowledgments
 - **Orthomosaics from drone imagery**: the RGB (1 cm) and multispectral (5 cm) orthomosaics at **phase A** in workflow can be found:
