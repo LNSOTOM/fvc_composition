@@ -43,6 +43,7 @@ Sotomayor, L. N. (2025). Fractional Vegetation Cover Mapping - UAS RGB and Multi
 
 ## Cite code for fvcCOVER
 This code can be cited and downloaded from: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036626.svg)](https://doi.org/10.5281/zenodo.15036626)
+
 Sotomayor, L. N. (2025). fvcCOVER: Code for image processing, build reference/annotation data and semantic segmentation modelling for mapping fractional vegetation cover in UAS RGB and multispectral imagery. Zenodo. https://doi.org/10.5281/zenodo.15036627
 
 ### Method
