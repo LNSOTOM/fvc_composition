@@ -201,3 +201,51 @@ output_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inp
 merge_and_crop_rasters_gdal(raster_folder, shapefile_path, output_path)
 
 # %%
+import geopandas as gpd
+
+def main():
+    input_shp = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/raw/fvc_class/annotation_shp/merged/fvc_class_SASMDD0001.shp'
+    
+    gdf = gpd.read_file(input_shp)
+    
+    # Print all available column names
+    print("Available columns:", gdf.columns.tolist())
+    
+    # Continue with your filtering once you verify the correct column names.
+    # For example, if the field is actually named 'branch_stem' instead of 'branch_stem_standing',
+    # update your filter accordingly.
+    
+if __name__ == "__main__":
+    main()
+
+#%%
+import geopandas as gpd
+
+def main():
+    # Path to the input shapefile (update with your file path)    
+    input_shp = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/raw/fvc_class/annotation_shp/merged/fvc_class_SASMDD0001.shp'
+    
+    # Read the shapefile into a GeoDataFrame
+    gdf = gpd.read_file(input_shp)
+    
+    # Print available columns for debugging purposes
+    print("Available columns:", gdf.columns.tolist())
+    
+    # Filter rows where the "class" attribute is "NPV"
+    npv_gdf = gdf[gdf["class"] == "npv"]
+    
+    # Define the list of valid structure attributes
+    valid_structures = ["branch_stem_standing", "cwd", "litter"]
+    
+    # Further filter rows where the "structure" attribute matches one of the valid options
+    filtered_gdf = npv_gdf[npv_gdf["structure"].isin(valid_structures)]
+    
+    # Optional: Write the filtered data to a new shapefile
+    output_shp = "/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/raw/fvc_class/annotation_shp/merged/npv_standingwood.shp"
+    filtered_gdf.to_file(output_shp)
+    print(f"Filtered shapefile has been saved to: {output_shp}")
+
+if __name__ == "__main__":
+    main()
+
+# %%
