@@ -61,10 +61,8 @@ Drone RGB and Multispectral Imagery from TERN plots across Australia. Version 1.
 
 Prof. Megan Lewis (School of Biological Sciences, University of Adelaide), 
 Dr Krishna Lamsal (School of Geography, Planning, and Spatial Sciences, UTAS), 
-Sophia Hoyer (School of Geography, Planning, and Spatial Sciences, UTAS),
-Molly Marshall (School of Geography, Planning, and Spatial Sciences, UTAS),
-Dr Agustina Barros (Researcher at National Scientific and Technical Research Council) and
-Dr Sebastian Rossi (Researcher at National Scientific and Technical Research Council).
+Sophia Hoyer (School of Geography, Planning, and Spatial Sciences, UTAS) and
+Molly Marshall (School of Geography, Planning, and Spatial Sciences, UTAS).
 
 <!-- ### Check code: Paper2/Chap3
 [LiDAR 3D Voxel Automation to identify trees, shrubs, and grasses using deep learning-based computer vision applications ](https://github.com/LNSOTOM/ecosystem_structure) -->
