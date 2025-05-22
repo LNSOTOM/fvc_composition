@@ -1,3 +1,4 @@
+#%%
 ## PHASE 1_Image Processing
 #STEP 4
 # Step 4_2: Apply percentile stretch to MULTISPECTRAL
@@ -9,7 +10,8 @@ import json
 
 
 #site1
-stats_json_path = '/home/laura/Documents/code/ecosystem_composition/phase_1_image_processing/step_5_percentile_normalisedPixels_model/global_statistics/site1_DD0001_statistics_multispectral.json'
+# stats_json_path = '/home/laura/Documents/code/ecosystem_composition/phase_1_image_processing/step_5_percentile_normalisedPixels_model/global_statistics/site1_DD0001_statistics_multispectral.json'
+stats_json_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_1_image_processing/step_4_globalStats_percentileStretch/c_stats_outputs_json/site3_DD0012_statistics_multipectral.json'
 with open(stats_json_path, 'r') as infile:
     data = json.load(infile)
 first_image_stats = data['band_statistics']  # This should correctly reference the list of band statistics
@@ -37,19 +39,19 @@ reference_image_stats = first_image_stats  # Assume this is already defined or l
 #### Larger 3072x3072
 #site1 - supersite [MEDIUM]
 ##sample 30
-input_folder  = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site1_supersite_DD0001/inputs/predictors/tiles_3072/raw/tiles_multispectral'
+# input_folder  = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site1_supersite_DD0001/inputs/predictors/tiles_3072/raw/tiles_multispectral'
 #extra 5 for 35 sample
 # input_folder = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site1_supersite_DD0001/inputs/predictors/tiles_3072/raw/random_sample35/tiles_multispectral'
 
-output_folder  = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site1_supersite_DD0001/inputs/predictors/tiles_3072/global_stats/tiles_multispectral'
+# output_folder  = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site1_supersite_DD0001/inputs/predictors/tiles_3072/global_stats/tiles_multispectral'
 
 #site2 - similar to supersite [MEDIUM]
 # input_folder = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site3_DD0012/inputs/predictors/tiles_multispectral'
 # output_folder = '/home/laura/Documents/uas_data/Calperum/site2_DD0010_18/tiles_3840/global_stats/tiles_multispectral'
 
 #site3 - with water  [DENSE]
-# input_folder  = '/home/laura/Documents/uas_data/Calperum/site3_DD0012/tiles_3840/raw/tiles_multispectral'
-# output_folder  = '/home/laura/Documents/uas_data/Calperum/site3_DD0012/tiles_3840/glob_stats/tiles_multispectral'
+input_folder  = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/inputs/predictors/tiles_3072/raw/tiles_multispectral'
+output_folder  = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/inputs/predictors/tiles_3072/glob_stats/tiles_multispectral/clean/check'
 
 
 
@@ -124,13 +126,13 @@ def compute_global_statistics_dask(image_path):
 
 # Path to first raster file
 #site1 - supersite [MEDIUM]
-first_image_path  = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_supersite_DD0001/orthomosaic/20220519_SASMDD001_dual_ortho_01_bilinear.tif'
+# first_image_path  = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_supersite_DD0001/orthomosaic/20220519_SASMDD001_dual_ortho_01_bilinear.tif'
 
 #site2 - similar to supersite [MEDIUM]
 # first_image_path  = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_DD0010_18/orthomosaic/20220518_SASMDD0010_18_dual_ortho_01_bilinear.tif'
 
 #site3 - with water  [DENSE]
-# first_image_path  = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_DD0012/orthomosaic/20220517_SASMDD0012_dual_ortho_01_bilinear.tif'
+first_image_path  = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_DD0012/orthomosaic/20220517_SASMDD0012_dual_ortho_01_bilinear.tif'
 
 
 # Start timing
