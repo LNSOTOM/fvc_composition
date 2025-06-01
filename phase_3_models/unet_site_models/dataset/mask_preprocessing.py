@@ -66,3 +66,17 @@ def convertMask_to_tensor(data, dtype=torch.long):
         raise TypeError(f"Expected np.ndarray or torch.Tensor, but got {type(data)}")
 
 
+def preprocess_masks(masks, replace_value=0):
+    """
+    Replace -1 values in masks with a specified value.
+
+    Args:
+        masks (list of np.ndarray): List of mask arrays.
+        replace_value (int): Value to replace -1 with.
+
+    Returns:
+        list of np.ndarray: Preprocessed masks.
+    """
+    return [np.where(mask == -1, replace_value, mask) for mask in masks]
+
+
