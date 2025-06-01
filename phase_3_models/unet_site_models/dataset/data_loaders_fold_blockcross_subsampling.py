@@ -200,9 +200,9 @@ def plot_with_coordinates(dataset, combined_data, indices=None, log_file_path=""
 
 
 def get_dataset_splits(image_folder, mask_folder, combined_data, transform, soil_threshold, soil_class=0, removal_ratio=0.5, num_classes=config_param.OUT_CHANNELS, save_augmented=False, augmented_save_dir=None, indices_save_path='subsampled_indices.json', combined_indices_save_path='combined_indices.json'):
-    log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/logfile.txt' #low
+    # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/logfile.txt' #low
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/logfile.txt' #medium
-    # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/logfile.txt' #dense
+    log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/logfile.txt' #dense
     start_time = time.time()
 
     dataset = CalperumDataset(image_folder, mask_folder, transform=None, save_augmented=False, augmented_save_dir=None)
@@ -244,9 +244,9 @@ def get_dataset_splits(image_folder, mask_folder, combined_data, transform, soil
 
 
 def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=None):
-    log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/logfile.txt' #low
+    # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/logfile.txt' #low
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/logfile.txt' #medium
-    # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/logfile.txt' #dense
+    log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/logfile.txt' #dense
     coordinates = []
     
     for idx, (_, _, img_path, _) in enumerate(combined_data):
@@ -319,3 +319,7 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
     plot_blocks_folds(coordinates, block_labels, fold_assignments, crs="EPSG:7854")
 
     return data_splits
+
+
+
+#%%
