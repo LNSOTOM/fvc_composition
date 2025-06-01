@@ -341,9 +341,9 @@ class ModelEvaluator:
             all_trues_across_blocks = all_metrics[0].get('all_trues_across_blocks', [])
 
         metrics = self.evaluate()
-        block_output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low' #low'
+        # block_output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low' #low'
         # block_output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
-        # block_output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense
+        block_output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense
         os.makedirs(block_output_dir, exist_ok=True)
         
         # Save metrics for the current block
