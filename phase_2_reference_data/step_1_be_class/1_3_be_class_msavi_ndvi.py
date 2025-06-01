@@ -387,7 +387,7 @@ for filename in os.listdir(input_folder):
 
 #%%
 ##################
-### print threshold
+### print threshold from VERSION 2
 import os
 import numpy as np
 from decimal import Decimal, ROUND_HALF_UP
@@ -426,7 +426,7 @@ print_thresholds_for_msavi_files(input_folder)
 
 
 #%%
-### Calculate NDVI spectral index
+### Comparison - Calculate NDVI spectral index
 import numpy as np
 from decimal import Decimal, ROUND_HALF_UP
 import rasterio
@@ -603,7 +603,7 @@ for filename in os.listdir(input_folder):
 
 
 # %%
-# Calculate stats
+# Calculate MSAVI/NDVI stats
 import os
 import numpy as np
 from decimal import Decimal, ROUND_HALF_UP
@@ -624,7 +624,6 @@ input_folder = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/in
 # input_folder = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/masks/tiles_3072/glob_stats/be_class/annotation_raster'
 # input_folder = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/glob_stats/be_class/annotation_raster'  # Replace with your folder path
 # input_folder = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/inputs/masks/tiles_3072/glob_stats/be_class/msavi'
-
 
 
 def calculate_overall_statistics(folder_path):
