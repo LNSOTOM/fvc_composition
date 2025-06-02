@@ -53,8 +53,8 @@ def log_message(message, log_file):
 def setup_logging_and_checkpoints():
     ## logs outputs site-specific-models:
     # tb_logs_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low' #low
-    # tb_logs_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
-    tb_logs_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense    
+    tb_logs_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
+    # tb_logs_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense    
     os.makedirs(tb_logs_path, exist_ok=True)
     logger = TensorBoardLogger(save_dir=tb_logs_path, name="UNetModel_5b_v100")
     
@@ -200,15 +200,64 @@ def has_water_class(masks, water_class=4):
     return False
 
 
+def get_class_distribution(masks, class_labels_dict):
+    all_labels = []
+    for mask in masks:
+        mask_np = np.array(mask).flatten()
+        mask_np = mask_np[mask_np != -1]
+        mask_np = np.round(mask_np).astype(int)
+        all_labels.extend(mask_np)
+    counts = Counter(all_labels)
+    total = sum(counts.values())
+    dist = {}
+    for k, v in counts.items():
+        class_name = class_labels_dict.get(k, f"Unknown ({k})")
+        dist[class_name] = f"{(v/total)*100:.2f}%"
+    return dist
+
+def print_class_distribution_per_fold(folds, class_labels_dict, stage=""):
+    print(f"\n📦 Class Distribution Per Fold {stage}")
+    for i, (train_loader, val_loader, test_loader) in enumerate(folds):
+        train_masks = [sample[1] for sample in train_loader.dataset]
+        val_masks = [sample[1] for sample in val_loader.dataset]
+        test_masks = [sample[1] for sample in test_loader.dataset]
+        print(f"\nFold {i+1}")
+        print("  Train class distribution:", get_class_distribution(train_masks, class_labels_dict))
+        print("  Val class distribution:", get_class_distribution(val_masks, class_labels_dict))
+        print("  Test class distribution:", get_class_distribution(test_masks, class_labels_dict))
+
+def print_overall_class_distribution(masks, class_labels_dict, stage=""):
+    dist = get_class_distribution(masks, class_labels_dict)
+    print(f"\nOverall Class Distribution {stage}:")
+    for k, v in dist.items():
+        print(f"  {k}: {v}")
+
+
+def print_sample_counts_per_fold(folds, stage=""):
+    print(f"\nSample counts per fold {stage}:")
+    for i, (train_loader, val_loader, test_loader) in enumerate(folds):
+        train_size = len(train_loader.dataset)
+        val_size = len(val_loader.dataset)
+        test_size = len(test_loader.dataset)
+        print(f"  Block {i+1}:")
+        print(f"    Train size: {train_size}")
+        print(f"    Val size:   {val_size}")
+        print(f"    Test size:  {test_size}")
+
+
 def main():
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-    
+    # After importing config_param
+    inv_class_labels = {v: k for k, v in config_param.class_labels.items()}
+    class_labels_dict = {i: inv_class_labels[i] for i in range(config_param.OUT_CHANNELS)}
+    print("Class labels dict:", class_labels_dict)
+    # class_labels_dict = {0: 'BE', 1: 'NPV', 2: 'PV', 3: 'SI', 4: 'WI'}
     logger, checkpoint_callback = setup_logging_and_checkpoints()
     
     ## outputs site-specific-models:
     # output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low' #low
     # output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
-    output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/test #dense
+    output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense'#dense
     os.makedirs(output_dir, exist_ok=True)
 
     image_dirs = config_param.IMAGE_FOLDER
@@ -282,10 +331,17 @@ def main():
     
     print(f"Subsampled Indices Length: {len(subsampled_indices)}")
     print(f"Number of Blocks: {config_param.NUM_BLOCKS}")
+    print_overall_class_distribution(masks, class_labels_dict, "BEFORE Augmentation")
     
     # --- CONDITIONAL DATA AUGMENTATION BLOCK ---
-    water_present = has_water_class(masks, water_class=4)
-    class_labels_dict = {0: 'BE', 1: 'NPV', 2: 'PV', 3: 'SI', 4: 'WI'}
+    # Get water class index from config
+    water_class_name = 'WI'
+    water_class_idx = config_param.class_labels[water_class_name]
+    # Check if water is present
+    water_present = has_water_class(masks, water_class=water_class_idx)
+    # water_present = has_water_class(masks, water_class=4)
+   
+    # Calculate initial class distribution
     overall_class_distribution = {}
     all_labels = []
     for mask in masks:
@@ -299,6 +355,30 @@ def main():
         class_name = class_labels_dict.get(k, f"Unknown ({k})")
         overall_class_distribution[class_name] = (v / total) * 100
 
+
+    # --- BLOCK CROSS-VALIDATION SPLITS (before augmentation, for fold assignments) ---
+    block_cv_splits = block_cross_validation(
+        dataset=dataset,
+        combined_data=[combined_data[i] for i in subsampled_indices],
+        num_blocks=config_param.NUM_BLOCKS,
+        kmeans_centroids=centroids
+    )
+
+    # Assign each sample to its fold
+    fold_assignments = {}
+    for fold_idx, (train_loader, val_loader, test_loader) in enumerate(block_cv_splits):
+        for idx in train_loader.dataset.indices:
+            fold_assignments[idx] = 'train'
+        for idx in val_loader.dataset.indices:
+            fold_assignments[idx] = 'val'
+        for idx in test_loader.dataset.indices:
+            fold_assignments[idx] = 'test'
+
+    # Print class distribution per fold BEFORE augmentation
+    print_class_distribution_per_fold(block_cv_splits, class_labels_dict, "BEFORE Augmentation")
+    print_sample_counts_per_fold(block_cv_splits, stage="BEFORE Augmentation")
+
+    # --- DATA AUGMENTATION ---
     if config_param.ENABLE_DATA_AUGMENTATION:
         print("Data augmentation is ENABLED.")
         if config_param.AUGMENTATION_USE_GAUSSIAN_THRESHOLD:
@@ -323,22 +403,39 @@ def main():
         print(f"\nTarget ratios set: {target_ratios}")
 
         print("Calling augment_minority_classes...")
-        augment_minority_classes(
-            dataset, overall_class_distribution, class_labels_dict, target_ratios, None
+        print(f"Dataset size before augmentation: {len(dataset.images)}")
+        augmented_counts = augment_minority_classes(
+            dataset, overall_class_distribution, class_labels_dict, target_ratios, fold_assignments
         )
+        print(f"Dataset size after augmentation: {len(dataset.images)}")
+        print(f"Augmented counts: {augmented_counts}")
         masks = dataset.masks  # Update masks after augmentation
     else:
         print("Data augmentation is DISABLED.")
 
-    # --- BLOCK CROSS-VALIDATION SPLITS ---
-    # Perform block cross-validation using the same centroids
+    # --- REBUILD FOLDS TO INCLUDE AUGMENTED DATA ---
     block_cv_splits = block_cross_validation(
         dataset=dataset,
-        combined_data=[combined_data[i] for i in subsampled_indices],
+        combined_data=[combined_data[i % len(combined_data)] for i in range(len(dataset))],
         num_blocks=config_param.NUM_BLOCKS,
-        kmeans_centroids=centroids  # Pass the centroids to the function
+        kmeans_centroids=centroids
     )
-    
+
+    # Re-assign fold assignments for all samples (including augmented)
+    fold_assignments = {}
+    for fold_idx, (train_loader, val_loader, test_loader) in enumerate(block_cv_splits):
+        for idx in train_loader.dataset.indices:
+            fold_assignments[idx] = 'train'
+        for idx in val_loader.dataset.indices:
+            fold_assignments[idx] = 'val'
+        for idx in test_loader.dataset.indices:
+            fold_assignments[idx] = 'test'
+
+    # Print class distribution per fold AFTER augmentation (before water redistribution)
+    print_class_distribution_per_fold(block_cv_splits, class_labels_dict, "AFTER Augmentation (before water redistribution)")
+    print_overall_class_distribution(masks, class_labels_dict, "AFTER Augmentation (before water redistribution)")
+    print_sample_counts_per_fold(block_cv_splits, stage="AFTER Augmentation (before water redistribution)")
+
     # --- CONDITIONAL WATER REDISTRIBUTION ---
     if water_present and config_param.ENABLE_WATER_REDISTRIBUTION:
         print("Water class detected and water redistribution is ENABLED.")
@@ -348,6 +445,15 @@ def main():
     else:
         print("Water redistribution is DISABLED or no water class present.")
         final_folds = block_cv_splits
+
+    # Print coordinates shape after water redistribution (FIXED)
+    coordinates_water = extract_coordinates([combined_data[i % len(combined_data)] for i in range(len(dataset))])
+    print(f"Coordinates shape after reshaping (after water redistribution): {np.array(coordinates_water).shape}")
+
+    # Print class distribution AFTER water redistribution
+    print_class_distribution_per_fold(final_folds, class_labels_dict, "AFTER Water Redistribution")
+    print_overall_class_distribution(masks, class_labels_dict, "AFTER Water Redistribution")
+    print_sample_counts_per_fold(final_folds, stage="AFTER Water Redistribution")
 
     # Initialize all required data structures
     all_metrics = initialize_all_metrics(num_blocks=config_param.NUM_BLOCKS)
