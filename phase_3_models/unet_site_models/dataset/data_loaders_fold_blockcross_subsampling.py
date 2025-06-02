@@ -243,10 +243,26 @@ def get_dataset_splits(image_folder, mask_folder, combined_data, transform, soil
     return dataset, subsampled_indices, subsampled_images, subsampled_masks 
 
 
-def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=None):
-    # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/logfile.txt' #low
-    # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/logfile.txt' #medium
+def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=None, water_indices=None):
     log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/logfile.txt' #dense
+   
+    """
+    Perform block cross-validation.
+
+    Args:
+        dataset: The dataset to split.
+        combined_data: Combined data paths.
+        num_blocks: Number of blocks for cross-validation.
+        kmeans_centroids: Centroids for KMeans clustering.
+        water_indices: (Optional) Indices of water tiles to preserve distribution.
+
+    Returns:
+        List of folds (train, val, test).
+    """
+    # Handle water_indices if provided
+    if water_indices is not None:
+        print(f"Water indices provided: {len(water_indices)} tiles")
+
     coordinates = []
     
     for idx, (_, _, img_path, _) in enumerate(combined_data):
