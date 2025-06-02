@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torchvision.transforms as transforms
+from collections import Counter
 
 # Function to apply ColorJitter transformation (brightness and contrast adjustments)
 def transform_image_by_channels(image, transform_fn):
@@ -161,8 +162,9 @@ def augment_minority_classes(dataset, class_distributions, class_labels, target_
                 dataset, class_label=class_idx, augmentation_functions=[], target_ratio=target_ratio
             )
             for sample, original_idx in augmented_samples:
-                fold = fold_assignments[original_idx]
-                fold_assignments[sample] = fold
+                if fold_assignments is not None:
+                    fold = fold_assignments[original_idx]
+                    fold_assignments[sample] = fold
             augmented_counts[class_name] = len(augmented_samples)
     print(f"Augmented counts: {augmented_counts}")
     return augmented_counts
