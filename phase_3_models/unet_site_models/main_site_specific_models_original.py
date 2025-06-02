@@ -256,8 +256,8 @@ def main():
     
     ## outputs site-specific-models:
     # output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low' #low
-    # output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
-    output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense'#dense
+    output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
+    # output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense'#dense
     os.makedirs(output_dir, exist_ok=True)
 
     image_dirs = config_param.IMAGE_FOLDER
@@ -393,13 +393,11 @@ def main():
                 current = overall_class_distribution.get(class_name, 0)
                 if class_name == 'BE':
                     target_ratios[class_name] = min(percentages) / 100
-                elif current < threshold:
-                    target_ratios[class_name] = threshold / 100
                 else:
-                    target_ratios[class_name] = current / 100
+                    target_ratios[class_name] = max(percentages) / 100
         else:
             print("Using manual target ratios for augmentation.")
-            target_ratios = {'BE': 0.1, 'NPV': 0.3, 'PV': 0.3, 'SI': 0.3, 'WI': 0.3}
+            target_ratios = {'BE': 0.1, 'NPV': 0.6, 'PV': 0.2, 'SI': 0.2, 'WI': 0.3}
         print(f"\nTarget ratios set: {target_ratios}")
 
         print("Calling augment_minority_classes...")
