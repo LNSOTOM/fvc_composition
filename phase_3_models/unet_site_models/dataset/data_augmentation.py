@@ -2,6 +2,8 @@ import numpy as np
 import torch
 import torchvision.transforms as transforms
 from collections import Counter
+import random
+from copy import deepcopy
 
 # Function to apply ColorJitter transformation (brightness and contrast adjustments)
 def transform_image_by_channels(image, transform_fn):
@@ -138,36 +140,186 @@ def augment_minority_class(dataset, class_label, augmentation_functions, target_
     return augmented_samples
 
 
-def augment_minority_classes(dataset, class_distributions, class_labels, target_ratios, fold_assignments):
+# def augment_minority_classes(dataset, class_distributions, class_labels, target_ratios, fold_assignments):
+#     """
+#     Augment the dataset for classes below their target ratios, ensuring augmented samples remain in the same fold.
+
+#     Args:
+#         dataset: Dataset object.
+#         class_distributions: Dict of current class percentages.
+#         class_labels: Dict mapping class index to class name.
+#         target_ratios: Dict mapping class name to target ratio.
+#         fold_assignments: Dict mapping sample index to fold.
+
+#     Returns:
+#         dict: Number of augmented samples per class.
+#     """
+#     augmented_counts = {}
+#     for class_idx, class_name in class_labels.items():
+#         current_ratio = class_distributions.get(class_name, 0)
+#         target_ratio = target_ratios.get(class_name, 0.1)  # Default target ratio is 10%
+#         if current_ratio < target_ratio * 100:
+#             print(f"Augmenting class '{class_name}' (current ratio: {current_ratio:.2f}%, target ratio: {target_ratio * 100:.2f}%)")
+#             augmented_samples = augment_minority_class(
+#                 dataset, class_label=class_idx, augmentation_functions=[], target_ratio=target_ratio
+#             )
+#             for sample, original_idx in augmented_samples:
+#                 if fold_assignments is not None:
+#                     fold = fold_assignments[original_idx]
+#                     fold_assignments[sample] = fold
+#             augmented_counts[class_name] = len(augmented_samples)
+#     print(f"Augmented counts: {augmented_counts}")
+#     return augmented_counts
+
+def augment_minority_classes(dataset, class_distributions, class_labels, target_ratios, fold_assignments=None, augmentation_functions=None):
     """
-    Augment the dataset for classes below their target ratios, ensuring augmented samples remain in the same fold.
+    Augment minority classes in a CalperumDataset to meet target ratios.
 
     Args:
-        dataset: Dataset object.
+        dataset: CalperumDataset object with in-memory .images and .masks.
         class_distributions: Dict of current class percentages.
         class_labels: Dict mapping class index to class name.
-        target_ratios: Dict mapping class name to target ratio.
-        fold_assignments: Dict mapping sample index to fold.
+        target_ratios: Dict mapping class name to target ratio (0-1).
+        fold_assignments: Optional dict mapping original sample index to fold.
+        augmentation_functions: Optional list of augmentation functions.
 
     Returns:
-        dict: Number of augmented samples per class.
+        dict: Augmented sample count per class.
     """
+    if not hasattr(dataset, "images") or not hasattr(dataset, "masks"):
+        raise ValueError("Dataset must be loaded into memory with .images and .masks attributes.")
+
+    if augmentation_functions is None:
+        augmentation_functions = []
+
     augmented_counts = {}
+    new_images = list(dataset.images)
+    new_masks = list(dataset.masks)
+    new_fold_assignments = dict(fold_assignments) if fold_assignments else {}
+
+    original_size = len(dataset.images)
     for class_idx, class_name in class_labels.items():
         current_ratio = class_distributions.get(class_name, 0)
-        target_ratio = target_ratios.get(class_name, 0.1)  # Default target ratio is 10%
-        if current_ratio < target_ratio * 100:
-            print(f"Augmenting class '{class_name}' (current ratio: {current_ratio:.2f}%, target ratio: {target_ratio * 100:.2f}%)")
-            augmented_samples = augment_minority_class(
-                dataset, class_label=class_idx, augmentation_functions=[], target_ratio=target_ratio
-            )
-            for sample, original_idx in augmented_samples:
-                if fold_assignments is not None:
-                    fold = fold_assignments[original_idx]
-                    fold_assignments[sample] = fold
-            augmented_counts[class_name] = len(augmented_samples)
-    print(f"Augmented counts: {augmented_counts}")
+        target_ratio = target_ratios.get(class_name, 0.1) * 100  # Target in percent
+
+        if current_ratio < target_ratio:
+            print(f"Augmenting class '{class_name}' (current ratio: {current_ratio:.2f}%, target ratio: {target_ratio:.2f}%)")
+
+            class_samples = [
+                (img, mask, idx)
+                for idx, (img, mask) in enumerate(zip(dataset.images, dataset.masks))
+                if (mask == class_idx).sum().item() > 0
+            ]
+
+            if not class_samples:
+                print(f"⚠️ No samples found for class '{class_name}' in dataset.")
+                continue
+
+            required_count = int(((target_ratio / 100) * original_size) - (current_ratio / 100 * original_size))
+            augmented = []
+
+            for i in range(required_count):
+                img, mask, original_idx = class_samples[i % len(class_samples)]
+                aug_img, aug_mask = img.clone(), mask.clone()
+
+                for aug_func in augmentation_functions:
+                    aug_img, aug_mask = aug_func((aug_img, aug_mask))
+
+                new_images.append(aug_img)
+                new_masks.append(aug_mask)
+
+                if fold_assignments:
+                    new_idx = len(new_images) - 1
+                    new_fold_assignments[new_idx] = fold_assignments[original_idx]
+
+                augmented.append((aug_img, aug_mask))
+
+            augmented_counts[class_name] = len(augmented)
+
+    dataset.images = new_images
+    dataset.masks = new_masks
+
+    if fold_assignments:
+        fold_assignments.update(new_fold_assignments)
+
+    print(f"✅ Augmented counts: {augmented_counts}")
     return augmented_counts
 
+def augment_minority_classes_pixel_level(
+    dataset, class_labels, target_pixel_ratios, fold_assignments=None, augmentation_functions=None
+):
+    """
+    Augment minority classes in a dataset to meet target pixel ratios.
 
+    Args:
+        dataset: Dataset object with .images and .masks.
+        class_labels: Dict mapping class index to class name.
+        target_pixel_ratios: Dict mapping class name to target pixel ratio (0-1).
+        fold_assignments: Optional dict mapping sample index to fold.
+        augmentation_functions: List of augmentation functions (should take (img, mask) tuple).
+    Returns:
+        dict: Augmented sample count per class.
+    """
+    if not hasattr(dataset, "images") or not hasattr(dataset, "masks"):
+        raise ValueError("Dataset must be loaded into memory with .images and .masks attributes.")
 
+    if augmentation_functions is None:
+        augmentation_functions = []
+
+    augmented_counts = {}
+    new_images = list(dataset.images)
+    new_masks = list(dataset.masks)
+    new_fold_assignments = dict(fold_assignments) if fold_assignments else {}
+
+    # Calculate total pixels in dataset
+    total_pixels = sum(mask.numel() for mask in dataset.masks)
+    # Calculate current pixel counts per class
+    pixel_counts = {class_name: 0 for class_name in class_labels.values()}
+    for mask in dataset.masks:
+        for class_idx, class_name in class_labels.items():
+            pixel_counts[class_name] += (mask == class_idx).sum().item()
+
+    for class_idx, class_name in class_labels.items():
+        current_pixels = pixel_counts[class_name]
+        target_pixels = int(target_pixel_ratios[class_name] * total_pixels)
+        if current_pixels >= target_pixels:
+            continue
+
+        print(f"Pixel-level augmenting class '{class_name}' (current: {current_pixels}, target: {target_pixels})")
+        # Find all samples with this class
+        class_samples = [
+            (img, mask, idx)
+            for idx, (img, mask) in enumerate(zip(dataset.images, dataset.masks))
+            if (mask == class_idx).sum().item() > 0
+        ]
+        if not class_samples:
+            print(f"⚠️ No samples found for class '{class_name}' in dataset.")
+            continue
+
+        augmented = []
+        added_pixels = 0
+        i = 0
+        while current_pixels + added_pixels < target_pixels:
+            img, mask, original_idx = class_samples[i % len(class_samples)]
+            aug_img, aug_mask = img.clone(), mask.clone()
+            for aug_func in augmentation_functions:
+                aug_img, aug_mask = aug_func((aug_img, aug_mask))
+            new_images.append(aug_img)
+            new_masks.append(aug_mask)
+            if fold_assignments:
+                new_idx = len(new_images) - 1
+                new_fold_assignments[new_idx] = fold_assignments[original_idx]
+            # Count new pixels for this class in the augmented mask
+            added_pixels += (aug_mask == class_idx).sum().item()
+            augmented.append((aug_img, aug_mask))
+            i += 1
+
+        augmented_counts[class_name] = len(augmented)
+
+    dataset.images = new_images
+    dataset.masks = new_masks
+    if fold_assignments:
+        fold_assignments.update(new_fold_assignments)
+
+    print(f"✅ Pixel-level augmented counts: {augmented_counts}")
+    return augmented_counts

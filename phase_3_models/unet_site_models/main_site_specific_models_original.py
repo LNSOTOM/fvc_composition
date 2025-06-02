@@ -30,7 +30,7 @@ import json
 from torchmetrics.classification import ConfusionMatrix
 import pandas as pd
 from collections import Counter
-from dataset.data_augmentation import augment_minority_classes
+from dataset.data_augmentation import augment_minority_classes_pixel_level, apply_combined_augmentations, augment_minority_classes
 from balance_mask_water import integrate_water_distribution
 
 
@@ -381,30 +381,47 @@ def main():
     # --- DATA AUGMENTATION ---
     if config_param.ENABLE_DATA_AUGMENTATION:
         print("Data augmentation is ENABLED.")
-        if config_param.AUGMENTATION_USE_GAUSSIAN_THRESHOLD:
-            print("Using Gaussian threshold for augmentation.")
-            percentages = list(overall_class_distribution.values())
-            mean = np.mean(percentages)
-            std = np.std(percentages)
-            threshold = mean + std
-            print(f"\nGaussian-based threshold for augmentation: {threshold:.2f}% (mean={mean:.2f}%, std={std:.2f}%)")
-            target_ratios = {}
-            for class_name in class_labels_dict.values():
-                current = overall_class_distribution.get(class_name, 0)
-                if class_name == 'BE':
-                    target_ratios[class_name] = min(percentages) / 100
-                else:
-                    target_ratios[class_name] = max(percentages) / 100
-        else:
-            print("Using manual target ratios for augmentation.")
-            target_ratios = {'BE': 0.1, 'NPV': 0.6, 'PV': 0.2, 'SI': 0.2, 'WI': 0.3}
-        print(f"\nTarget ratios set: {target_ratios}")
-
-        print("Calling augment_minority_classes...")
         print(f"Dataset size before augmentation: {len(dataset.images)}")
+        MIN_CLASS_RATIO = 0.20  # 20% minimum for any class
+
+        percentages = list(overall_class_distribution.values())
+        max_percent = max(percentages)
+        max_class = max(overall_class_distribution, key=overall_class_distribution.get)
+
+        frequencies = np.array([overall_class_distribution[c] for c in class_labels_dict.values()]) / 100.0
+
+        # Gaussian mapping parameters
+        mean = np.mean(frequencies)
+        std = np.std(frequencies)
+        # min_target = 0.15  # Minimum allowed target ratio (15%)
+        # max_target = 0.35  # Maximum allowed target ratio (35%)
+        min_target = 0.18  # Raise the floor for rare classes
+        max_target = 0.28  # Lower the ceiling for common classes
+
+        def gaussian_target(freq, mean, std, min_target, max_target):
+            z = (freq - mean) / (std + 1e-8)
+            score = 1 / (1 + np.exp(z))  # Lower freq -> higher target
+            return min_target + (max_target - min_target) * score
+
+        target_ratios = {}
+        for i, class_name in enumerate(class_labels_dict.values()):
+            freq = frequencies[i]
+            target_ratios[class_name] = float(gaussian_target(freq, mean, std, min_target, max_target))
+
+        print("Target ratios (Gaussian-based):")
+        for k, v in target_ratios.items():
+            print(f"  {k}: {v:.3f}")
+
+        # Use apply_combined_augmentations for all classes
         augmented_counts = augment_minority_classes(
-            dataset, overall_class_distribution, class_labels_dict, target_ratios, fold_assignments
+            dataset=dataset,
+            class_distributions=overall_class_distribution,  
+            class_labels=class_labels_dict,
+            target_ratios=target_ratios,
+            fold_assignments=fold_assignments,
+            augmentation_functions=[lambda pair: apply_combined_augmentations(pair[0], pair[1])]
         )
+
         print(f"Dataset size after augmentation: {len(dataset.images)}")
         print(f"Augmented counts: {augmented_counts}")
         masks = dataset.masks  # Update masks after augmentation
