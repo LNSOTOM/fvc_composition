@@ -18,11 +18,6 @@ from dataset.data_augmentation import apply_color_jitter, apply_vertical_flip, a
 from torch.nn import CrossEntropyLoss, BCEWithLogitsLoss
 from metrics.loss_functions import FocalLoss, WeightedCrossEntropyLoss, calculate_class_weights, save_class_weights_to_file, DiceLoss, CombinedDiceFocalLoss
 
-from dataset.calperum_dataset import CalperumDataset
-import numpy as np
-import os
-
-
 
 def get_num_classes_from_mask(mask_path):
     """Get the unique classes in the mask, excluding NaN values (represented as -1)."""
@@ -109,7 +104,7 @@ IMAGE_FOLDER = [
 
 # 3.Hyperparameters for training
 '''Num of epochs: how many times the learning algorithm will work through the entire training dataset. Helps to not overfit'''
-NUM_EPOCHS = 20#120 # try also --> 100 and 20 for test and 40 minimum
+NUM_EPOCHS = 120 #120 # try also --> 100 and 20 for test and 40 minimum
 '''batch_size: number of training samples utilised in one iteration'''
 BATCH_SIZE =  16 #12  # minimum 16) | 32 
 ##PATCH_SIZE = 256  # Used in dataset preprocessing, if applicable
@@ -149,9 +144,7 @@ BETAS = (0.9, 0.999)
 #     ignore_index=FOCAL_IGNORE_INDEX  # Index to ignore in target mask
 # )
 # Focal loss:
-# CRITERION = FocalLoss(alpha=1, gamma=2, ignore_index=-1)  # Now handles NaN values
-# Define the criterion with dynamically computed alpha
-
+CRITERION = FocalLoss(alpha=1, gamma=2, ignore_index=-1)  # Now handles NaN values
 # OR CRITERION = FocalLoss(alpha=FOCAL_ALPHA, gamma=FOCAL_GAMMA, ignore_index=FOCAL_IGNORE_INDEX)
 
 # Define the criterion (DiceLoss) with custom parameters
@@ -247,56 +240,6 @@ COMBINED_INDICES_SAVE_PATHS = [
 #  tensorboard --logdir=phase_3_models/unet_model/low/tb_logs
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# Function to compute class weights
-def compute_class_weights(mask_dir, ignore_index=-1):
-    """
-    Compute class weights based on the frequency of each class in the dataset.
-
-    Args:
-        mask_dir (str): Directory containing mask files.
-        ignore_index (int): Index to ignore in the masks (e.g., -1 for ignored pixels).
-
-    Returns:
-        list: Normalized class weights for each class.
-    """
-    class_counts = None
-
-    for f in os.listdir(mask_dir):
-        if f.endswith(".tif"):
-            mask, _ = CalperumDataset.load_mask(os.path.join(mask_dir, f))
-            mask = mask[mask != ignore_index]  # Exclude ignored values
-
-            # Ensure the mask contains integer values
-            mask = np.round(mask).astype(int)  # Convert float32 to integers safely
-
-            # Dynamically determine the number of classes
-            max_class = int(mask.max())
-            if class_counts is None:
-                class_counts = np.zeros(max_class + 1)
-            elif max_class >= class_counts.size:
-                # Resize the class_counts array if a higher class index is found
-                new_size = max_class + 1
-                class_counts = np.resize(class_counts, new_size)
-
-            # Update class counts using vectorized operations
-            unique, counts = np.unique(mask, return_counts=True)
-            class_counts[unique] += counts
-
-    # Compute class frequencies
-    freq = class_counts / np.sum(class_counts)
-
-    # Compute inverse frequency and normalize
-    inv = 1 / freq
-    alpha = inv / np.sum(inv)
-
-    return alpha.tolist()
-
-# Compute class weights for FocalLoss
-alpha = compute_class_weights(SUBSAMPLE_MASK_DIR[0])
-print("Alpha for FocalLoss:", alpha)
-
-CRITERION = FocalLoss(alpha=alpha, gamma=2, ignore_index=-1)
 
 # Data augmentation control
 ENABLE_DATA_AUGMENTATION = True  # Set to False to disable augmentation
