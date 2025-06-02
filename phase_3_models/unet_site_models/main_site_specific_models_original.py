@@ -390,13 +390,13 @@ def main():
 
         frequencies = np.array([overall_class_distribution[c] for c in class_labels_dict.values()]) / 100.0
 
-        # Gaussian mapping parameters
-        mean = np.mean(frequencies)
-        std = np.std(frequencies)
-        # min_target = 0.15  # Minimum allowed target ratio (15%)
-        # max_target = 0.35  # Maximum allowed target ratio (35%)
-        min_target = 0.18  # Raise the floor for rare classes
-        max_target = 0.28  # Lower the ceiling for common classes
+        min_target = np.percentile(frequencies, 10)
+        max_target = np.percentile(frequencies, 90)
+        min_target = max(0.10, min_target * 0.8)
+        max_target = min(0.40, max_target * 1.2)
+
+        mean = np.mean(frequencies)      # <-- Add this
+        std = np.std(frequencies)        # <-- And this
 
         def gaussian_target(freq, mean, std, min_target, max_target):
             z = (freq - mean) / (std + 1e-8)
@@ -408,7 +408,32 @@ def main():
             freq = frequencies[i]
             target_ratios[class_name] = float(gaussian_target(freq, mean, std, min_target, max_target))
 
-        print("Target ratios (Gaussian-based):")
+        # Find the class with the highest original frequency
+        majority_class = max(overall_class_distribution, key=overall_class_distribution.get)
+        # Robust adaptive penalty for the majority class
+        majority_ratio = overall_class_distribution[majority_class] / 100.0
+        mean_ratio = np.mean(list(overall_class_distribution.values())) / 100.0
+        penalty_factor = max(0.5, 1.0 - (majority_ratio - mean_ratio) * 2)
+        penalty_factor = min(penalty_factor, 0.8)
+        print(f"Adaptive penalty_factor for majority class '{majority_class}': {penalty_factor:.2f}")
+        target_ratios[majority_class] *= penalty_factor
+        
+        # Explicitly penalize BE, regardless of whether it's the majority class
+        # be_class_name = "BE"
+        # if be_class_name in target_ratios:
+        #     be_ratio = overall_class_distribution[be_class_name] / 100.0
+        #     mean_ratio = np.mean(list(overall_class_distribution.values())) / 100.0
+        #     penalty_factor = max(0.3, 1.0 - (be_ratio - mean_ratio) * 2.5)  # Stronger penalty, min 0.3
+        #     penalty_factor = min(penalty_factor, 0.8)
+        #     print(f"Adaptive penalty_factor for BE: {penalty_factor:.2f}")
+        #     target_ratios[be_class_name] *= penalty_factor
+
+        # Optional: Renormalize so all ratios sum to 1
+        total = sum(target_ratios.values())
+        for k in target_ratios:
+            target_ratios[k] /= total
+
+        print("Target ratios (Gaussian-based, penalized majority):")
         for k, v in target_ratios.items():
             print(f"  {k}: {v:.3f}")
 
