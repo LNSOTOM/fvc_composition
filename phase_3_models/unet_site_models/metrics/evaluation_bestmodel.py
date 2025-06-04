@@ -229,7 +229,7 @@ class ModelEvaluator:
         
         avg_cm_filename = os.path.join(output_dir, 'average_confusion_matrix_across_blocks.png')
         plt.savefig(avg_cm_filename, bbox_inches='tight')
-        plt.show()
+        # plt.show()
         plt.close()
 
         print(f"Average confusion matrix across all blocks saved at {avg_cm_filename}")
@@ -275,7 +275,7 @@ class ModelEvaluator:
 
       
         plt.savefig(plot_file, bbox_inches='tight')
-        plt.show()
+        # plt.show()
         plt.close()
 
         print(f"Confusion matrix plot saved as {plot_file}")
@@ -342,9 +342,10 @@ class ModelEvaluator:
 
         metrics = self.evaluate()
         # block_output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low' #low'
-        block_output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
+        # block_output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
         # block_output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense
-        os.makedirs(block_output_dir, exist_ok=True)
+        block_output_dir = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense'
+        # os.makedirs(block_output_dir, exist_ok=True)
         
         # Save metrics for the current block
         self.save_block_metrics(metrics, block_idx, block_output_dir)
