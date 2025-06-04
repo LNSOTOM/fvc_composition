@@ -243,7 +243,23 @@ def print_sample_counts_per_fold(folds, stage=""):
         print(f"  Block {i+1}:")
         print(f"    Train size: {train_size}")
         print(f"    Val size:   {val_size}")
-        print(f"    Test size:  {test_size}")
+
+# --- Compute alpha for FocalLoss after water redistribution ---
+def compute_class_weights_from_masks(masks, num_classes=5, ignore_index=-1):
+    import numpy as np
+    all_labels = []
+    for mask in masks:
+        mask_np = np.array(mask).flatten()
+        mask_np = mask_np[mask_np != ignore_index]
+        all_labels.extend(mask_np)
+    counts = np.bincount(all_labels, minlength=num_classes)
+    freq = counts / np.sum(counts)
+    # Avoid division by zero for missing classes
+    inv = np.zeros_like(freq)
+    inv[freq > 0] = 1 / freq[freq > 0]
+    alpha = inv / np.sum(inv)
+    return alpha.tolist()
+
 
 
 def main():
