@@ -77,8 +77,9 @@ def setup_model_and_optimizer():
         betas=(0.9, 0.999), 
         weight_decay=config_param.WEIGHT_DECAY
     )
-    criterion = config_param.CRITERION
-    return model, optimizer, criterion
+    # criterion = config_param.CRITERION
+    return model, optimizer
+    # return model, optimizer, criterion
 
 
 def save_model(model, model_checkpoint_path):
@@ -491,6 +492,10 @@ def main():
     coordinates_water = extract_coordinates([combined_data[i % len(combined_data)] for i in range(len(dataset))])
     print(f"Coordinates shape after reshaping (after water redistribution): {np.array(coordinates_water).shape}")
 
+    alpha = compute_class_weights_from_masks(masks, num_classes=len(class_labels_dict))
+    print("Alpha for FocalLoss (after water redistribution):", alpha)
+    CRITERION = FocalLoss(alpha=alpha, gamma=2, ignore_index=-1)
+   
     # Print class distribution AFTER water redistribution
     print_class_distribution_per_fold(final_folds, class_labels_dict, "AFTER Water Redistribution")
     print_overall_class_distribution(masks, class_labels_dict, "AFTER Water Redistribution")
