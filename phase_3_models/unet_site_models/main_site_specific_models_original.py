@@ -70,26 +70,26 @@ def setup_logging_and_checkpoints():
     return logger, checkpoint_callback
 
 
-# def setup_model_and_optimizer():
-#     model = UNetModule().to(config_param.DEVICE)
-#     optimizer = config_param.OPTIMIZER(
-#         model.parameters(), 
-#         lr=config_param.LEARNING_RATE, 
-#         betas=(0.9, 0.999), 
-#         weight_decay=config_param.WEIGHT_DECAY
-#     )
-#     criterion = config_param.CRITERION
-#     return model, optimizer, criterion
-
-def setup_model_and_optimizer(criterion):
-    model = UNetModule(criterion).to(config_param.DEVICE)
+def setup_model_and_optimizer():
+    model = UNetModule().to(config_param.DEVICE)
     optimizer = config_param.OPTIMIZER(
         model.parameters(), 
         lr=config_param.LEARNING_RATE, 
         betas=(0.9, 0.999), 
         weight_decay=config_param.WEIGHT_DECAY
     )
+    criterion = config_param.CRITERION
     return model, optimizer, criterion
+
+# def setup_model_and_optimizer(criterion):
+#     model = UNetModule(criterion).to(config_param.DEVICE)
+#     optimizer = config_param.OPTIMIZER(
+#         model.parameters(), 
+#         lr=config_param.LEARNING_RATE, 
+#         betas=(0.9, 0.999), 
+#         weight_decay=config_param.WEIGHT_DECAY
+#     )
+#     return model, optimizer, criterion
 
 def save_model(model, model_checkpoint_path):
     torch.save(model.state_dict(), model_checkpoint_path)
@@ -254,19 +254,19 @@ def print_sample_counts_per_fold(folds, stage=""):
         print(f"    Val size:   {val_size}")
 
 # --- Compute alpha for FocalLoss after water redistribution ---
-def compute_class_weights_from_masks(masks, num_classes=5, ignore_index=-1):
-    import numpy as np
-    all_labels = []
-    for mask in masks:
-        mask_np = np.array(mask).flatten()
-        mask_np = mask_np[mask_np != ignore_index]
-        all_labels.extend(mask_np)
-    counts = np.bincount(all_labels, minlength=num_classes)
-    freq = counts / np.sum(counts)
-    freq = np.clip(freq, 1e-8, 1.0)  # Avoid zeros
-    inv = 1 / freq
-    alpha = inv / np.sum(inv)
-    return alpha.tolist()
+# def compute_class_weights_from_masks(masks, num_classes=5, ignore_index=-1):
+#     import numpy as np
+#     all_labels = []
+#     for mask in masks:
+#         mask_np = np.array(mask).flatten()
+#         mask_np = mask_np[mask_np != ignore_index]
+#         all_labels.extend(mask_np)
+#     counts = np.bincount(all_labels, minlength=num_classes)
+#     freq = counts / np.sum(counts)
+#     freq = np.clip(freq, 1e-8, 1.0)  # Avoid zeros
+#     inv = 1 / freq
+#     alpha = inv / np.sum(inv)
+#     return alpha.tolist()
 
 
 
@@ -516,10 +516,10 @@ def main():
     coordinates_water = extract_coordinates([combined_data[i % len(combined_data)] for i in range(len(dataset))])
     print(f"Coordinates shape after reshaping (after water redistribution): {np.array(coordinates_water).shape}")
 
-    alpha = compute_class_weights_from_masks(masks, num_classes=len(class_labels_dict))
-    print("Alpha for FocalLoss (after water redistribution):", alpha)
-    CRITERION = FocalLoss(alpha=alpha, gamma=2, ignore_index=-1)
-    model, optimizer, criterion = setup_model_and_optimizer(CRITERION)
+    # alpha = compute_class_weights_from_masks(masks, num_classes=len(class_labels_dict))
+    # print("Alpha for FocalLoss (after water redistribution):", alpha)
+    # CRITERION = FocalLoss(alpha=alpha, gamma=2, ignore_index=-1)
+    # model, optimizer, criterion = setup_model_and_optimizer(CRITERION)
    
     # Print class distribution AFTER water redistribution
     print_class_distribution_per_fold(final_folds, class_labels_dict, "AFTER Water Redistribution")
@@ -551,7 +551,7 @@ def main():
         if train_loader is None or val_loader is None or test_loader is None:
             print(f"Skipping block {block_idx + 1} due to missing data")
             continue
-        model, optimizer, criterion = setup_model_and_optimizer(CRITERION)
+        model, optimizer, criterion = setup_model_and_optimizer()
            
         # Run training loop
         train_losses, val_losses, best_epoch_model_path, best_epoch_val_loss = run_training_loop(
