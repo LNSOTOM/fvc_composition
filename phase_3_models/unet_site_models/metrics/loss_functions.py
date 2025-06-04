@@ -42,33 +42,33 @@ class DiceLoss(nn.Module):
         return dice_loss
 
 ##ORGININAL FOCAL LOSS IMPLEMENTATION
-class FocalLoss(nn.Module):
-    def __init__(self, alpha=1, gamma=2, ignore_index=-1):
-        super(FocalLoss, self).__init__()
-        self.alpha = alpha
-        self.gamma = gamma
-        self.ignore_index = ignore_index
+# class FocalLoss(nn.Module):
+#     def __init__(self, alpha=1, gamma=2, ignore_index=-1):
+#         super(FocalLoss, self).__init__()
+#         self.alpha = alpha
+#         self.gamma = gamma
+#         self.ignore_index = ignore_index
 
-    def forward(self, outputs, targets):
-        # Create a mask to ignore NaN values (or the specified ignore_index)
-        valid_mask = (targets != self.ignore_index)
+#     def forward(self, outputs, targets):
+#         # Create a mask to ignore NaN values (or the specified ignore_index)
+#         valid_mask = (targets != self.ignore_index)
 
-        # Flatten the tensors to apply the mask
-        outputs = outputs.permute(0, 2, 3, 1).reshape(-1, outputs.size(1))  # Shape: [batch_size * height * width, num_classes]
-        targets = targets.view(-1)  # Shape: [batch_size * height * width]
+#         # Flatten the tensors to apply the mask
+#         outputs = outputs.permute(0, 2, 3, 1).reshape(-1, outputs.size(1))  # Shape: [batch_size * height * width, num_classes]
+#         targets = targets.view(-1)  # Shape: [batch_size * height * width]
 
-        # Apply the valid mask
-        outputs = outputs[valid_mask.view(-1)]
-        targets = targets[valid_mask.view(-1)]
+#         # Apply the valid mask
+#         outputs = outputs[valid_mask.view(-1)]
+#         targets = targets[valid_mask.view(-1)]
 
-        # Compute the cross entropy loss
-        logpt = F.cross_entropy(outputs, targets, reduction='none')
-        pt = torch.exp(-logpt)
+#         # Compute the cross entropy loss
+#         logpt = F.cross_entropy(outputs, targets, reduction='none')
+#         pt = torch.exp(-logpt)
 
-        # Apply Focal Loss formula
-        focal_loss = self.alpha * ((1 - pt) ** self.gamma) * logpt
+#         # Apply Focal Loss formula
+#         focal_loss = self.alpha * ((1 - pt) ** self.gamma) * logpt
 
-        return focal_loss.mean()
+#         return focal_loss.mean()
 
 ###VERSION 2
 # class FocalLoss(nn.Module):
@@ -108,61 +108,61 @@ class FocalLoss(nn.Module):
 
 
 ####VERSION3
-# class FocalLoss(nn.Module):
-#     def __init__(self, alpha=1, gamma=2.0, ignore_index=-1):
-#         """
-#         Args:
-#             alpha (float or list or ndarray): scalar or per-class weights.
-#             gamma (float): focusing parameter.
-#             ignore_index (int): target value to ignore (e.g., -1 for NaN regions).
-#         """
-#         super(FocalLoss, self).__init__()
-#         if isinstance(alpha, (list, np.ndarray)):
-#             self.alpha = torch.tensor(alpha, dtype=torch.float32)
-#         else:
-#             self.alpha = alpha  # scalar
-#         self.gamma = gamma
-#         self.ignore_index = ignore_index
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=1, gamma=2.0, ignore_index=-1):
+        """
+        Args:
+            alpha (float or list or ndarray): scalar or per-class weights.
+            gamma (float): focusing parameter.
+            ignore_index (int): target value to ignore (e.g., -1 for NaN regions).
+        """
+        super(FocalLoss, self).__init__()
+        if isinstance(alpha, (list, np.ndarray)):
+            self.alpha = torch.tensor(alpha, dtype=torch.float32)
+        else:
+            self.alpha = alpha  # scalar
+        self.gamma = gamma
+        self.ignore_index = ignore_index
 
-#     def forward(self, outputs, targets):
-#         """
-#         Args:
-#             outputs (Tensor): raw model predictions, shape [B, C, H, W]
-#             targets (Tensor): ground truth, shape [B, H, W]
-#         Returns:
-#             Tensor: scalar focal loss
-#         """
-#         B, C, H, W = outputs.size()
+    def forward(self, outputs, targets):
+        """
+        Args:
+            outputs (Tensor): raw model predictions, shape [B, C, H, W]
+            targets (Tensor): ground truth, shape [B, H, W]
+        Returns:
+            Tensor: scalar focal loss
+        """
+        B, C, H, W = outputs.size()
 
-#         # Flatten and mask
-#         outputs = outputs.permute(0, 2, 3, 1).reshape(-1, C)  # [B*H*W, C]
-#         targets = targets.view(-1)  # [B*H*W]
+        # Flatten and mask
+        outputs = outputs.permute(0, 2, 3, 1).reshape(-1, C)  # [B*H*W, C]
+        targets = targets.view(-1)  # [B*H*W]
 
-#         valid_mask = targets != self.ignore_index
-#         outputs = outputs[valid_mask]
-#         targets = targets[valid_mask]
+        valid_mask = targets != self.ignore_index
+        outputs = outputs[valid_mask]
+        targets = targets[valid_mask]
 
-#         # Log probabilities
-#         log_probs = F.log_softmax(outputs, dim=1)
-#         probs = torch.exp(log_probs)
+        # Log probabilities
+        log_probs = F.log_softmax(outputs, dim=1)
+        probs = torch.exp(log_probs)
 
-#         # One-hot encode the targets
-#         targets_one_hot = F.one_hot(targets, num_classes=C).float()
+        # One-hot encode the targets
+        targets_one_hot = F.one_hot(targets, num_classes=C).float()
 
-#         # Select the prob/log-prob for the correct class
-#         pt = (probs * targets_one_hot).sum(dim=1)
-#         logpt = (log_probs * targets_one_hot).sum(dim=1)
+        # Select the prob/log-prob for the correct class
+        pt = (probs * targets_one_hot).sum(dim=1)
+        logpt = (log_probs * targets_one_hot).sum(dim=1)
 
-#         # Apply alpha weight
-#         if isinstance(self.alpha, torch.Tensor):
-#             alpha = self.alpha.to(outputs.device)
-#             at = alpha[targets]  # weight per target pixel
-#         else:
-#             at = self.alpha
+        # Apply alpha weight
+        if isinstance(self.alpha, torch.Tensor):
+            alpha = self.alpha.to(outputs.device)
+            at = alpha[targets]  # weight per target pixel
+        else:
+            at = self.alpha
 
-#         # Final focal loss
-#         loss = -at * ((1 - pt) ** self.gamma) * logpt
-#         return loss.mean()
+        # Final focal loss
+        loss = -at * ((1 - pt) ** self.gamma) * logpt
+        return loss.mean()
     
 '''
 The alpha parameter controls the weighting between Focal Loss and Dice Loss in the combined loss function.
