@@ -110,59 +110,53 @@ class DiceLoss(nn.Module):
 ####VERSION3
 class FocalLoss(nn.Module):
     def __init__(self, alpha=1, gamma=2.0, ignore_index=-1):
-        """
-        Args:
-            alpha (float or list or ndarray): scalar or per-class weights.
-            gamma (float): focusing parameter.
-            ignore_index (int): target value to ignore (e.g., -1 for NaN regions).
-        """
         super(FocalLoss, self).__init__()
         if isinstance(alpha, (list, np.ndarray)):
             self.alpha = torch.tensor(alpha, dtype=torch.float32)
         else:
-            self.alpha = alpha  # scalar
+            self.alpha = alpha
         self.gamma = gamma
         self.ignore_index = ignore_index
 
     def forward(self, outputs, targets):
-        """
-        Args:
-            outputs (Tensor): raw model predictions, shape [B, C, H, W]
-            targets (Tensor): ground truth, shape [B, H, W]
-        Returns:
-            Tensor: scalar focal loss
-        """
         B, C, H, W = outputs.size()
+        outputs = outputs.permute(0, 2, 3, 1).reshape(-1, C)
+        targets = targets.view(-1)
 
-        # Flatten and mask
-        outputs = outputs.permute(0, 2, 3, 1).reshape(-1, C)  # [B*H*W, C]
-        targets = targets.view(-1)  # [B*H*W]
-
+        # Mask out ignore_index
         valid_mask = targets != self.ignore_index
+        if valid_mask.sum() == 0:
+            return torch.tensor(0.0, dtype=outputs.dtype, device=outputs.device)
+
         outputs = outputs[valid_mask]
         targets = targets[valid_mask]
 
-        # Log probabilities
+        # Compute log_probs and probs
         log_probs = F.log_softmax(outputs, dim=1)
         probs = torch.exp(log_probs)
 
-        # One-hot encode the targets
+        # Convert to one-hot and compute pt
         targets_one_hot = F.one_hot(targets, num_classes=C).float()
-
-        # Select the prob/log-prob for the correct class
-        pt = (probs * targets_one_hot).sum(dim=1)
+        pt = (probs * targets_one_hot).sum(dim=1).clamp(min=1e-7)  # Avoid log(0)
         logpt = (log_probs * targets_one_hot).sum(dim=1)
 
-        # Apply alpha weight
+        # Apply alpha weighting
         if isinstance(self.alpha, torch.Tensor):
             alpha = self.alpha.to(outputs.device)
-            at = alpha[targets]  # weight per target pixel
+            at = alpha[targets]
         else:
             at = self.alpha
 
-        # Final focal loss
+        # Focal Loss formula
         loss = -at * ((1 - pt) ** self.gamma) * logpt
+
+        # Catch NaNs (if any)
+        if torch.isnan(loss).any():
+            print("⚠️ NaN encountered in FocalLoss computation. Returning zero loss.")
+            return torch.tensor(0.0, dtype=loss.dtype, device=loss.device)
+
         return loss.mean()
+
     
 '''
 The alpha parameter controls the weighting between Focal Loss and Dice Loss in the combined loss function.

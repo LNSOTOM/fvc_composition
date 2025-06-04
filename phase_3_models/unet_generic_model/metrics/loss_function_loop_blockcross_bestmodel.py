@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 from torch.cuda.amp import autocast, GradScaler
 from torch.optim.lr_scheduler import OneCycleLR
+import numpy as np
 
 
 # Utility function to print GPU memory usage
@@ -93,7 +94,15 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
                 del images, masks, outputs, loss
                 gc.collect()
 
-        avg_val_loss = val_loss_sum / num_val_batches
+        if num_val_batches == 0:
+            print(f"Warning: No validation batches for epoch {epoch+1}!")
+            avg_val_loss = float('nan')
+        else:
+            avg_val_loss = val_loss_sum / num_val_batches
+
+        if np.isnan(avg_val_loss):
+            print(f"Warning: Validation loss is NaN for epoch {epoch+1}!")
+
         val_losses_per_epoch.append(avg_val_loss)
 
         # Logging to TensorBoard

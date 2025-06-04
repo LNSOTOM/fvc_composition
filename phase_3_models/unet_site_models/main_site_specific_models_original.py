@@ -263,9 +263,8 @@ def compute_class_weights_from_masks(masks, num_classes=5, ignore_index=-1):
         all_labels.extend(mask_np)
     counts = np.bincount(all_labels, minlength=num_classes)
     freq = counts / np.sum(counts)
-    # Avoid division by zero for missing classes
-    inv = np.zeros_like(freq)
-    inv[freq > 0] = 1 / freq[freq > 0]
+    freq = np.clip(freq, 1e-8, 1.0)  # Avoid zeros
+    inv = 1 / freq
     alpha = inv / np.sum(inv)
     return alpha.tolist()
 
@@ -552,9 +551,8 @@ def main():
         if train_loader is None or val_loader is None or test_loader is None:
             print(f"Skipping block {block_idx + 1} due to missing data")
             continue
-
-        model, optimizer, criterion = setup_model_and_optimizer()
-        
+        model, optimizer, criterion = setup_model_and_optimizer(CRITERION)
+           
         # Run training loop
         train_losses, val_losses, best_epoch_model_path, best_epoch_val_loss = run_training_loop(
             model, train_loader, val_loader, optimizer, criterion, 
