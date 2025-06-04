@@ -19,6 +19,7 @@ from dataset.data_loaders_fold_blockcross_subsampling import (
 
 from metrics.evaluation_bestmodel import ModelEvaluator, initialize_all_metrics 
 from metrics.loss_function_loop_blockcross_bestmodel import run_training_loop
+from metrics.loss_functions import FocalLoss
 import config_param
 
 from rasterio.transform import Affine
@@ -69,18 +70,26 @@ def setup_logging_and_checkpoints():
     return logger, checkpoint_callback
 
 
-def setup_model_and_optimizer():
-    model = UNetModule().to(config_param.DEVICE)
+# def setup_model_and_optimizer():
+#     model = UNetModule().to(config_param.DEVICE)
+#     optimizer = config_param.OPTIMIZER(
+#         model.parameters(), 
+#         lr=config_param.LEARNING_RATE, 
+#         betas=(0.9, 0.999), 
+#         weight_decay=config_param.WEIGHT_DECAY
+#     )
+#     criterion = config_param.CRITERION
+#     return model, optimizer, criterion
+
+def setup_model_and_optimizer(criterion):
+    model = UNetModule(criterion).to(config_param.DEVICE)
     optimizer = config_param.OPTIMIZER(
         model.parameters(), 
         lr=config_param.LEARNING_RATE, 
         betas=(0.9, 0.999), 
         weight_decay=config_param.WEIGHT_DECAY
     )
-    # criterion = config_param.CRITERION
-    return model, optimizer
-    # return model, optimizer, criterion
-
+    return model, optimizer, criterion
 
 def save_model(model, model_checkpoint_path):
     torch.save(model.state_dict(), model_checkpoint_path)
@@ -511,6 +520,7 @@ def main():
     alpha = compute_class_weights_from_masks(masks, num_classes=len(class_labels_dict))
     print("Alpha for FocalLoss (after water redistribution):", alpha)
     CRITERION = FocalLoss(alpha=alpha, gamma=2, ignore_index=-1)
+    model, optimizer, criterion = setup_model_and_optimizer(CRITERION)
    
     # Print class distribution AFTER water redistribution
     print_class_distribution_per_fold(final_folds, class_labels_dict, "AFTER Water Redistribution")
