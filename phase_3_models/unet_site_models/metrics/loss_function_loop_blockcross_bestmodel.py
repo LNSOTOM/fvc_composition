@@ -102,6 +102,7 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
         writer.add_scalar('Loss/Train', avg_train_loss, epoch)
         writer.add_scalar('Loss/Val', avg_val_loss, epoch)
 
+        current_lr = optimizer.param_groups[0]['lr']
         print(f"Epoch [{epoch+1}/{max_epochs}] - Avg Train Loss: {avg_train_loss:.4f}, Avg Val Loss: {avg_val_loss:.4f}, LR: {current_lr:.6f}")
         print_gpu_memory_usage(f"End of Epoch {epoch+1}")
 
