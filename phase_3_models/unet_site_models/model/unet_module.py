@@ -29,15 +29,15 @@ from torchmetrics import JaccardIndex
 '''
 # 4. PyTorch Lightning Module
 class UNetModule(pl.LightningModule):
-    def __init__(self, criterion):
+    def __init__(self):
         super(UNetModule, self).__init__()
         self.model = UNetModel(
             in_channels=config_param.IN_CHANNELS,
             out_channels=config_param.OUT_CHANNELS
         )
         self.learning_rate = config_param.LEARNING_RATE
-        # self.criterion = config_param.CRITERION
-        self.criterion = criterion
+        self.criterion = config_param.CRITERION
+        # self.criterion = criterion
         # self.criterion = config_param.CRITERION(weights=class_weights, device=config_param.DEVICE)
         self.batch_size = config_param.BATCH_SIZE
         self.num_workers = config_param.NUM_WORKERS

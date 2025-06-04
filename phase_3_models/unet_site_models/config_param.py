@@ -147,7 +147,7 @@ BETAS = (0.9, 0.999)
 #     ignore_index=FOCAL_IGNORE_INDEX  # Index to ignore in target mask
 # )
 # Focal loss:
-# CRITERION = FocalLoss(alpha=1, gamma=2, ignore_index=-1)  # Now handles NaN values
+CRITERION = FocalLoss(alpha=1, gamma=2, ignore_index=-1)  # Now handles NaN values
 # OR CRITERION = FocalLoss(alpha=FOCAL_ALPHA, gamma=FOCAL_GAMMA, ignore_index=FOCAL_IGNORE_INDEX)
 
 # Define the criterion (DiceLoss) with custom parameters

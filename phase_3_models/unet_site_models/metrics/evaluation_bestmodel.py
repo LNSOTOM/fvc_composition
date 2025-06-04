@@ -61,6 +61,9 @@ class ModelEvaluator:
 
                 valid_mask = target_mask != -1
                 
+                if valid_mask.sum() == 0:
+                    continue  # Skip this batch
+                
                 self.accuracy_metric(predicted_mask[valid_mask], target_mask[valid_mask])
                 self.precision_metric(predicted_mask[valid_mask], target_mask[valid_mask])
                 self.recall_metric(predicted_mask[valid_mask], target_mask[valid_mask])
