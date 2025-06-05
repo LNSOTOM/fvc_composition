@@ -7,7 +7,8 @@ from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
-
+from iterstrat.ml_stratifiers import MultilabelStratifiedShuffleSplit
+from torch.utils.data import DataLoader, SubsetRandomSampler
 from model.unet_module import UNetModule
 
 from dataset.image_preprocessing import load_raw_multispectral_image
@@ -33,7 +34,7 @@ import pandas as pd
 from collections import Counter
 from dataset.data_augmentation import augment_minority_classes_pixel_level, apply_combined_augmentations, augment_minority_classes
 from balance_mask_water import integrate_water_distribution
-
+import random
 
 def print_gpu_memory_usage(stage=""):
     allocated = torch.cuda.memory_allocated() / (1024 ** 3)
@@ -252,6 +253,7 @@ def print_sample_counts_per_fold(folds, stage=""):
         print(f"  Block {i+1}:")
         print(f"    Train size: {train_size}")
         print(f"    Val size:   {val_size}")
+        print(f"    Test size:  {test_size}")  # <-- Added line
 
 # --- Compute alpha for FocalLoss after water redistribution ---
 # def compute_class_weights_from_masks(masks, num_classes=5, ignore_index=-1):
@@ -268,7 +270,103 @@ def print_sample_counts_per_fold(folds, stage=""):
 #     alpha = inv / np.sum(inv)
 #     return alpha.tolist()
 
+def hybrid_block_stratified_cv(dataset, combined_data, num_blocks, kmeans_centroids, class_labels_dict):
+    coordinates = extract_coordinates(combined_data)
+    kmeans = KMeans(n_clusters=num_blocks, init='k-means++', random_state=42).fit(coordinates)
+    block_labels = kmeans.labels_
 
+    folds = []
+    for block_id in range(num_blocks):
+        block_indices = np.where(block_labels == block_id)[0]
+        block_masks = [dataset.masks[i] for i in block_indices]
+        # Build multi-label presence matrix
+        multi_labels = np.array([[(mask == i).any() for i in range(config_param.OUT_CHANNELS)] for mask in block_masks])
+        sss = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+        train_val_idx, test_idx = next(sss.split(block_indices, multi_labels))
+        # Further split train_val_idx for val
+        sss2 = MultilabelStratifiedShuffleSplit(n_splits=1, test_size=0.5, random_state=42)
+        train_idx, val_idx = next(sss2.split(block_indices[train_val_idx], multi_labels[train_val_idx]))
+        train_indices = block_indices[train_val_idx][train_idx]
+        val_indices = block_indices[train_val_idx][val_idx]
+        test_indices = block_indices[test_idx]
+
+        train_loader = DataLoader(dataset, batch_size=config_param.BATCH_SIZE, sampler=SubsetRandomSampler(train_indices))
+        val_loader = DataLoader(dataset, batch_size=config_param.BATCH_SIZE, sampler=SubsetRandomSampler(val_indices))
+        test_loader = DataLoader(dataset, batch_size=config_param.BATCH_SIZE, sampler=SubsetRandomSampler(test_indices))
+        folds.append((train_loader, val_loader, test_loader))
+
+    return folds
+
+
+# def downsample_majority_class(dataset, class_labels_dict, majority_class_name, max_ratio=0.20, min_samples=200):
+#     """
+#     Downsample the majority class in the dataset to a maximum ratio.
+#     Returns new images, masks, and indices kept.
+#     """
+#     majority_class_idx = [k for k, v in class_labels_dict.items() if v == majority_class_name][0]
+#     all_indices = list(range(len(dataset.images)))
+#     majority_indices = [i for i in all_indices if (np.array(dataset.masks[i]) == majority_class_idx).sum() > 0]
+#     minority_indices = [i for i in all_indices if i not in majority_indices]
+
+#     total = len(all_indices)
+#     desired_majority_count = max(int(max_ratio * total), min_samples)
+#     if len(majority_indices) > desired_majority_count:
+#         keep_majority_indices = random.sample(majority_indices, desired_majority_count)
+#     else:
+#         keep_majority_indices = majority_indices
+
+#     final_indices = keep_majority_indices + minority_indices
+#     random.shuffle(final_indices)
+#     new_images = [dataset.images[i] for i in final_indices]
+#     new_masks = [dataset.masks[i] for i in final_indices]
+#     return new_images, new_masks, final_indices
+
+def mask_be_pixels(masks, be_class_idx, replace_with=-1):
+    new_masks = []
+    for mask in masks:
+        mask_arr = np.array(mask)
+        mask_arr[mask_arr == be_class_idx] = replace_with
+        new_masks.append(mask_arr)
+    return new_masks
+
+def reduce_dominant_class_pixels(masks, class_labels_dict, reduce_fraction=0.5, rare_class_names=('SI', 'WI')):
+    # Find dominant class by pixel count across all masks
+    pixel_counts = {k: 0 for k in class_labels_dict.keys()}
+    for mask in masks:
+        mask_np = np.array(mask).flatten()
+        mask_np = mask_np[mask_np != -1]
+        for k in pixel_counts:
+            pixel_counts[k] += np.sum(mask_np == k)
+    dominant_class_idx = max(pixel_counts, key=pixel_counts.get)
+    dominant_class_name = class_labels_dict[dominant_class_idx]
+    print(f"Reducing pixels of dominant class '{dominant_class_name}' (index {dominant_class_idx}) in all masks by {int(reduce_fraction*100)}%.")
+
+    # Get indices of rare classes
+    rare_class_indices = [k for k, v in class_labels_dict.items() if v in rare_class_names]
+
+    new_masks = []
+    for mask in masks:
+        mask_arr = np.array(mask)
+        dom_pixels = np.where(mask_arr == dominant_class_idx)
+        n_dom = len(dom_pixels[0])
+        n_reduce = int(n_dom * reduce_fraction)
+        if n_reduce > 0:
+            # Find most common non-rare, non-dominant class in this mask
+            flat = mask_arr.flatten()
+            flat = flat[flat != -1]
+            vals, counts = np.unique(flat, return_counts=True)
+            valid_mask = np.array([(v != dominant_class_idx) and (v not in rare_class_indices) for v in vals])
+            vals_valid = vals[valid_mask]
+            counts_valid = counts[valid_mask]
+            if len(vals_valid) > 0:
+                replacement_class = vals_valid[np.argmax(counts_valid)]
+            else:
+                replacement_class = dominant_class_idx  # fallback
+            # Randomly select pixels to change
+            idxs = np.random.choice(range(n_dom), size=n_reduce, replace=False)
+            mask_arr[dom_pixels[0][idxs], dom_pixels[1][idxs]] = replacement_class
+        new_masks.append(mask_arr)
+    return new_masks, dominant_class_name
 
 def main():
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
@@ -453,7 +551,18 @@ def main():
         #     penalty_factor = min(penalty_factor, 0.8)
         #     print(f"Adaptive penalty_factor for BE: {penalty_factor:.2f}")
         #     target_ratios[be_class_name] *= penalty_factor
+        # --- Automatically detect rare classes and set their target ratio ---
+        RARE_CLASS_THRESHOLD = 0.15  # Any class with <15% frequency is considered rare
+        RARE_CLASS_RATIO = 0.18      # Target ratio for rare classes
 
+        # Find rare classes based on original distribution
+        rare_classes = [cls for cls, freq in overall_class_distribution.items() if freq / 100.0 < RARE_CLASS_THRESHOLD]
+
+        for cls in rare_classes:
+            if cls in target_ratios:
+                target_ratios[cls] = RARE_CLASS_RATIO
+
+        print(f"Set rare class ratios for: {', '.join(rare_classes)} to {RARE_CLASS_RATIO:.2f}")
         # Optional: Renormalize so all ratios sum to 1
         total = sum(target_ratios.values())
         for k in target_ratios:
@@ -476,6 +585,12 @@ def main():
         print(f"Dataset size after augmentation: {len(dataset.images)}")
         print(f"Augmented counts: {augmented_counts}")
         masks = dataset.masks  # Update masks after augmentation
+
+        # --- MASK BE PIXELS IN ALL PATCHES ---
+        # ... after augmentation, before fold assignment ...
+        dataset.masks, reduced_class_name = reduce_dominant_class_pixels(dataset.masks, class_labels_dict, reduce_fraction=0.5)
+        print(f"Reduced pixels of dominant class: {reduced_class_name}")
+        masks = dataset.masks  # Update for downstream reporting
     else:
         print("Data augmentation is DISABLED.")
 

@@ -95,6 +95,8 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
         avg_val_loss = val_loss_sum / num_val_batches
         val_losses_per_epoch.append(avg_val_loss)
 
+        # avg_train_loss = float(avg_train_loss)
+        # avg_val_loss = float(avg_val_loss)
         # Logging to TensorBoard
         if logger:
             logger.log_metrics({'train_loss': avg_train_loss, 'val_loss': avg_val_loss}, epoch)

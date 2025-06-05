@@ -230,7 +230,12 @@ def augment_minority_classes(dataset, class_distributions, class_labels, target_
 
                 if fold_assignments:
                     new_idx = len(new_images) - 1
-                    new_fold_assignments[new_idx] = fold_assignments[original_idx]
+                    if original_idx in fold_assignments:
+                        new_fold_assignments[new_idx] = fold_assignments[original_idx]
+                    else:
+                        # Optionally, assign to a default fold or print a warning
+                        print(f"Warning: original_idx {original_idx} not in fold_assignments. Assigning to fold -1.")
+                        new_fold_assignments[new_idx] = -1
 
                 augmented.append((aug_img, aug_mask))
 
@@ -245,81 +250,69 @@ def augment_minority_classes(dataset, class_distributions, class_labels, target_
     print(f"✅ Augmented counts: {augmented_counts}")
     return augmented_counts
 
-def augment_minority_classes_pixel_level(
-    dataset, class_labels, target_pixel_ratios, fold_assignments=None, augmentation_functions=None
-):
-    """
-    Augment minority classes in a dataset to meet target pixel ratios.
 
-    Args:
-        dataset: Dataset object with .images and .masks.
-        class_labels: Dict mapping class index to class name.
-        target_pixel_ratios: Dict mapping class name to target pixel ratio (0-1).
-        fold_assignments: Optional dict mapping sample index to fold.
-        augmentation_functions: List of augmentation functions (should take (img, mask) tuple).
-    Returns:
-        dict: Augmented sample count per class.
-    """
+# === Pixel-level class augmentation ===
+def augment_minority_classes_pixel_level(dataset, class_labels, target_pixel_ratios, fold_assignments=None, augmentation_functions=None, max_aug_per_class=200):
     if not hasattr(dataset, "images") or not hasattr(dataset, "masks"):
         raise ValueError("Dataset must be loaded into memory with .images and .masks attributes.")
 
     if augmentation_functions is None:
-        augmentation_functions = []
+        augmentation_functions = [apply_combined_augmentations]
 
     augmented_counts = {}
     new_images = list(dataset.images)
     new_masks = list(dataset.masks)
     new_fold_assignments = dict(fold_assignments) if fold_assignments else {}
 
-    # Calculate total pixels in dataset
     total_pixels = sum(mask.numel() for mask in dataset.masks)
-    # Calculate current pixel counts per class
-    pixel_counts = {class_name: 0 for class_name in class_labels.values()}
+    pixel_counts = {cls: 0 for cls in class_labels.values()}
     for mask in dataset.masks:
-        for class_idx, class_name in class_labels.items():
-            pixel_counts[class_name] += (mask == class_idx).sum().item()
+        for idx, name in class_labels.items():
+            pixel_counts[name] += (mask == idx).sum().item()
 
-    for class_idx, class_name in class_labels.items():
-        current_pixels = pixel_counts[class_name]
-        target_pixels = int(target_pixel_ratios[class_name] * total_pixels)
-        if current_pixels >= target_pixels:
+    for idx, name in class_labels.items():
+        current = pixel_counts[name]
+        target = int(target_pixel_ratios[name] * total_pixels)
+        if current >= target:
             continue
 
-        print(f"Pixel-level augmenting class '{class_name}' (current: {current_pixels}, target: {target_pixels})")
-        # Find all samples with this class
-        class_samples = [
-            (img, mask, idx)
-            for idx, (img, mask) in enumerate(zip(dataset.images, dataset.masks))
-            if (mask == class_idx).sum().item() > 0
-        ]
-        if not class_samples:
-            print(f"⚠️ No samples found for class '{class_name}' in dataset.")
+        print(f"⬆️ Pixel-level augmenting class '{name}' (current: {current}, target: {target})")
+        samples = [(img, msk, i) for i, (img, msk) in enumerate(zip(dataset.images, dataset.masks)) if (msk == idx).sum().item() > 0]
+        samples.sort(key=lambda x: (x[1] == idx).sum().item(), reverse=True)
+
+        if not samples:
+            print(f"⚠️ No samples found for class '{name}'.")
             continue
 
-        augmented = []
-        added_pixels = 0
-        i = 0
-        while current_pixels + added_pixels < target_pixels:
-            img, mask, original_idx = class_samples[i % len(class_samples)]
-            aug_img, aug_mask = img.clone(), mask.clone()
+        i, added_pixels, augmented = 0, 0, []
+        while current + added_pixels < target and len(augmented) < max_aug_per_class:
+            img, msk, orig = samples[i % len(samples)]
+            aug_img, aug_msk = img.clone(), msk.clone()
             for aug_func in augmentation_functions:
-                aug_img, aug_mask = aug_func((aug_img, aug_mask))
+                aug_img, aug_msk = aug_func(aug_img, aug_msk)
             new_images.append(aug_img)
-            new_masks.append(aug_mask)
+            new_masks.append(aug_msk)
+            new_idx = len(new_images) - 1
             if fold_assignments:
-                new_idx = len(new_images) - 1
-                new_fold_assignments[new_idx] = fold_assignments[original_idx]
-            # Count new pixels for this class in the augmented mask
-            added_pixels += (aug_mask == class_idx).sum().item()
-            augmented.append((aug_img, aug_mask))
+                new_fold_assignments[new_idx] = fold_assignments.get(orig, -1)
+            added_pixels += (aug_msk == idx).sum().item()
+            augmented.append((aug_img, aug_msk))
             i += 1
 
-        augmented_counts[class_name] = len(augmented)
+        augmented_counts[name] = len(augmented)
 
     dataset.images = new_images
     dataset.masks = new_masks
     if fold_assignments:
         fold_assignments.update(new_fold_assignments)
 
-    print(f"✅ Pixel-level augmented counts: {augmented_counts}")
+    print(f"\n✅ Pixel-level augmented counts: {augmented_counts}")
+
+    # Final class pixel ratios
+    total_aug_pixels = sum((m == cls_idx).sum().item() for m in new_masks for cls_idx in class_labels)
+    print("\n📊 Final pixel distribution:")
+    for cls_idx, name in class_labels.items():
+        p_count = sum((m == cls_idx).sum().item() for m in new_masks)
+        print(f"  {name}: {p_count / total_aug_pixels:.2%}")
+
     return augmented_counts
