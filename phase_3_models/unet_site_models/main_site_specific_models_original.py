@@ -1,4 +1,16 @@
-import os
+# --- REBUILD FOLDS TO INCLUDE AUGMENTED DATA ---
+block_cv_splits = block_cross_validation(
+    dataset=dataset,
+    combined_data=[combined_data[i % len(combined_data)] for i in range(len(dataset))],
+    num_blocks=config_param.NUM_BLOCKS,
+    kmeans_centroids=centroids
+)# --- REBUILD FOLDS TO INCLUDE AUGMENTED DATA ---
+block_cv_splits = block_cross_validation(
+    dataset=dataset,
+    combined_data=[combined_data[i % len(combined_data)] for i in range(len(dataset))],
+    num_blocks=config_param.NUM_BLOCKS,
+    kmeans_centroids=centroids
+)import os
 import torch
 import numpy as np
 import rasterio
@@ -595,12 +607,12 @@ def main():
         print("Data augmentation is DISABLED.")
 
     # --- REBUILD FOLDS TO INCLUDE AUGMENTED DATA ---
-    block_cv_splits = block_cross_validation(
-        dataset=dataset,
-        combined_data=[combined_data[i % len(combined_data)] for i in range(len(dataset))],
-        num_blocks=config_param.NUM_BLOCKS,
-        kmeans_centroids=centroids
-    )
+    # block_cv_splits = block_cross_validation(
+    #     dataset=dataset,
+    #     combined_data=[combined_data[i % len(combined_data)] for i in range(len(dataset))],
+    #     num_blocks=config_param.NUM_BLOCKS,
+    #     kmeans_centroids=centroids
+    # )
 
     # Re-assign fold assignments for all samples (including augmented)
     fold_assignments = {}
@@ -623,7 +635,22 @@ def main():
         final_folds, _ = integrate_water_distribution(
             dataset, masks, block_cv_splits, config_param.NUM_BLOCKS, config_param.BATCH_SIZE, config_param.NUM_WORKERS
         )
-    else:
+    else:   
+        print("Water redistribution is DISABLED or no water class present.")
+     # After augmentation, assign all new samples to 'train'
+    num_original = len(fold_assignments)
+    num_total = len(dataset.images)
+    for idx in range(num_original, num_total):
+        fold_assignments[idx] = 'train'        
+        train_indices = [idx for idx, fold in fold_assignments.items() if fold == 'train']
+        val_indices = [idx for idx, fold in fold_assignments.items() if fold == 'val']
+        test_indices = [idx for idx, fold in fold_assignments.items() if fold == 'test']
+        
+        train_loader = DataLoader(dataset, batch_size=config_param.BATCH_SIZE, sampler=SubsetRandomSampler(train_indices))
+        val_loader = DataLoader(dataset, batch_size=config_param.BATCH_SIZE, sampler=SubsetRandomSampler(val_indices))
+        test_loader = DataLoader(dataset, batch_size=config_param.BATCH_SIZE, sampler=SubsetRandomSampler(test_indices))
+        
+        final_folds = [(train_loader, val_loader, test_loader)]
         print("Water redistribution is DISABLED or no water class present.")
         final_folds = block_cv_splits
 
