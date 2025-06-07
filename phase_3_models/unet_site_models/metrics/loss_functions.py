@@ -42,35 +42,6 @@ class DiceLoss(nn.Module):
         return dice_loss
 
 ##ORGININAL FOCAL LOSS IMPLEMENTATION
-# class FocalLoss(nn.Module):
-#     def __init__(self, alpha=1, gamma=2, ignore_index=-1):
-#         super(FocalLoss, self).__init__()
-#         self.alpha = alpha
-#         self.gamma = gamma
-#         self.ignore_index = ignore_index
-
-#     def forward(self, outputs, targets):
-#         # Create a mask to ignore NaN values (or the specified ignore_index)
-#         valid_mask = (targets != self.ignore_index)
-
-#         # Flatten the tensors to apply the mask
-#         outputs = outputs.permute(0, 2, 3, 1).reshape(-1, outputs.size(1))  # Shape: [batch_size * height * width, num_classes]
-#         targets = targets.view(-1)  # Shape: [batch_size * height * width]
-
-#         # Apply the valid mask
-#         outputs = outputs[valid_mask.view(-1)]
-#         targets = targets[valid_mask.view(-1)]
-
-#         # Compute the cross entropy loss
-#         logpt = F.cross_entropy(outputs, targets, reduction='none')
-#         pt = torch.exp(-logpt)
-
-#         # Apply Focal Loss formula
-#         focal_loss = self.alpha * ((1 - pt) ** self.gamma) * logpt
-
-#         return focal_loss.mean()
-
-##version nan
 class FocalLoss(nn.Module):
     def __init__(self, alpha=1, gamma=2, ignore_index=-1):
         super(FocalLoss, self).__init__()
@@ -83,31 +54,21 @@ class FocalLoss(nn.Module):
         valid_mask = (targets != self.ignore_index)
 
         # Flatten the tensors to apply the mask
-        outputs = outputs.permute(0, 2, 3, 1).reshape(-1, outputs.size(1))  # [N*H*W, C]
-        targets = targets.view(-1)  # [N*H*W]
+        outputs = outputs.permute(0, 2, 3, 1).reshape(-1, outputs.size(1))  # Shape: [batch_size * height * width, num_classes]
+        targets = targets.view(-1)  # Shape: [batch_size * height * width]
 
         # Apply the valid mask
-        valid_mask = valid_mask.view(-1)
-        if valid_mask.sum() == 0:
-            return torch.tensor(0.0, dtype=outputs.dtype, device=outputs.device)
-
-        outputs = outputs[valid_mask]
-        targets = targets[valid_mask]
+        outputs = outputs[valid_mask.view(-1)]
+        targets = targets[valid_mask.view(-1)]
 
         # Compute the cross entropy loss
         logpt = F.cross_entropy(outputs, targets, reduction='none')
         pt = torch.exp(-logpt)
 
         # Apply Focal Loss formula
-        if isinstance(self.alpha, torch.Tensor) and self.alpha.numel() > 1:
-            alpha = self.alpha.to(outputs.device)
-            at = alpha[targets]
-        else:
-            at = self.alpha if isinstance(self.alpha, torch.Tensor) else torch.tensor(self.alpha, device=outputs.device)
+        focal_loss = self.alpha * ((1 - pt) ** self.gamma) * logpt
 
-        loss = at * ((1 - pt) ** self.gamma) * logpt
-
-        return loss.mean()
+        return focal_loss.mean()
 
 
 ###VERSION 2

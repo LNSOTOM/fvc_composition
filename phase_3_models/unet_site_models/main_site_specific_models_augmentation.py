@@ -30,6 +30,8 @@ import json
 from torchmetrics.classification import ConfusionMatrix
 import pandas as pd
 
+from balance_mask_water import integrate_water_distribution, has_water_class
+
 
 def print_gpu_memory_usage(stage=""):
     allocated = torch.cuda.memory_allocated() / (1024 ** 3)
@@ -275,6 +277,12 @@ def main():
     
     print(f"Subsampled Indices Length: {len(subsampled_indices)}")
     print(f"Number of Blocks: {config_param.NUM_BLOCKS}")
+    
+    # For water distrution
+    water_class_name = 'WI'
+    water_class_idx = config_param.class_labels[water_class_name]
+    # Check if water is present
+    water_present = has_water_class(masks, water_class=water_class_idx)
 
     # Perform block cross-validation using the same centroids
     block_cv_splits = block_cross_validation(
@@ -283,7 +291,33 @@ def main():
         num_blocks=config_param.NUM_BLOCKS,
         kmeans_centroids=centroids  # Pass the centroids to the function
     )
-
+    # Print block sizes BEFORE water redistribution
+    print("Block splits BEFORE water redistribution:")
+    print(f"Number of blocks in block_cv_splits: {len(block_cv_splits)}")
+    for i, fold in enumerate(block_cv_splits):
+        if len(fold) == 3:
+            print(f"Block {i+1}: Train={len(fold[0].dataset)}, Val={len(fold[1].dataset)}, Test={len(fold[2].dataset)}")
+        else:
+            print(f"Block {i+1}: Invalid fold (len={len(fold)})")
+    
+    # --- CONDITIONAL WATER REDISTRIBUTION ---
+    if water_present and config_param.ENABLE_WATER_REDISTRIBUTION:
+        print("Water class detected and water redistribution is ENABLED.")
+        final_folds, _ = integrate_water_distribution(
+            dataset, masks, block_cv_splits, config_param.NUM_BLOCKS, config_param.BATCH_SIZE, config_param.NUM_WORKERS
+        )
+        
+        print(f"Number of blocks in final_folds: {len(final_folds)}")
+        for i, fold in enumerate(final_folds):
+            if len(fold) == 3:
+                print(f"Block {i+1}: Train={len(fold[0].dataset)}, Val={len(fold[1].dataset)}, Test={len(fold[2].dataset)}")
+            else:
+                print(f"Block {i+1}: Invalid fold (len={len(fold)})")
+        folds_to_use = final_folds        
+    else:   
+        print("Water redistribution is DISABLED or no water class present.")
+        folds_to_use = block_cv_splits
+    
     # Initialize all required data structures
     all_metrics = initialize_all_metrics(num_blocks=config_param.NUM_BLOCKS)
     conf_matrices = []  # List to store confusion matrices for each block
@@ -305,7 +339,10 @@ def main():
     all_best_val_metrics = []
 
     # Train, validate, and test using cross-validation splits
-    for block_idx, (train_loader, val_loader, test_loader) in enumerate(block_cv_splits):
+    # for block_idx, (train_loader, val_loader, test_loader) in enumerate(block_cv_splits):
+    # for block_idx, (train_loader, val_loader, test_loader) in enumerate(final_folds):
+    for block_idx, (train_loader, val_loader, test_loader) in enumerate(folds_to_use):
+        # print(f"Block {block_idx+1}: Train={len(train_loader.dataset)}, Val={len(val_loader.dataset)}, Test={len(test_loader.dataset)}")
         if train_loader is None or val_loader is None or test_loader is None:
             print(f"Skipping block {block_idx + 1} due to missing data")
             continue

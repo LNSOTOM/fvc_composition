@@ -1,4 +1,3 @@
-
 import os
 import shutil
 import numpy as np
@@ -16,13 +15,54 @@ from dataset.data_loaders_fold_blockcross_subsampling import (
     plot_blocks_folds
 )
 from torch.utils.data import Subset, DataLoader
+from dataset.data_augmentation_wrapper import AugmentationWrapper
 
 
+# def integrate_water_distribution(dataset, masks, folds, num_blocks, batch_size, num_workers):
+#     """
+#     Integrates water redistribution into the cross-validation process.
+#     Adjusts indices and rebuilds loaders after redistributing water tiles.
+#     """
+#     # Identify water tiles
+#     water_indices = [i for i, mask in enumerate(masks) if (mask == 4).any()]
+
+#     # Extract split indices and remove water
+#     split_bins = []  # [ [fold, name, indices], ... ]
+#     for fi, (tr, vl, te) in enumerate(folds):
+#         split_bins += [
+#             [fi, 'train', list(tr.dataset.indices)],
+#             [fi, 'val',   list(vl.dataset.indices)],
+#             [fi, 'test',  list(te.dataset.indices)]
+#         ]
+#     for _, _, lst in split_bins:
+#         lst[:] = [i for i in lst if i not in water_indices]
+
+#     # Group bins by fold and flatten
+#     grouped = {fi: [lst for f, n, lst in split_bins if f == fi]
+#                for fi in range(num_blocks)}
+#     all_bins = [lst for bins in grouped.values() for lst in bins]
+
+#     # Redistribute water
+#     distribute_water(water_indices, all_bins)
+
+#     # Rebuild loaders
+#     new_folds = []
+#     for fi in range(config_param.NUM_BLOCKS):
+#         bins = grouped[fi]  # train, val, test lists
+#         if len(bins) != 3 or any(len(b) == 0 for b in bins):
+#             print(f"⚠️ Block {fi}: missing or empty bins after water redistribution, skipping.")
+#             continue
+#         new_folds.append(
+#             rebuild_loaders(dataset, bins, water_indices, config_param.BATCH_SIZE, config_param.NUM_WORKERS)
+#         )
+
+#     return new_folds, all_bins
 
 def integrate_water_distribution(dataset, masks, folds, num_blocks, batch_size, num_workers):
     """
     Integrates water redistribution into the cross-validation process.
     Adjusts indices and rebuilds loaders after redistributing water tiles.
+    Works with both regular and augmented datasets.
     """
     # Identify water tiles
     water_indices = [i for i, mask in enumerate(masks) if (mask == 4).any()]
@@ -30,11 +70,16 @@ def integrate_water_distribution(dataset, masks, folds, num_blocks, batch_size, 
     # Extract split indices and remove water
     split_bins = []  # [ [fold, name, indices], ... ]
     for fi, (tr, vl, te) in enumerate(folds):
+        # Get original indices attribute (works with both Subset and ConcatDataset)
+        train_indices = getattr(tr.dataset, 'original_indices', 
+                              getattr(tr.dataset, 'indices', []))
+        
         split_bins += [
-            [fi, 'train', list(tr.dataset.indices)],
+            [fi, 'train', list(train_indices)],
             [fi, 'val',   list(vl.dataset.indices)],
             [fi, 'test',  list(te.dataset.indices)]
         ]
+    
     for _, _, lst in split_bins:
         lst[:] = [i for i in lst if i not in water_indices]
 
@@ -50,11 +95,46 @@ def integrate_water_distribution(dataset, masks, folds, num_blocks, batch_size, 
     new_folds = []
     for fi in range(config_param.NUM_BLOCKS):
         bins = grouped[fi]  # train, val, test lists
-        new_folds.append(
-            rebuild_loaders(dataset, bins, water_indices, config_param.BATCH_SIZE, config_param.NUM_WORKERS)
-        )
+        if len(bins) != 3 or any(len(b) == 0 for b in bins):
+            print(f"⚠️ Block {fi}: missing or empty bins after water redistribution, skipping.")
+            continue
+            
+        # Unpack train, val, test indices
+        train_indices, val_indices, test_indices = bins
+        
+        # Create datasets with original (non-augmented) data
+        train_dataset = Subset(dataset, train_indices)
+        val_dataset = Subset(dataset, val_indices)
+        test_dataset = Subset(dataset, test_indices)
+        
+        # Apply augmentation to training set if enabled
+        if config_param.ENABLE_DATA_AUGMENTATION:
+            original_train_dataset = train_dataset
+            augmented_train_dataset = AugmentationWrapper(original_train_dataset)
+            
+            # Combine original and augmented datasets
+            from torch.utils.data import ConcatDataset
+            train_dataset = ConcatDataset([original_train_dataset, augmented_train_dataset])
+            # Preserve indices for potential future operations
+            train_dataset.indices = train_indices
+            train_dataset.original_indices = train_indices
+                
+        # Create data loaders
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        
+        new_folds.append((train_loader, val_loader, test_loader))
+        
+        print(f"Block {fi+1}: Train={len(train_dataset)}, Val={len(val_dataset)}, Test={len(test_dataset)}")
+        
+    return new_folds, water_indices
 
-    return new_folds, all_bins
+def has_water_class(masks, water_class=4):
+    for mask in masks:
+        if (np.array(mask) == water_class).any():
+            return True
+    return False
 
 def distribute_water(water_indices, all_bins):
     """
@@ -65,6 +145,9 @@ def distribute_water(water_indices, all_bins):
         all_bins: List of bins (train, val, test) for all folds.
     """
     num_bins = len(all_bins)
+    if num_bins == 0:
+        print("❌ No bins available for water redistribution.")
+        return
     water_per_bin = len(water_indices) // num_bins  # Calculate water tiles per bin
     extra_water = len(water_indices) % num_bins  # Handle remainder
 
@@ -173,6 +256,9 @@ if __name__ == '__main__':
     new_folds = []
     for fi in range(num_blocks):
         bins = grouped[fi]  # train, val, test lists
+        if len(bins) != 3 or any(len(b) == 0 for b in bins):
+            print(f"⚠️ Block {fi}: missing or empty bins after water redistribution, skipping.")
+            continue
         new_folds.append(
             rebuild_loaders(dataset, bins, water_idxs,
                             batch_size, num_workers)
@@ -234,5 +320,13 @@ if __name__ == '__main__':
     with open(final_idx_file, 'w') as f:
         json.dump(final_indices, f)
     print(f"Saved CV final indices to {final_idx_file}")
+
+    if final_folds and all(len(fold) == 3 for fold in final_folds):
+        # Only call if folds are valid
+        final_folds, _ = integrate_water_distribution(
+            dataset, masks, final_folds, config_param.NUM_BLOCKS, config_param.BATCH_SIZE, config_param.NUM_WORKERS
+        )
+    else:
+        print("❌ No valid folds available for water redistribution. Skipping.")
 
 # %%

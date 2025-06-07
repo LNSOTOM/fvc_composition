@@ -1,7 +1,6 @@
 ############## Configuration ##########################
 import torch
 from torch.optim import Adam, RMSprop
-from torch.cuda.amp import GradScaler, autocast
 
 import torchvision.transforms as transforms
 import re
@@ -10,10 +9,9 @@ import os
 import random
 import numpy as np
 from torchvision.transforms import functional as F
-from torchvision.transforms import RandomRotation, RandomResizedCrop
 
 from dataset.calperum_dataset import CalperumDataset
-from dataset.data_augmentation import apply_color_jitter, apply_vertical_flip, apply_horizontal_flip, apply_random_affine
+from dataset.data_augmentation import apply_color_jitter, apply_vertical_flip, apply_horizontal_flip
 
 from torch.nn import CrossEntropyLoss, BCEWithLogitsLoss
 from metrics.loss_functions import FocalLoss, WeightedCrossEntropyLoss, calculate_class_weights, save_class_weights_to_file, DiceLoss, CombinedDiceFocalLoss
@@ -35,9 +33,6 @@ def get_num_classes_from_mask(mask_path):
 
 # Define the class labels
 class_labels = {'BE': 0, 'NPV': 1, 'PV': 2, 'SI': 3, 'WI': 4}
-# Get water class index from config
-water_class_name = 'WI'  # or whatever your config uses for water
-
 
 MASK_FOLDER = [
     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/mask_fvc' #low
@@ -69,7 +64,7 @@ print(f"OUT_CHANNELS determined based on unique classes in masks: {OUT_CHANNELS}
 '''Pytorch Lightning device name = gpu'''
 # DEVICE = "gpu" if torch.cuda.is_available() else "cpu" 
 '''Pytorch device name = cuda'''
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Set the accelerator to "gpu" if CUDA is available, otherwise, set it to "cpu"
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Set the accelerator to "gpu" if CUDA is available, otherwise, set it to "cpu"
 
 
 # 2.Data handling parameters
@@ -107,7 +102,7 @@ IMAGE_FOLDER = [
 
 # 3.Hyperparameters for training
 '''Num of epochs: how many times the learning algorithm will work through the entire training dataset. Helps to not overfit'''
-NUM_EPOCHS = 20 # try also --> 100 and 20 for test and 40 minimum
+NUM_EPOCHS = 20 #120 # try also --> 100 and 20 for test and 40 minimum
 '''batch_size: number of training samples utilised in one iteration'''
 BATCH_SIZE =  16 #12  # minimum 16) | 32 
 ##PATCH_SIZE = 256  # Used in dataset preprocessing, if applicable
@@ -116,7 +111,8 @@ NUM_WORKERS = 4
 ##5bands
 # CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low'  #low
 # CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
-CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense
+# CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense
+CHECKPOINT_DIR = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense'
 
 #  OPTIMIZER (configuration for loss functions)
 '''optimiser: influence model performance'''
@@ -125,7 +121,7 @@ OPTIMIZER = Adam      # try also --> RMSprop=Root Mean Squared Propagation
 LEARNING_RATE = 1e-4  # 0.0001  or 3e-4  = 3 * 10^-4
 '''Weight Decay: provides regularization, helping to prevent overfitting. If you see signs of overfitting 
 (e.g., training loss decreasing while validation loss increases), you might consider i'ncreasing the weight decay slightly.'''
-WEIGHT_DECAY = 1e-4  # Add weight decay
+WEIGHT_DECAY = 1e-4
 '''Betas: are standard settings for Adam, where beta1 controls the decay rate of the running average of the gradient and 
 beta2 controls the decay rate of the running average of the squared gradient. 
 These values are generally fine and typically don’t need adjustment unless you’re encountering specific issues with convergence.'''
@@ -180,10 +176,8 @@ APPLY_TRANSFORMS = False
 DATA_TRANSFORM = transforms.Compose([
     transforms.Lambda(lambda img_mask: apply_color_jitter(img_mask[0], img_mask[1])),
     transforms.Lambda(lambda img_mask: apply_vertical_flip(img_mask[0], img_mask[1])),
-    transforms.Lambda(lambda img_mask: apply_horizontal_flip(img_mask[0], img_mask[1])),
-    transforms.Lambda(lambda img_mask: apply_random_affine(img_mask[0], img_mask[1])),
-    RandomRotation(degrees=15),  # Add random rotation
-    RandomResizedCrop(size=(256, 256), scale=(0.8, 1.0))  # Add random cropping
+    transforms.Lambda(lambda img_mask: apply_horizontal_flip(img_mask[0], img_mask[1]))
+    # transforms.Lambda(lambda img_mask: apply_random_affine(img_mask[0], img_mask[1]))
 ]) if APPLY_TRANSFORMS else None
 
 
@@ -242,62 +236,16 @@ COMBINED_INDICES_SAVE_PATHS = [
 ## Display tensorboard
 #  tensorboard --logdir=phase_3_models/unet_model/low/tb_logs
 
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# Function to compute class weights
-def compute_class_weights(mask_dir, ignore_index=-1):
-    """
-    Compute class weights based on the frequency of each class in the dataset.
-
-    Args:
-        mask_dir (str): Directory containing mask files.
-        ignore_index (int): Index to ignore in the masks (e.g., -1 for ignored pixels).
-
-    Returns:
-        list: Normalized class weights for each class.
-    """
-    class_counts = None
-
-    for f in os.listdir(mask_dir):
-        if f.endswith(".tif"):
-            mask, _ = CalperumDataset.load_mask(os.path.join(mask_dir, f))
-            mask = mask[mask != ignore_index]  # Exclude ignored values
-
-            # Ensure the mask contains integer values
-            mask = np.round(mask).astype(int)  # Convert float32 to integers safely
-
-            # Dynamically determine the number of classes
-            max_class = int(mask.max())
-            if class_counts is None:
-                class_counts = np.zeros(max_class + 1)
-            elif max_class >= class_counts.size:
-                # Resize the class_counts array if a higher class index is found
-                new_size = max_class + 1
-                class_counts = np.resize(class_counts, new_size)
-
-            # Update class counts using vectorized operations
-            unique, counts = np.unique(mask, return_counts=True)
-            class_counts[unique] += counts
-
-    # Compute class frequencies
-    freq = class_counts / np.sum(class_counts)
-
-    # Compute inverse frequency and normalize
-    inv = 1 / freq
-    alpha = inv / np.sum(inv)
-
-    return alpha.tolist()
-
-# Compute class weights for FocalLoss
-# alpha = compute_class_weights(SUBSAMPLE_MASK_DIR[0])
-# print("Alpha for FocalLoss:", alpha)
-# CRITERION = FocalLoss(alpha=alpha, gamma=2, ignore_index=-1)
+# Water redistribution control (optional, but not strictly needed if you check for water in code)
+ENABLE_WATER_REDISTRIBUTION = False  #False True
 
 # Data augmentation control
-ENABLE_DATA_AUGMENTATION = True  # Set to False to disable augmentation
+ENABLE_DATA_AUGMENTATION = False  # Set to False to disable augmentation
 
-# Gaussian threshold control for augmentation
-AUGMENTATION_USE_GAUSSIAN_THRESHOLD = True  # Set to False to use manual ratios
-
-# Water redistribution control (optional, but not strictly needed if you check for water in code)
-ENABLE_WATER_REDISTRIBUTION = True
+# Define augmentation functions
+# AUGMENTATION_FUNCTIONS = [
+#     apply_color_jitter,
+#     apply_vertical_flip,
+#     apply_horizontal_flip,
+#     apply_random_affine
+# ]

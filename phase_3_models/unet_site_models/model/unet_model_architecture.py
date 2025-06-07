@@ -112,6 +112,7 @@ class UNetModel(nn.Module):
 
             if x.shape != skip_connection.shape:
                 # x = F.interpolate(x, size=skip_connection.shape[2:])
+                # x = F.interpolate(x, size=skip_connection.shape[2:], mode='nearest')
                 x = F.interpolate(x, size=skip_connection.shape[2:], mode='bilinear', align_corners=False)
 
             concat_skip = torch.cat((skip_connection, x), dim=1)
@@ -119,7 +120,6 @@ class UNetModel(nn.Module):
 
         x = self.final_conv(x) # 1x1 convolution to reduce channels to the number of classes
         return F.softmax(x, dim=1)   # Apply softmax along the channel dimension to get probabilities
-        # return x
 
 def unet_model_print():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
