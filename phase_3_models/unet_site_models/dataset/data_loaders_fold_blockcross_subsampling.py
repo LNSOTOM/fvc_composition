@@ -357,106 +357,9 @@ def get_dataset_splits(image_folder, mask_folder, combined_data, transform, soil
 
 
 ### option original and water
-# def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=None, water_indices=None, original_indices=None):
-#     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/logfile.txt' #medium
-#     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/logfile.txt' #dense
-#     log_file = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/logfile.txt'
-   
-#     """
-#     Perform block cross-validation.
-
-#     Args:
-#         dataset: The dataset to split.
-#         combined_data: Combined data paths.
-#         num_blocks: Number of blocks for cross-validation.
-#         kmeans_centroids: Centroids for KMeans clustering.
-#         water_indices: (Optional) Indices of water tiles to preserve distribution.
-
-#     Returns:
-#         List of folds (train, val, test).
-#     """
-#     # Handle water_indices if provided
-#     if water_indices is not None:
-#         print(f"Water indices provided: {len(water_indices)} tiles")
-
-#     coordinates = []
-    
-#     for idx, (_, _, img_path, _) in enumerate(combined_data):
-#         try:
-#             image, profile = load_raw_multispectral_image(img_path)
-#             transform = profile.get('transform', None)
-            
-#             if transform is None:
-#                 raise ValueError(f"Transform is missing in the profile for {img_path}.")
-            
-#             if not isinstance(transform, Affine):
-#                 raise TypeError(f"Transform for {img_path} is not an Affine object.")
-            
-#             coords = transform * (0, 0)
-#             coordinates.append(coords)
-#         except Exception as e:
-#             log_message(f"Error processing {img_path}: {e}", log_file)
-
-#     if len(coordinates) == 0:
-#         log_message("No coordinates were extracted. Please check the input data.", log_file)
-#         raise ValueError("No coordinates extracted after subsampling.")
-
-#     coordinates = np.array(coordinates)
-#     if coordinates.ndim == 1:
-#         coordinates = coordinates.reshape(-1, 1)
-
-#     log_message(f"Coordinates shape after reshaping: {coordinates.shape}", log_file)
-
-#     if coordinates.ndim != 2:
-#         raise ValueError(f"Expected coordinates to be 2D after reshaping, but got shape: {coordinates.shape}")
-
-#     # Use provided centroids for clustering, if available
-#     if kmeans_centroids is not None:
-#         kmeans = KMeans(n_clusters=num_blocks, init=kmeans_centroids, n_init=1)
-#     else:
-#         kmeans = KMeans(n_clusters=num_blocks, init='k-means++', random_state=42)
-
-#     kmeans.fit(coordinates)
-#     block_labels = kmeans.labels_
-
-#     data_splits = []
-#     fold_assignments = {}
-
-#     for block in np.unique(block_labels):
-#         test_indices = [i for i in range(len(block_labels)) if block_labels[i] == block]
-#         train_val_indices = [i for i in range(len(block_labels)) if block_labels[i] != block]
-        
-#         if len(train_val_indices) == 0 or len(test_indices) == 0:
-#             log_message(f"Skipping block {block} due to insufficient data.", log_file)
-#             continue
-
-#         train_indices, val_indices = train_test_split(train_val_indices, test_size=0.2, random_state=42)
-
-#         train_dataset = Subset(dataset, train_indices)
-#         val_dataset = Subset(dataset, val_indices)
-#         test_dataset = Subset(dataset, test_indices)
-
-#         train_loader = DataLoader(train_dataset, batch_size=config_param.BATCH_SIZE, shuffle=True, num_workers=config_param.NUM_WORKERS)
-#         val_loader = DataLoader(val_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
-#         test_loader = DataLoader(test_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
-
-#         fold_assignments[block] = {
-#             'train_indices': train_indices,
-#             'val_indices': val_indices,
-#             'test_indices': test_indices
-#         }
-
-#         data_splits.append((train_loader, val_loader, test_loader))
-    
-#     plot_blocks_folds(coordinates, block_labels, fold_assignments, crs="EPSG:7854")
-
-#     return data_splits
-
-
-### with data augmenation
-from dataset.data_augmentation_wrapper import AugmentationWrapper
-
 def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=None, water_indices=None, original_indices=None):
+    # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/logfile.txt' #medium
+    # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/logfile.txt' #dense
     log_file = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/logfile.txt'
    
     """
@@ -526,34 +429,13 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
         if len(train_val_indices) == 0 or len(test_indices) == 0:
             log_message(f"Skipping block {block} due to insufficient data.", log_file)
             continue
-        
+
         train_indices, val_indices = train_test_split(train_val_indices, test_size=0.2, random_state=42)
-        # train_indices, val_indices = train_test_split(train_val_indices, test_size=0.333, random_state=42)
 
         train_dataset = Subset(dataset, train_indices)
         val_dataset = Subset(dataset, val_indices)
         test_dataset = Subset(dataset, test_indices)
-        print(f"Original training dataset size: {len(train_dataset)}")
-        
-        # Store original indices before augmentation
-        train_dataset.original_indices = train_indices
-        
-        # Apply augmentation wrapper to the training dataset if enabled
-        if config_param.ENABLE_DATA_AUGMENTATION:
-            # Create a duplicate of the original training dataset
-            original_train_dataset = train_dataset
-            augmented_train_dataset = AugmentationWrapper(original_train_dataset)
-            
-            # Combine original and augmented datasets
-            from torch.utils.data import ConcatDataset
-            train_dataset = ConcatDataset([original_train_dataset, augmented_train_dataset])
-            
-            # Store original indices for water redistribution
-            # This allows water redistribution to work with original indices
-            train_dataset.indices = train_indices
-            train_dataset.original_indices = train_indices
-            print(f"Augmented training dataset size: {len(train_dataset)}")
-                    
+
         train_loader = DataLoader(train_dataset, batch_size=config_param.BATCH_SIZE, shuffle=True, num_workers=config_param.NUM_WORKERS)
         val_loader = DataLoader(val_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
         test_loader = DataLoader(test_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
@@ -569,5 +451,123 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
     plot_blocks_folds(coordinates, block_labels, fold_assignments, crs="EPSG:7854")
 
     return data_splits
+
+
+### with data augmenation
+# from dataset.data_augmentation_wrapper import AugmentationWrapper
+
+# def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=None, water_indices=None, original_indices=None):
+#     log_file = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/logfile.txt'
+   
+#     """
+#     Perform block cross-validation.
+
+#     Args:
+#         dataset: The dataset to split.
+#         combined_data: Combined data paths.
+#         num_blocks: Number of blocks for cross-validation.
+#         kmeans_centroids: Centroids for KMeans clustering.
+#         water_indices: (Optional) Indices of water tiles to preserve distribution.
+
+#     Returns:
+#         List of folds (train, val, test).
+#     """
+#     # Handle water_indices if provided
+#     if water_indices is not None:
+#         print(f"Water indices provided: {len(water_indices)} tiles")
+
+#     coordinates = []
+    
+#     for idx, (_, _, img_path, _) in enumerate(combined_data):
+#         try:
+#             image, profile = load_raw_multispectral_image(img_path)
+#             transform = profile.get('transform', None)
+            
+#             if transform is None:
+#                 raise ValueError(f"Transform is missing in the profile for {img_path}.")
+            
+#             if not isinstance(transform, Affine):
+#                 raise TypeError(f"Transform for {img_path} is not an Affine object.")
+            
+#             coords = transform * (0, 0)
+#             coordinates.append(coords)
+#         except Exception as e:
+#             log_message(f"Error processing {img_path}: {e}", log_file)
+
+#     if len(coordinates) == 0:
+#         log_message("No coordinates were extracted. Please check the input data.", log_file)
+#         raise ValueError("No coordinates extracted after subsampling.")
+
+#     coordinates = np.array(coordinates)
+#     if coordinates.ndim == 1:
+#         coordinates = coordinates.reshape(-1, 1)
+
+#     log_message(f"Coordinates shape after reshaping: {coordinates.shape}", log_file)
+
+#     if coordinates.ndim != 2:
+#         raise ValueError(f"Expected coordinates to be 2D after reshaping, but got shape: {coordinates.shape}")
+
+#     # Use provided centroids for clustering, if available
+#     if kmeans_centroids is not None:
+#         kmeans = KMeans(n_clusters=num_blocks, init=kmeans_centroids, n_init=1)
+#     else:
+#         kmeans = KMeans(n_clusters=num_blocks, init='k-means++', random_state=42)
+
+#     kmeans.fit(coordinates)
+#     block_labels = kmeans.labels_
+
+#     data_splits = []
+#     fold_assignments = {}
+
+#     for block in np.unique(block_labels):
+#         test_indices = [i for i in range(len(block_labels)) if block_labels[i] == block]
+#         train_val_indices = [i for i in range(len(block_labels)) if block_labels[i] != block]
+        
+#         if len(train_val_indices) == 0 or len(test_indices) == 0:
+#             log_message(f"Skipping block {block} due to insufficient data.", log_file)
+#             continue
+        
+#         train_indices, val_indices = train_test_split(train_val_indices, test_size=0.2, random_state=42)
+#         # train_indices, val_indices = train_test_split(train_val_indices, test_size=0.333, random_state=42)
+
+#         train_dataset = Subset(dataset, train_indices)
+#         val_dataset = Subset(dataset, val_indices)
+#         test_dataset = Subset(dataset, test_indices)
+#         print(f"Original training dataset size: {len(train_dataset)}")
+        
+#         # Store original indices before augmentation
+#         train_dataset.original_indices = train_indices
+        
+#         # Apply augmentation wrapper to the training dataset if enabled
+#         if config_param.ENABLE_DATA_AUGMENTATION:
+#             # Create a duplicate of the original training dataset
+#             original_train_dataset = train_dataset
+#             augmented_train_dataset = AugmentationWrapper(original_train_dataset)
+            
+#             # Combine original and augmented datasets
+#             from torch.utils.data import ConcatDataset
+#             train_dataset = ConcatDataset([original_train_dataset, augmented_train_dataset])
+            
+#             # Store original indices for water redistribution
+#             # This allows water redistribution to work with original indices
+#             train_dataset.indices = train_indices
+#             train_dataset.original_indices = train_indices
+#             print(f"Augmented training dataset size: {len(train_dataset)}")
+                    
+#         train_loader = DataLoader(train_dataset, batch_size=config_param.BATCH_SIZE, shuffle=True, num_workers=config_param.NUM_WORKERS)
+#         val_loader = DataLoader(val_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
+#         test_loader = DataLoader(test_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
+
+#         fold_assignments[block] = {
+#             'train_indices': train_indices,
+#             'val_indices': val_indices,
+#             'test_indices': test_indices
+#         }
+
+#         data_splits.append((train_loader, val_loader, test_loader))
+    
+#     plot_blocks_folds(coordinates, block_labels, fold_assignments, crs="EPSG:7854")
+
+#     return data_splits
 
 #%%
