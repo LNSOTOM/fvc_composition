@@ -43,8 +43,8 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
         print_gpu_memory_usage(f"Start of Epoch {epoch+1}")
         
         for batch_idx, batch in enumerate(train_loader):
-            # images, masks = batch
-            images, masks = batch[:2]
+            images, masks = batch
+            # images, masks = batch[:2]
             images, masks = images.to(device), masks.to(device)
 
             with autocast(device_type=device.type):
