@@ -318,10 +318,10 @@ if __name__ == '__main__':
         json.dump(final_indices, f)
     print(f"Saved CV final indices to {final_idx_file}")
 
-    if final_folds and all(len(fold) == 3 for fold in final_folds):
+    if new_folds and all(len(fold) == 3 for fold in new_folds):
         # Only call if folds are valid
         final_folds, _ = integrate_water_distribution(
-            dataset, masks, final_folds, config_param.NUM_BLOCKS, config_param.BATCH_SIZE, config_param.NUM_WORKERS
+            dataset, msks, new_folds, config_param.NUM_BLOCKS, config_param.BATCH_SIZE, config_param.NUM_WORKERS
         )
     else:
         print("❌ No valid folds available for water redistribution. Skipping.")
