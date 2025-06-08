@@ -81,13 +81,13 @@ class CalperumDataset(Dataset):
 
         # Apply transformations to both image and mask tensors
         if self.transform is not None:
-            print("Unique classes in mask before transform:", torch.unique(mask_tensor))
+            # print("Unique classes in mask before transform:", torch.unique(mask_tensor))
             image_tensor, mask_tensor = self.transform((image_tensor, mask_tensor))
-            print("Unique classes in mask after transform:", torch.unique(mask_tensor))
+            # print("Unique classes in mask after transform:", torch.unique(mask_tensor))
 
         # Apply combined augmentations if enabled
-        if config_param.ENABLE_DATA_AUGMENTATION:
-            image_tensor, mask_tensor = apply_combined_augmentations(image_tensor, mask_tensor)
+        # if config_param.ENABLE_DATA_AUGMENTATION:
+        #     image_tensor, mask_tensor = apply_combined_augmentations(image_tensor, mask_tensor)
           
 
         return image_tensor, mask_tensor

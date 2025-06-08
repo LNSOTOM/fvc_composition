@@ -15,7 +15,7 @@ from dataset.data_loaders_fold_blockcross_subsampling import (
     plot_blocks_folds
 )
 from torch.utils.data import Subset, DataLoader
-from dataset.data_augmentation_wrapper import AugmentationWrapper
+from dataset.data_augmentation_wrapper import AugmentationWrapper, IndexedConcatDataset
 
 
 # def integrate_water_distribution(dataset, masks, folds, num_blocks, batch_size, num_workers):
@@ -109,15 +109,12 @@ def integrate_water_distribution(dataset, masks, folds, num_blocks, batch_size, 
         
         # Apply augmentation to training set if enabled
         if config_param.ENABLE_DATA_AUGMENTATION:
-            original_train_dataset = train_dataset
-            augmented_train_dataset = AugmentationWrapper(original_train_dataset)
-            
-            # Combine original and augmented datasets
-            from torch.utils.data import ConcatDataset
-            train_dataset = ConcatDataset([original_train_dataset, augmented_train_dataset])
-            # Preserve indices for potential future operations
-            train_dataset.indices = train_indices
-            train_dataset.original_indices = train_indices
+            # Use the memory-efficient implementation
+            train_dataset = MemoryEfficientAugmentation(
+                base_dataset=dataset,
+                indices=train_indices,
+                augmentation_ratio=1.0
+            )
                 
         # Create data loaders
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
