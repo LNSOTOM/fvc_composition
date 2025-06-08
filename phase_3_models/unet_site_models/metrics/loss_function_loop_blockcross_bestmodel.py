@@ -2,17 +2,35 @@ import os
 import time
 import torch
 import gc
+import psutil
 import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
 from torch.amp import autocast, GradScaler
 from torch.optim.lr_scheduler import OneCycleLR
 
 # Utility function to print GPU memory usage
-def print_gpu_memory_usage(stage=""):
-    allocated = torch.cuda.memory_allocated() / (1024 ** 3)  # Convert bytes to GB
-    cached = torch.cuda.memory_reserved() / (1024 ** 3)  # Convert bytes to GB
-    print(f"{stage} - Allocated memory: {allocated:.2f} GB, Cached memory: {cached:.2f} GB")
-
+def print_gpu_memory_usage(stage="", reset_peak=False):
+    """Enhanced memory tracking with option to reset peak memory usage."""
+    if torch.cuda.is_available():
+        allocated = torch.cuda.memory_allocated() / (1024 ** 3)
+        reserved = torch.cuda.memory_reserved() / (1024 ** 3)
+        max_allocated = torch.cuda.max_memory_allocated() / (1024 ** 3)
+        
+        print(f"{stage} - GPU Memory: "
+              f"Current={allocated:.2f}GB, "
+              f"Reserved={reserved:.2f}GB, "
+              f"Peak={max_allocated:.2f}GB")
+        
+        # Reset peak memory stats if requested
+        if reset_peak:
+            torch.cuda.reset_peak_memory_stats()
+            
+    # CPU memory
+    process = psutil.Process(os.getpid())
+    ram_usage = process.memory_info().rss / (1024 ** 3)
+    print(f"{stage} - RAM Usage: {ram_usage:.2f}GB")
+    
+    
 def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max_epochs, block_idx, output_dir, device='cpu', logger=None, accumulation_steps=2):
     train_losses_per_epoch = []
     val_losses_per_epoch = []
@@ -44,7 +62,6 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
         
         for batch_idx, batch in enumerate(train_loader):
             images, masks = batch
-            # images, masks = batch[:2]
             images, masks = images.to(device), masks.to(device)
 
             with autocast(device_type=device.type):
@@ -129,7 +146,7 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
     plt.legend()
     plt.grid(True)
     plt.savefig(os.path.join(output_dir, f'block_{block_idx + 1}_training_validation_loss_plot.png'))
-    plt.close()
+    plt.show()
     print(f"Plot saved")
 
     writer.close()
