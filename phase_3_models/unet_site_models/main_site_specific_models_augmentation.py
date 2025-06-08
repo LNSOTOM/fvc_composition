@@ -36,42 +36,53 @@ import psutil
 
 
 # === Environment Reset ===
-def reset_torch_environment(verbose=True):
-    import gc
-    import torch
-    import psutil
+# def reset_torch_environment(verbose=True):
+#     import gc
+#     import torch
+#     import psutil
+    
 
-    if verbose: print("🔁 Cleaning up environment...")
+#     if verbose: print("🔁 Cleaning up environment...")
 
-    # Step 1: Selectively delete user variables (skip core ones)
-    safe_names = {"gc", "torch", "psutil", "reset_torch_environment"}
-    for name in list(globals()):
-        if not name.startswith('_') and name not in safe_names:
-            try:
-                del globals()[name]
-            except Exception as e:
-                if verbose:
-                    print(f"⚠️ Could not delete {name}: {e}")
+#     # Step 1: Selectively delete user variables (skip core ones)
+#     safe_names = {
+#         "gc", "torch", "psutil", "os", "reset_torch_environment", 
+#         "TensorBoardLogger",
+#         "setup_logging_and_checkpoints",  # Add this function
+#         "print_gpu_memory_usage", "clear_memory", "log_message",
+#         "setup_model_and_optimizer", "save_model", "save_loss_metrics",
+#         "save_average_loss_plot", "save_final_model_metrics", 
+#         "save_best_model_metrics", "convert_ndarray_to_list",
+#         "save_validation_metrics", "save_best_validation_metrics",
+#         "main"  # Important to keep main function
+#     }
+#     for name in list(globals()):
+#         if not name.startswith('_') and name not in safe_names:
+#             try:
+#                 del globals()[name]
+#             except Exception as e:
+#                 if verbose:
+#                     print(f"⚠️ Could not delete {name}: {e}")
 
-    # Step 2: Garbage collection (clears CPU memory)
-    gc.collect()
-    if verbose: print("✅ Garbage collection done.")
+#     # Step 2: Garbage collection (clears CPU memory)
+#     gc.collect()
+#     if verbose: print("✅ Garbage collection done.")
 
-    # Step 3: Empty CUDA cache (clears GPU memory)
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-        torch.cuda.ipc_collect()
-        if verbose:
-            print("✅ CUDA cache cleared.")
-            print(f"📉 Memory Allocated: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
-            print(f"📉 Memory Reserved : {torch.cuda.memory_reserved() / 1024**3:.2f} GB")
+#     # Step 3: Empty CUDA cache (clears GPU memory)
+#     if torch.cuda.is_available():
+#         torch.cuda.empty_cache()
+#         torch.cuda.ipc_collect()
+#         if verbose:
+#             print("✅ CUDA cache cleared.")
+#             print(f"📉 Memory Allocated: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
+#             print(f"📉 Memory Reserved : {torch.cuda.memory_reserved() / 1024**3:.2f} GB")
 
-    # Step 4: RAM usage info
-    if verbose:
-        vm = psutil.virtual_memory()
-        print(f"💾 RAM Usage: {vm.used / 1024**3:.2f} GB / {vm.total / 1024**3:.2f} GB")
+#     # Step 4: RAM usage info
+#     if verbose:
+#         vm = psutil.virtual_memory()
+#         print(f"💾 RAM Usage: {vm.used / 1024**3:.2f} GB / {vm.total / 1024**3:.2f} GB")
 
-    if verbose: print("✅ Torch environment successfully reset.\n")
+#     if verbose: print("✅ Torch environment successfully reset.\n")
 
 
 def print_gpu_memory_usage(stage="", reset_peak=False):
@@ -139,13 +150,32 @@ def setup_logging_and_checkpoints():
     return logger, checkpoint_callback
 
 
-def setup_model_and_optimizer():
-    # Clear any existing memory first
-    torch.cuda.empty_cache()
-    gc.collect()
+# def setup_model_and_optimizer():
+#     # Clear any existing memory first
+#     torch.cuda.empty_cache()
+#     gc.collect()
     
-    # Create a NEW model with randomized weights
+#     # Create a NEW model with randomized weights
+#     model = UNetModule().to(config_param.DEVICE)
+#     optimizer = config_param.OPTIMIZER(
+#         model.parameters(), 
+#         lr=config_param.LEARNING_RATE, 
+#         betas=(0.9, 0.999), 
+#         weight_decay=config_param.WEIGHT_DECAY
+#     )
+#     criterion = config_param.CRITERION
+#     return model, optimizer, criterion
+def setup_model_and_optimizer():
+    # COMPLETE reset (not just empty_cache)
+    torch.cuda.empty_cache()
+    if torch.cuda.is_available():
+        torch.cuda.reset_max_memory_allocated()
+        torch.cuda.reset_peak_memory_stats()
+        
+    # Initialize model with FRESH weights
     model = UNetModule().to(config_param.DEVICE)
+    
+    # Create new optimizer with REDUCED learning rate
     optimizer = config_param.OPTIMIZER(
         model.parameters(), 
         lr=config_param.LEARNING_RATE, 
@@ -271,7 +301,9 @@ def save_best_validation_metrics(metrics, block_idx, output_dir):
 
 def main():
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:128,garbage_collection_threshold:0.6'
+    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:128'
+    
+    # reset_torch_environment(verbose=True)
     torch.cuda.empty_cache()
     gc.collect()
     
@@ -614,4 +646,5 @@ def main():
 
 
 if __name__ == "__main__":
-    reset_torch_environment()
+    main()
+    # reset_torch_environment()
