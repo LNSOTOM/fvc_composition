@@ -77,12 +77,13 @@ class CalperumDataset(Dataset):
         image_tensor = convertImg_to_tensor(image, dtype=torch.float32) # MULTISPECTRAL
         # image_tensor = convertImg_to_tensor(image, dtype=torch.uint8)  # RGB
         mask_tensor = convertMask_to_tensor(mask, dtype=torch.long)
-
-
-        # Apply transformations to both image and mask tensors
+        
+        # Apply transform if provided - uncomment and use this
         if self.transform is not None:
-            # print("Unique classes in mask before transform:", torch.unique(mask_tensor))
             image_tensor, mask_tensor = self.transform((image_tensor, mask_tensor))
+
+        # if config_param.APPLY_TRANSFORMS and self.transform is not None:
+        #     image_tensor, mask_tensor = self.transform((image_tensor, mask_tensor))
             # print("Unique classes in mask after transform:", torch.unique(mask_tensor))
 
         # Apply combined augmentations if enabled
