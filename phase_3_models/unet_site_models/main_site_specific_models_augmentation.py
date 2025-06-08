@@ -31,13 +31,26 @@ from torchmetrics.classification import ConfusionMatrix
 import pandas as pd
 
 from balance_mask_water import integrate_water_distribution, has_water_class
-
+import gc 
 
 def print_gpu_memory_usage(stage=""):
     allocated = torch.cuda.memory_allocated() / (1024 ** 3)
     cached = torch.cuda.memory_reserved() / (1024 ** 3)
     print(f"{stage} - Allocated memory: {allocated:.2f} GB, Cached memory: {cached:.2f}")
+
+def clear_memory(model=None):
+    """Release GPU memory and perform garbage collection."""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
     
+    # If model is provided and on GPU, move to CPU temporarily to free GPU memory
+    if model is not None and next(model.parameters()).is_cuda:
+        device = next(model.parameters()).device
+        model.cpu()
+        torch.cuda.empty_cache()
+        model.to(device)
+    
+    gc.collect()   
     
 def log_message(message, log_file):
     log_directory = os.path.dirname(log_file)
@@ -70,6 +83,8 @@ def setup_logging_and_checkpoints():
 
 
 def setup_model_and_optimizer():
+    # Clear any existing memory first
+    clear_memory()
     model = UNetModule().to(config_param.DEVICE)
     optimizer = config_param.OPTIMIZER(
         model.parameters(), 
@@ -365,6 +380,7 @@ def main():
         evaluator = ModelEvaluator(model, test_loader, device=config_param.DEVICE)
         final_metrics = evaluator.run_evaluation(block_idx, all_metrics, conf_matrices)
         all_final_model_metrics.append(final_metrics)
+        clear_memory(model)  
         # Save metrics for the final model on the test set
         save_final_model_metrics(final_metrics, block_idx, output_dir)
         
