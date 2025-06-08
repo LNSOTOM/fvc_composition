@@ -15,7 +15,7 @@ from dataset.data_loaders_fold_blockcross_subsampling import (
     plot_blocks_folds
 )
 from torch.utils.data import Subset, DataLoader
-from dataset.data_augmentation_wrapper import AugmentationWrapper, IndexedConcatDataset
+from dataset.data_augmentation_wrapper import MemoryEfficientAugmentation, AugmentationWrapper, IndexedConcatDataset 
 
 
 # def integrate_water_distribution(dataset, masks, folds, num_blocks, batch_size, num_workers):

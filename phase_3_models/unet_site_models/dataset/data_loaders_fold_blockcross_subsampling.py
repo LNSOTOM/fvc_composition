@@ -20,8 +20,7 @@ from dataset.image_preprocessing import prep_normalise_image, load_raw_multispec
 from map.plot_blocks_folds import plot_blocks_folds
 import json
 
-from dataset.data_augmentation_wrapper import AugmentationWrapper, IndexedConcatDataset
-from dataset.memory_efficient_augmentation import MemoryEfficientAugmentation
+from dataset.data_augmentation_wrapper import MemoryEfficientAugmentation, AugmentationWrapper, IndexedConcatDataset 
 
 
 # class ImageMaskOnlyWrapper(torch.utils.data.Dataset):

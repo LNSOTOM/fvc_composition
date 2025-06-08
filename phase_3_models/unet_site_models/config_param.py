@@ -237,7 +237,7 @@ COMBINED_INDICES_SAVE_PATHS = [
 #  tensorboard --logdir=phase_3_models/unet_model/low/tb_logs
 
 # Water redistribution control (optional, but not strictly needed if you check for water in code)
-ENABLE_WATER_REDISTRIBUTION = True  #False True
+ENABLE_WATER_REDISTRIBUTION = False  #False True
 
 # Data augmentation control
 ENABLE_DATA_AUGMENTATION = False  # Set to False to disable augmentation
