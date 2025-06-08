@@ -22,6 +22,7 @@ from dataset.calperum_dataset import CalperumDataset
 import torchmetrics
 import torch.nn.functional as F
 from torchmetrics import JaccardIndex
+from dataset.data_augmentation import get_transform 
 
 
 ############# 3_TRAINING MODULE ##############
@@ -111,3 +112,38 @@ class UNetModule(pl.LightningModule):
 
     def test_dataloader(self):
         return utils.get_test_loader(self.image_folder, self.mask_folder, self.transform)
+    # def train_dataloader(self):
+    #     train_transform = get_transform(train=True, enable_augmentation=config_param.APPLY_TRANSFORMS)
+    #     train_dataset = CalperumDataset(
+    #         image_folders=config_param.IMAGE_FOLDER,
+    #         mask_folders=config_param.MASK_FOLDER,
+    #         transform=train_transform
+    #     )
+    #     train_loader = DataLoader(train_dataset, batch_size=config_param.BATCH_SIZE, shuffle=True, num_workers=config_param.NUM_WORKERS)
+        
+    #     # Debugging: Inspect a batch of augmented data
+    #     for batch in train_loader:
+    #         images, masks = batch
+    #         print("Augmented Images Shape:", images.shape)
+    #         print("Augmented Masks Shape:", masks.shape)
+    #         break  # Inspect only the first batch
+
+    #     return train_loader
+
+    # def val_dataloader(self):
+    #     val_transform = get_transform(train=False, enable_augmentation=False)
+    #     val_dataset = CalperumDataset(
+    #         image_folders=config_param.IMAGE_FOLDER,
+    #         mask_folders=config_param.MASK_FOLDER,
+    #         transform=val_transform
+    #     )
+    #     return DataLoader(val_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
+
+    # def test_dataloader(self):
+    #     test_transform = get_transform(train=False, enable_augmentation=False)
+    #     test_dataset = CalperumDataset(
+    #         image_folders=config_param.IMAGE_FOLDER,
+    #         mask_folders=config_param.MASK_FOLDER,
+    #         transform=test_transform
+    #     )
+    #     return DataLoader(test_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
