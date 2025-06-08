@@ -32,11 +32,29 @@ import pandas as pd
 
 from balance_mask_water import integrate_water_distribution, has_water_class
 import gc 
+import psutil
 
-def print_gpu_memory_usage(stage=""):
-    allocated = torch.cuda.memory_allocated() / (1024 ** 3)
-    cached = torch.cuda.memory_reserved() / (1024 ** 3)
-    print(f"{stage} - Allocated memory: {allocated:.2f} GB, Cached memory: {cached:.2f}")
+
+def print_gpu_memory_usage(stage="", reset_peak=False):
+    """Enhanced memory tracking with option to reset peak memory usage."""
+    if torch.cuda.is_available():
+        allocated = torch.cuda.memory_allocated() / (1024 ** 3)
+        reserved = torch.cuda.memory_reserved() / (1024 ** 3)
+        max_allocated = torch.cuda.max_memory_allocated() / (1024 ** 3)
+        
+        print(f"{stage} - GPU Memory: "
+              f"Current={allocated:.2f}GB, "
+              f"Reserved={reserved:.2f}GB, "
+              f"Peak={max_allocated:.2f}GB")
+        
+        # Reset peak memory stats if requested
+        if reset_peak:
+            torch.cuda.reset_peak_memory_stats()
+            
+    # CPU memory
+    process = psutil.Process(os.getpid())
+    ram_usage = process.memory_info().rss / (1024 ** 3)
+    print(f"{stage} - RAM Usage: {ram_usage:.2f}GB")
 
 def clear_memory(model=None):
     """Release GPU memory and perform garbage collection."""
@@ -211,6 +229,7 @@ def save_best_validation_metrics(metrics, block_idx, output_dir):
 
 def main():
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:128,garbage_collection_threshold:0.6'
     
     logger, checkpoint_callback = setup_logging_and_checkpoints()
     
@@ -380,7 +399,7 @@ def main():
         evaluator = ModelEvaluator(model, test_loader, device=config_param.DEVICE)
         final_metrics = evaluator.run_evaluation(block_idx, all_metrics, conf_matrices)
         all_final_model_metrics.append(final_metrics)
-        clear_memory(model)  
+       
         # Save metrics for the final model on the test set
         save_final_model_metrics(final_metrics, block_idx, output_dir)
         

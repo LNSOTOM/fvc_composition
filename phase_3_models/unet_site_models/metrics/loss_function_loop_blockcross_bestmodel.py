@@ -83,8 +83,8 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
                 print(f'Epoch {epoch+1}, Iteration {batch_idx+1} - Loss: {loss.item():.4f}')
                 print_gpu_memory_usage(f"Training - Epoch {epoch+1}, Step {batch_idx+1}")
             
-            torch.cuda.empty_cache()
             del images, masks, outputs, loss
+            torch.cuda.empty_cache()
             gc.collect()
 
         avg_train_loss = train_loss_sum / num_batches
@@ -105,9 +105,9 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
                     loss = criterion(outputs, masks)
                 val_loss_sum += loss.item()
                 num_val_batches += 1
-                
-                torch.cuda.empty_cache()
+                               
                 del images, masks, outputs, loss
+                torch.cuda.empty_cache()
                 gc.collect()
 
         avg_val_loss = val_loss_sum / num_val_batches
