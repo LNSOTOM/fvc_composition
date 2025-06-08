@@ -64,7 +64,9 @@ print(f"OUT_CHANNELS determined based on unique classes in masks: {OUT_CHANNELS}
 '''Pytorch Lightning device name = gpu'''
 # DEVICE = "gpu" if torch.cuda.is_available() else "cpu" 
 '''Pytorch device name = cuda'''
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Set the accelerator to "gpu" if CUDA is available, otherwise, set it to "cpu"
+# DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Set the accelerator to "gpu" if CUDA is available, otherwise, set it to "cpu"
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Set the accelerator to "gpu" if CUDA is available, otherwise, set it to "cpu"
+
 
 
 # 2.Data handling parameters

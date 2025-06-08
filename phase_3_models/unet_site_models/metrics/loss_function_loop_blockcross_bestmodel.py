@@ -2,11 +2,11 @@ import os
 import time
 import torch
 import gc
-import psutil
 import matplotlib.pyplot as plt
 from torch.utils.tensorboard import SummaryWriter
-from torch.amp import autocast, GradScaler
+from torch.cuda.amp import autocast, GradScaler
 from torch.optim.lr_scheduler import OneCycleLR
+import psutil
 
 # Utility function to print GPU memory usage
 def print_gpu_memory_usage(stage="", reset_peak=False):
@@ -29,8 +29,7 @@ def print_gpu_memory_usage(stage="", reset_peak=False):
     process = psutil.Process(os.getpid())
     ram_usage = process.memory_info().rss / (1024 ** 3)
     print(f"{stage} - RAM Usage: {ram_usage:.2f}GB")
-    
-    
+
 def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max_epochs, block_idx, output_dir, device='cpu', logger=None, accumulation_steps=2):
     train_losses_per_epoch = []
     val_losses_per_epoch = []
@@ -64,7 +63,7 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
             images, masks = batch
             images, masks = images.to(device), masks.to(device)
 
-            with autocast(device_type=device.type):
+            with autocast():
                 outputs = model(images)
                 loss = criterion(outputs, masks) / accumulation_steps
 
@@ -83,8 +82,8 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
                 print(f'Epoch {epoch+1}, Iteration {batch_idx+1} - Loss: {loss.item():.4f}')
                 print_gpu_memory_usage(f"Training - Epoch {epoch+1}, Step {batch_idx+1}")
             
-            del images, masks, outputs, loss
             torch.cuda.empty_cache()
+            del images, masks, outputs, loss
             gc.collect()
 
         avg_train_loss = train_loss_sum / num_batches
@@ -100,14 +99,14 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
                 images, masks = batch
                 images, masks = images.to(device), masks.to(device)
 
-                with autocast(device_type=device.type):
+                with autocast():
                     outputs = model(images)
                     loss = criterion(outputs, masks)
                 val_loss_sum += loss.item()
                 num_val_batches += 1
-                               
-                del images, masks, outputs, loss
+                
                 torch.cuda.empty_cache()
+                del images, masks, outputs, loss
                 gc.collect()
 
         avg_val_loss = val_loss_sum / num_val_batches
