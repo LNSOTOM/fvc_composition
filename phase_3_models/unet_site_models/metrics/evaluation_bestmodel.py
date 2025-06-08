@@ -61,9 +61,6 @@ class ModelEvaluator:
 
                 valid_mask = target_mask != -1
                 
-                if valid_mask.sum() == 0:
-                    continue  # Skip this batch
-                
                 self.accuracy_metric(predicted_mask[valid_mask], target_mask[valid_mask])
                 self.precision_metric(predicted_mask[valid_mask], target_mask[valid_mask])
                 self.recall_metric(predicted_mask[valid_mask], target_mask[valid_mask])
@@ -344,11 +341,10 @@ class ModelEvaluator:
             all_trues_across_blocks = all_metrics[0].get('all_trues_across_blocks', [])
 
         metrics = self.evaluate()
-        # block_output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low' #low'
+        block_output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low' #low'
         # block_output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
         # block_output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense
-        block_output_dir = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense'
-        # os.makedirs(block_output_dir, exist_ok=True)
+        os.makedirs(block_output_dir, exist_ok=True)
         
         # Save metrics for the current block
         self.save_block_metrics(metrics, block_idx, block_output_dir)

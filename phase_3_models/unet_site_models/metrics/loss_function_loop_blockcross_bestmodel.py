@@ -46,15 +46,6 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
     model.to(device)
     scaler = GradScaler()
     scheduler = OneCycleLR(optimizer, max_lr=1e-3, steps_per_epoch=len(train_loader), epochs=max_epochs)
-    # scheduler = OneCycleLR(
-    #     optimizer, 
-    #     max_lr=5e-4,  # Reduced from 1e-3
-    #     steps_per_epoch=len(train_loader), 
-    #     epochs=max_epochs,
-    #     pct_start=0.2,  # Start with warmup phase
-    #     div_factor=10,  # Start at lr/10 instead of lr/25
-    #     final_div_factor=1000  # End at lr/1000 instead of lr/10000
-    # )
 
     total_start_time = time.time()
 
@@ -154,7 +145,7 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
     plt.legend()
     plt.grid(True)
     plt.savefig(os.path.join(output_dir, f'block_{block_idx + 1}_training_validation_loss_plot.png'))
-    plt.show()
+    # plt.show()
     print(f"Plot saved")
 
     writer.close()
