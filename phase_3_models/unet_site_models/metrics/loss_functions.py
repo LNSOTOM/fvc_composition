@@ -54,9 +54,7 @@ class FocalLoss(nn.Module):
         valid_mask = (targets != self.ignore_index)
         
         # Check if the mask is completely empty
-        if valid_mask.sum() == 0:
-            return torch.tensor(0.0, dtype=outputs.dtype, device=outputs.device)
-
+       
         # Flatten the tensors to apply the mask
         outputs = outputs.permute(0, 2, 3, 1).reshape(-1, outputs.size(1))  # Shape: [batch_size * height * width, num_classes]
         targets = targets.view(-1)  # Shape: [batch_size * height * width]
