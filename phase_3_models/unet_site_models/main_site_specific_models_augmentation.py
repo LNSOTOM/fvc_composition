@@ -102,7 +102,10 @@ def setup_logging_and_checkpoints():
 
 def setup_model_and_optimizer():
     # Clear any existing memory first
-    clear_memory()
+    torch.cuda.empty_cache()
+    gc.collect()
+    
+    # Create a NEW model with randomized weights
     model = UNetModule().to(config_param.DEVICE)
     optimizer = config_param.OPTIMIZER(
         model.parameters(), 
@@ -230,6 +233,8 @@ def save_best_validation_metrics(metrics, block_idx, output_dir):
 def main():
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:128,garbage_collection_threshold:0.6'
+    torch.cuda.empty_cache()
+    gc.collect()
     
     logger, checkpoint_callback = setup_logging_and_checkpoints()
     
