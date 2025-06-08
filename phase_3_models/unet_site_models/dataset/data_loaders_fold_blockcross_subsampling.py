@@ -20,8 +20,8 @@ from dataset.image_preprocessing import prep_normalise_image, load_raw_multispec
 from map.plot_blocks_folds import plot_blocks_folds
 import json
 
-from dataset.data_augmentation_wrapper import MemoryEfficientAugmentation, AugmentationWrapper, IndexedConcatDataset 
-
+from dataset.data_augmentation_wrapper import MemoryEfficientAugmentation, AugmentationWrapper, IndexedConcatDataset, TransformSubset
+from dataset.data_augmentation import get_transform
 
 # class ImageMaskOnlyWrapper(torch.utils.data.Dataset):
 #     """Wrapper that ensures only images and masks are returned."""
@@ -454,7 +454,7 @@ def get_dataset_splits(image_folder, mask_folder, combined_data, transform, soil
 
 
 ### with data augmenation
-def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=None, water_indices=None, original_indices=None):
+def block_cross_validation(dataset, combined_data, num_blocks, train_transform, val_transform, test_transform, kmeans_centroids=None, water_indices=None, original_indices=None):
     log_file = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/logfile.txt'
    
     """
@@ -513,7 +513,8 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
 
     kmeans.fit(coordinates)
     block_labels = kmeans.labels_
-
+    
+    
     data_splits = []
     fold_assignments = {}
 
@@ -528,23 +529,31 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
         train_indices, val_indices = train_test_split(train_val_indices, test_size=0.2, random_state=42)
         # train_indices, val_indices = train_test_split(train_val_indices, test_size=0.333, random_state=42)
 
-        train_dataset = Subset(dataset, train_indices)
-        val_dataset = Subset(dataset, val_indices)
-        test_dataset = Subset(dataset, test_indices)
-        print(f"Original training dataset size: {len(train_dataset)}")
+        # train_dataset = Subset(dataset, train_indices)
+        # val_dataset = Subset(dataset, val_indices)
+        # test_dataset = Subset(dataset, test_indices)
+        # print(f"Original training dataset size: {len(train_dataset)}")
+        # Create datasets with appropriate transforms
+
+           
+        # Create subset datasets with transforms
+        train_dataset = TransformSubset(dataset, train_indices, transform=train_transform)
+        val_dataset = TransformSubset(dataset, val_indices, transform=val_transform)
+        test_dataset = TransformSubset(dataset, test_indices, transform=test_transform)
+        
         
         # Store original indices before augmentation
-        train_dataset.original_indices = train_indices
+        # train_dataset.original_indices = train_indices
         
-        # Apply augmentation wrapper to the training dataset if enabled
-        if config_param.ENABLE_DATA_AUGMENTATION:
-            # Use the memory-efficient implementation
-            train_dataset = MemoryEfficientAugmentation(
-                base_dataset=dataset,
-                indices=train_indices,
-                augmentation_ratio=1.0  # Creates a 1:1 ratio of original:augmented
-            )
-            print(f"Augmented training dataset size: {len(train_dataset)}")
+        # # Apply augmentation wrapper to the training dataset if enabled
+        # if config_param.ENABLE_DATA_AUGMENTATION:
+        #     # Use the memory-efficient implementation
+        #     train_dataset = MemoryEfficientAugmentation(
+        #         base_dataset=dataset,
+        #         indices=train_indices,
+        #         augmentation_ratio=1.0  # Creates a 1:1 ratio of original:augmented
+        #     )
+        #     print(f"Augmented training dataset size: {len(train_dataset)}")
                     
         train_loader = DataLoader(train_dataset, batch_size=config_param.BATCH_SIZE, shuffle=True, num_workers=config_param.NUM_WORKERS)
         val_loader = DataLoader(val_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
