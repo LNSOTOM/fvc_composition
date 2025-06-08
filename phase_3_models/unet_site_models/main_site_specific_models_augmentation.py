@@ -35,6 +35,45 @@ import gc
 import psutil
 
 
+# === Environment Reset ===
+def reset_torch_environment(verbose=True):
+    import gc
+    import torch
+    import psutil
+
+    if verbose: print("🔁 Cleaning up environment...")
+
+    # Step 1: Selectively delete user variables (skip core ones)
+    safe_names = {"gc", "torch", "psutil", "reset_torch_environment"}
+    for name in list(globals()):
+        if not name.startswith('_') and name not in safe_names:
+            try:
+                del globals()[name]
+            except Exception as e:
+                if verbose:
+                    print(f"⚠️ Could not delete {name}: {e}")
+
+    # Step 2: Garbage collection (clears CPU memory)
+    gc.collect()
+    if verbose: print("✅ Garbage collection done.")
+
+    # Step 3: Empty CUDA cache (clears GPU memory)
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+        if verbose:
+            print("✅ CUDA cache cleared.")
+            print(f"📉 Memory Allocated: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
+            print(f"📉 Memory Reserved : {torch.cuda.memory_reserved() / 1024**3:.2f} GB")
+
+    # Step 4: RAM usage info
+    if verbose:
+        vm = psutil.virtual_memory()
+        print(f"💾 RAM Usage: {vm.used / 1024**3:.2f} GB / {vm.total / 1024**3:.2f} GB")
+
+    if verbose: print("✅ Torch environment successfully reset.\n")
+
+
 def print_gpu_memory_usage(stage="", reset_peak=False):
     """Enhanced memory tracking with option to reset peak memory usage."""
     if torch.cuda.is_available():
@@ -574,5 +613,5 @@ def main():
 
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    reset_torch_environment()
