@@ -64,8 +64,8 @@ print(f"OUT_CHANNELS determined based on unique classes in masks: {OUT_CHANNELS}
 '''Pytorch Lightning device name = gpu'''
 # DEVICE = "gpu" if torch.cuda.is_available() else "cpu" 
 '''Pytorch device name = cuda'''
-# DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Set the accelerator to "gpu" if CUDA is available, otherwise, set it to "cpu"
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Set the accelerator to "gpu" if CUDA is available, otherwise, set it to "cpu"
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Set the accelerator to "gpu" if CUDA is available, otherwise, set it to "cpu"
+# DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Set the accelerator to "gpu" if CUDA is available, otherwise, set it to "cpu"
 
 
 
@@ -106,9 +106,9 @@ IMAGE_FOLDER = [
 '''Num of epochs: how many times the learning algorithm will work through the entire training dataset. Helps to not overfit'''
 NUM_EPOCHS = 120 #120 # try also --> 100 and 20 for test and 40 minimum
 '''batch_size: number of training samples utilised in one iteration'''
-BATCH_SIZE =  32 #12  # minimum 16) | 32 
+BATCH_SIZE =  16 #12  # minimum 16) | 32 
 ##PATCH_SIZE = 256  # Used in dataset preprocessing, if applicable
-NUM_WORKERS = 2
+NUM_WORKERS = 3
 
 ##5bands
 # CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low'  #low
@@ -242,7 +242,8 @@ COMBINED_INDICES_SAVE_PATHS = [
 ENABLE_WATER_REDISTRIBUTION = False  #False True
 
 # Data augmentation control
-ENABLE_DATA_AUGMENTATION = False  # Set to False to disable augmentation
+ENABLE_DATA_AUGMENTATION = True  # Set to False to disable augmentation
+
 
 # Define augmentation functions
 # AUGMENTATION_FUNCTIONS = [

@@ -80,3 +80,52 @@ class IndexedConcatDataset(ConcatDataset):
             gc.collect()
             
         return result
+    
+from torch.utils.data import Subset
+
+class TransformSubset(Subset):
+    def __init__(self, dataset, indices, transform=None):
+        super().__init__(dataset, indices)
+        self.transform = transform
+        self.original_indices = list(indices)
+    
+    def __getitem__(self, idx):
+        image, mask = self.dataset[self.indices[idx]]
+        
+        # Add debug print statement
+        if self.transform:
+            print(f"TransformSubset applying transform to item {idx}")
+            image, mask = self.transform((image, mask))
+            
+        return image, mask
+    
+from torch.utils.data import Dataset, Subset
+
+class SubsetWithTransform(Dataset):
+    def __init__(self, subset, transform=None):
+        self.subset = subset
+        self.transform = transform
+
+    def __getitem__(self, index):
+        sample = self.subset[index]
+        if self.transform:
+            # Ensure proper unpacking
+            if isinstance(sample, tuple) and len(sample) == 2:
+                image, mask = sample
+                print(f"🔄 SubsetWithTransform applying transform to item {index}")
+                image, mask = self.transform(image, mask)  # Call with separate arguments
+                return image, mask
+            else:
+                return self.transform(sample)
+        return sample
+
+    def __len__(self):
+        return len(self.subset)
+    
+    @property
+    def transform(self):
+        return getattr(self, '_transform', None)
+    
+    @transform.setter
+    def transform(self, value):
+        self._transform = value

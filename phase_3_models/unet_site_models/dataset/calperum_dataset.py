@@ -19,7 +19,7 @@ from torchvision.utils import save_image
 
 from dataset.image_preprocessing import load_raw_multispectral_image, prep_normalise_image, prep_contrast_stretch_image, convertImg_to_tensor, load_raw_rgb_image
 from dataset.mask_preprocessing import prep_mask, prep_mask_preserve_nan, convertMask_to_tensor
-from dataset.data_augmentation import apply_color_jitter, apply_vertical_flip, apply_horizontal_flip, apply_combined_augmentations
+from dataset.data_augmentation import apply_color_jitter, apply_vertical_flip, apply_horizontal_flip
 from dataset.threshold_be_subsampling import subsample_tiles, estimate_class_frequencies
 
 
@@ -78,19 +78,10 @@ class CalperumDataset(Dataset):
         # image_tensor = convertImg_to_tensor(image, dtype=torch.uint8)  # RGB
         mask_tensor = convertMask_to_tensor(mask, dtype=torch.long)
         
-        # Apply transform if provided - uncomment and use this
+        # Apply transformations to both image and mask tensors
         if self.transform is not None:
             image_tensor, mask_tensor = self.transform((image_tensor, mask_tensor))
-
-        # if config_param.APPLY_TRANSFORMS and self.transform is not None:
-        #     image_tensor, mask_tensor = self.transform((image_tensor, mask_tensor))
-            # print("Unique classes in mask after transform:", torch.unique(mask_tensor))
-
-        # Apply combined augmentations if enabled
-        # if config_param.ENABLE_DATA_AUGMENTATION:
-        #     image_tensor, mask_tensor = apply_combined_augmentations(image_tensor, mask_tensor)
-          
-
+        
         return image_tensor, mask_tensor
         # ## Return only tensors if return_profiles is False
         # if self.return_profiles:
@@ -180,5 +171,3 @@ class CalperumDataset(Dataset):
                 masks.append(mask_tensor)
 
         return images, masks
-
-

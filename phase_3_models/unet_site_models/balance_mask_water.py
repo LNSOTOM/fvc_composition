@@ -16,7 +16,7 @@ from dataset.data_loaders_fold_blockcross_subsampling import (
 )
 from torch.utils.data import Subset, DataLoader
 from dataset.data_augmentation_wrapper import MemoryEfficientAugmentation, AugmentationWrapper, IndexedConcatDataset 
-
+from dataset.data_augmentation import get_transform
 
 # def integrate_water_distribution(dataset, masks, folds, num_blocks, batch_size, num_workers):
 #     """
@@ -58,19 +58,23 @@ from dataset.data_augmentation_wrapper import MemoryEfficientAugmentation, Augme
 
 #     return new_folds, all_bins
 
-def integrate_water_distribution(dataset, masks, folds, num_blocks, batch_size, num_workers):
+def integrate_water_distribution(dataset, water_indices, folds, num_blocks, batch_size, num_workers, train_transform):
     """
-    Integrates water redistribution into the cross-validation process.
+    Integrates water redistribution into the cross-validation process with augmentation.
     Adjusts indices and rebuilds loaders after redistributing water tiles.
-    Works with both regular and augmented datasets.
+    Works with disk-based loading (no in-memory data).
+    
+    Args:
+        dataset: The CalperumDataset instance (disk-based)
+        water_indices: List of indices of tiles containing water
+        folds: List of (train_loader, val_loader, test_loader) tuples
+        num_blocks: Number of spatial blocks
+        batch_size: Batch size for data loaders
+        num_workers: Number of worker threads for data loaders
     """
-    # Identify water tiles
-    water_indices = [i for i, mask in enumerate(masks) if (mask == 4).any()]
-
-    # Extract split indices and remove water
-    split_bins = []  # [ [fold, name, indices], ... ]
+    split_bins = []
     for fi, (tr, vl, te) in enumerate(folds):
-        # Get original indices attribute (works with both Subset and ConcatDataset)
+        # Get original indices attribute
         train_indices = getattr(tr.dataset, 'original_indices', 
                               getattr(tr.dataset, 'indices', []))
         
@@ -93,39 +97,24 @@ def integrate_water_distribution(dataset, masks, folds, num_blocks, batch_size, 
 
     # Rebuild loaders
     new_folds = []
-    for fi in range(config_param.NUM_BLOCKS):
+    for fi in range(num_blocks):
         bins = grouped[fi]  # train, val, test lists
         if len(bins) != 3 or any(len(b) == 0 for b in bins):
             print(f"⚠️ Block {fi}: missing or empty bins after water redistribution, skipping.")
             continue
-            
-        # Unpack train, val, test indices
-        train_indices, val_indices, test_indices = bins
-        
-        # Create datasets with original (non-augmented) data
-        train_dataset = Subset(dataset, train_indices)
-        val_dataset = Subset(dataset, val_indices)
-        test_dataset = Subset(dataset, test_indices)
-        
-        # Apply augmentation to training set if enabled
-        if config_param.ENABLE_DATA_AUGMENTATION:
-            # Use the memory-efficient implementation
-            train_dataset = MemoryEfficientAugmentation(
-                base_dataset=dataset,
-                indices=train_indices,
-                augmentation_ratio=1.0
-            )
-                
-        # Create data loaders
+
+        train_bin, val_bin, test_bin = bins
+        train_dataset = TransformSubset(dataset, train_bin, transform=train_transform)
+        val_dataset = TransformSubset(dataset, val_bin, transform=None)
+        test_dataset = TransformSubset(dataset, test_bin, transform=None)
+
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
         val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
         test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-        
+
         new_folds.append((train_loader, val_loader, test_loader))
-        
-        print(f"Block {fi+1}: Train={len(train_dataset)}, Val={len(val_dataset)}, Test={len(test_dataset)}")
-        
-    return new_folds, water_indices
+
+    return new_folds
 
 def has_water_class(masks, water_class=4):
     for mask in masks:
@@ -187,13 +176,17 @@ def count_class(loader, cls):
     """
     Count tiles in loader whose mask contains class cls.
     Returns (count, total).
+    Optimized for disk-based loading.
     """
-    c = total = 0
+    c = 0
+    total = len(loader.dataset)
+    
+    # For disk-based loading, prefetch a few batches at a time
     for _, masks in loader:
         for m in masks:
             if (m == cls).any():
                 c += 1
-            total += 1
+    
     return c, total
 
 
@@ -208,12 +201,18 @@ if __name__ == '__main__':
     log_file   = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/logfile.txt'
     log_dir    = os.path.dirname(log_file)
 
-    # LOAD dataset
-    imgs, msks = CalperumDataset.load_subsampled_data(img_dir, msk_dir)
-    all_idxs = list(range(len(imgs)))
-
-    # IDENTIFY water tiles
-    water_idxs = [i for i, m in enumerate(msks) if (m == 4).any()]
+    # Instead of loading all data into memory, identify water tiles by loading each mask once
+    # to check for water class presence
+    water_idxs = []
+    mask_files = sorted([os.path.join(msk_dir, f) for f in os.listdir(msk_dir) if f.lower().endswith('.tif')])
+    
+    print("Scanning masks for water class...")
+    for idx, mask_path in enumerate(mask_files):
+        mask, _ = load_raw_multispectral_image(mask_path)
+        if (mask == 4).any():
+            water_idxs.append(idx)
+            
+    print(f"Found {len(water_idxs)} tiles containing water")
 
     # BUILD combined_data
     combined = [
@@ -223,12 +222,23 @@ if __name__ == '__main__':
         for f in sorted(os.listdir(img_dir)) if f.lower().endswith('.tif')
     ]
 
+    train_transform = get_transform(train=True, enable_augmentation=config_param.APPLY_TRANSFORMS)
+    val_transform = get_transform(train=False, enable_augmentation=False)
+    test_transform = get_transform(train=False, enable_augmentation=False)
+
+    # Create dataset without in_memory_data
+    dataset = CalperumDataset(img_dir=img_dir, mask_dir=msk_dir, transform=None, in_memory_data=None)
+    
     # ORIGINAL spatial CV
-    dataset = CalperumDataset(img_dir, msk_dir, transform=None,
-                              in_memory_data=(imgs, msks))
-    folds = block_cross_validation(dataset=dataset,
-                                   combined_data=combined,
-                                   num_blocks=num_blocks)
+    # Apply transforms during block cross-validation
+    folds = block_cross_validation(
+        dataset=dataset,
+        combined_data=combined,
+        num_blocks=num_blocks,
+        train_transform=train_transform,
+        val_transform=val_transform,
+        test_transform=test_transform
+    )
 
     # EXTRACT split indices and remove water
     split_bins = []  # [ [fold, name, indices], ... ]
@@ -291,6 +301,15 @@ if __name__ == '__main__':
     out_msk = os.path.join(os.path.dirname(msk_dir),  'water_balanced_masks')
     os.makedirs(out_img, exist_ok=True)
     os.makedirs(out_msk, exist_ok=True)
+    
+    # Fix 1: Define all_idxs - around line 326, before copying files
+    # Collect all indices from all bins to get the complete list of indices to copy
+    all_idxs = set()
+    for bins in grouped.values():
+        for bin_indices in bins:
+            all_idxs.update(bin_indices)
+    all_idxs = sorted(all_idxs)  # Convert to sorted list
+    
     for idx in all_idxs:
         shutil.copy(combined[idx][2], os.path.join(out_img,
                      os.path.basename(combined[idx][2])))
@@ -321,7 +340,7 @@ if __name__ == '__main__':
     if new_folds and all(len(fold) == 3 for fold in new_folds):
         # Only call if folds are valid
         final_folds, _ = integrate_water_distribution(
-            dataset, msks, new_folds, config_param.NUM_BLOCKS, config_param.BATCH_SIZE, config_param.NUM_WORKERS
+            dataset, water_idxs, new_folds, config_param.NUM_BLOCKS, config_param.BATCH_SIZE, config_param.NUM_WORKERS
         )
     else:
         print("❌ No valid folds available for water redistribution. Skipping.")

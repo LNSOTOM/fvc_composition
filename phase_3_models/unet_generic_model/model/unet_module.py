@@ -40,9 +40,7 @@ class UNetModule(pl.LightningModule):
         self.batch_size = config_param.BATCH_SIZE
         self.num_workers = config_param.NUM_WORKERS
         self.image_folder = config_param.IMAGE_FOLDER
-        self.mask_folder = config_param.MASK_FOLDER
-        self.transform = config_param.DATA_TRANSFORM
-        
+        self.mask_folder = config_param.MASK_FOLDER 
         # Initialize metrics for detailed evaluation
         self.accuracy = torchmetrics.Accuracy(task="multiclass", num_classes=config_param.OUT_CHANNELS, ignore_index=-1)
         self.precision = torchmetrics.Precision(task="multiclass", num_classes=config_param.OUT_CHANNELS, average='none', ignore_index=-1)

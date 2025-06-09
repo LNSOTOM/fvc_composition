@@ -86,27 +86,30 @@ class RandomHorizontalFlip:
 def get_transform(train: bool = False, enable_augmentation: bool = False):
     """
     Returns the appropriate transformation pipeline for training or evaluation.
-
+    
     Args:
-        train (bool): Whether the transform is for training.
-        enable_augmentation (bool): Whether to apply data augmentation.
-
+        train: Whether this is for training (True) or validation/test (False)
+        enable_augmentation: Whether to apply data augmentation
+    
     Returns:
-        Callable or None: A function that takes (image, mask) and returns transformed (image, mask).
+        A function that applies transformations to (image, mask) pairs
     """
     if train and enable_augmentation:
         def transform_fn(image, mask):
+            print("🔄 Applying data augmentation...")  # Debug print
+            
+            # Apply augmentations (modify probabilities as needed)
             image, mask = apply_color_jitter(image, mask)
             image, mask = apply_vertical_flip(image, mask)
             image, mask = apply_horizontal_flip(image, mask)
-            # Add any other transformations like affine here
+            
             return image, mask
         return transform_fn
     else:
         def no_transform(image, mask):
+            """Identity transform - returns data unchanged"""
             return image, mask
         return no_transform
-
 
 
 
@@ -131,10 +134,20 @@ def apply_color_jitter(image, mask):
     return image, mask
 
 def apply_vertical_flip(image, mask):
-    return torch.flip(image, dims=[-2]), torch.flip(mask, dims=[-2])
+    """Apply vertical flip with 50% probability"""
+    if random.random() > 0.5:
+        print("Applied Vertical Flip")
+        image = torch.flip(image, dims=[1])  # Flip along height dimension
+        mask = torch.flip(mask, dims=[0])    # Flip along height dimension
+    return image, mask
 
 def apply_horizontal_flip(image, mask):
-    return torch.flip(image, dims=[-1]), torch.flip(mask, dims=[-1])
+    """Apply horizontal flip with 50% probability"""
+    if random.random() > 0.5:
+        print("Applied Horizontal Flip")
+        image = torch.flip(image, dims=[2])  # Flip along width dimension
+        mask = torch.flip(mask, dims=[1])    # Flip along width dimension
+    return image, mask
 
 def generate_random_affine_params():
     """Generate random affine transformation parameters."""
@@ -438,3 +451,5 @@ def augment_minority_classes_pixel_level(dataset, class_labels, target_pixel_rat
         print(f"  {name}: {p_count / total_aug_pixels:.2%}")
 
     return augmented_counts
+
+

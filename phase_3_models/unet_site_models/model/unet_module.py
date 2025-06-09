@@ -113,14 +113,17 @@ class UNetModule(pl.LightningModule):
     #     return utils.get_test_loader(self.image_folder, self.mask_folder, self.transform)
     def train_dataloader(self):
         train_transform = get_transform(train=True, enable_augmentation=config_param.ENABLE_DATA_AUGMENTATION)
+        print(f"🔧 Train transform created: {train_transform is not None}")
         return utils.get_train_loader(self.image_folder, self.mask_folder, train_transform)
 
     def val_dataloader(self):
         val_transform = get_transform(train=False, enable_augmentation=False)
+        print(f"🔧 Val transform created: {val_transform is not None}")
         return utils.get_val_loader(self.image_folder, self.mask_folder, val_transform)
 
     def test_dataloader(self):
         test_transform = get_transform(train=False, enable_augmentation=False)
+        print(f"🔧 Test transform created: {test_transform is not None}")
         return utils.get_test_loader(self.image_folder, self.mask_folder, test_transform)
     
     # def train_dataloader(self):
