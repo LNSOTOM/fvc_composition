@@ -108,7 +108,7 @@ NUM_EPOCHS = 120 #120 # try also --> 100 and 20 for test and 40 minimum
 '''batch_size: number of training samples utilised in one iteration'''
 BATCH_SIZE =  16 #12  # minimum 16) | 32 
 ##PATCH_SIZE = 256  # Used in dataset preprocessing, if applicable
-NUM_WORKERS = 4
+NUM_WORKERS = 2
 
 ##5bands
 # CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low'  #low
@@ -166,7 +166,7 @@ CRITERION = FocalLoss(alpha=1, gamma=2, ignore_index=-1)  # Now handles NaN valu
 # ]) if APPLY_TRANSFORMS else None
 
 # b) Without (set to False)/With Data Augmentation (set to True)
-APPLY_TRANSFORMS = False  
+# APPLY_TRANSFORMS = False  
 
 # Define transformations conditionally
 # DATA_TRANSFORM = transforms.Compose([
@@ -175,12 +175,12 @@ APPLY_TRANSFORMS = False
 #     transforms.Lambda(lambda img: apply_horizontal_flip(img)),
 #     transforms.Lambda(lambda img: apply_random_affine(img))
 # ]) if APPLY_TRANSFORMS else None
-DATA_TRANSFORM = transforms.Compose([
-    transforms.Lambda(lambda img_mask: apply_color_jitter(img_mask[0], img_mask[1])),
-    transforms.Lambda(lambda img_mask: apply_vertical_flip(img_mask[0], img_mask[1])),
-    transforms.Lambda(lambda img_mask: apply_horizontal_flip(img_mask[0], img_mask[1]))
-    # transforms.Lambda(lambda img_mask: apply_random_affine(img_mask[0], img_mask[1]))
-]) if APPLY_TRANSFORMS else None
+# DATA_TRANSFORM = transforms.Compose([
+#     transforms.Lambda(lambda img_mask: apply_color_jitter(img_mask[0], img_mask[1])),
+#     transforms.Lambda(lambda img_mask: apply_vertical_flip(img_mask[0], img_mask[1])),
+#     transforms.Lambda(lambda img_mask: apply_horizontal_flip(img_mask[0], img_mask[1]))
+#     # transforms.Lambda(lambda img_mask: apply_random_affine(img_mask[0], img_mask[1]))
+# ]) if APPLY_TRANSFORMS else None
 
 
 #save Data augmentation

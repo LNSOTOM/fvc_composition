@@ -44,7 +44,6 @@ class UNetModule(pl.LightningModule):
         self.num_workers = config_param.NUM_WORKERS
         self.image_folder = config_param.IMAGE_FOLDER
         self.mask_folder = config_param.MASK_FOLDER
-        self.transform = config_param.DATA_TRANSFORM
         
         # Initialize metrics for detailed evaluation
         self.accuracy = torchmetrics.Accuracy(task="multiclass", num_classes=config_param.OUT_CHANNELS, ignore_index=-1)
@@ -104,14 +103,26 @@ class UNetModule(pl.LightningModule):
     def configure_optimizers(self):
         return config_param.OPTIMIZER(self.parameters(), lr=config_param.LEARNING_RATE)
 
+    # def train_dataloader(self):
+    #     return utils.get_train_loader(self.image_folder, self.mask_folder, self.transform)
+
+    # def val_dataloader(self):
+    #     return utils.get_val_loader(self.image_folder, self.mask_folder, self.transform)
+
+    # def test_dataloader(self):
+    #     return utils.get_test_loader(self.image_folder, self.mask_folder, self.transform)
     def train_dataloader(self):
-        return utils.get_train_loader(self.image_folder, self.mask_folder, self.transform)
+        train_transform = get_transform(train=True, enable_augmentation=config_param.ENABLE_DATA_AUGMENTATION)
+        return utils.get_train_loader(self.image_folder, self.mask_folder, train_transform)
 
     def val_dataloader(self):
-        return utils.get_val_loader(self.image_folder, self.mask_folder, self.transform)
+        val_transform = get_transform(train=False, enable_augmentation=False)
+        return utils.get_val_loader(self.image_folder, self.mask_folder, val_transform)
 
     def test_dataloader(self):
-        return utils.get_test_loader(self.image_folder, self.mask_folder, self.transform)
+        test_transform = get_transform(train=False, enable_augmentation=False)
+        return utils.get_test_loader(self.image_folder, self.mask_folder, test_transform)
+    
     # def train_dataloader(self):
     #     train_transform = get_transform(train=True, enable_augmentation=config_param.APPLY_TRANSFORMS)
     #     train_dataset = CalperumDataset(

@@ -229,7 +229,7 @@ def main():
         with open(indices_save_path, 'r') as f:
             subsampled_indices = json.load(f)
             
-        dataset = CalperumDataset(transform=config_param.DATA_TRANSFORM, in_memory_data=(images, masks))
+        dataset = CalperumDataset(in_memory_data=(images, masks))
         
     else:
         print("No subsampled image and mask files found. Performing subsampling and saving data...")
@@ -238,7 +238,6 @@ def main():
             image_folder=image_dirs, 
             mask_folder=mask_dirs, 
             combined_data=combined_data, 
-            transform=config_param.DATA_TRANSFORM, 
             soil_threshold=50.0, 
             soil_class=0, 
             removal_ratio=0.5, 
@@ -260,7 +259,7 @@ def main():
         )
         
         images, masks = CalperumDataset.load_subsampled_data(config_param.SUBSAMPLE_IMAGE_DIR, config_param.SUBSAMPLE_MASK_DIR)
-        dataset = CalperumDataset(transform=config_param.DATA_TRANSFORM, in_memory_data=(images, masks))
+        dataset = CalperumDataset(in_memory_data=(images, masks))
 
     # Perform KMeans on original data and save centroids
     coordinates = extract_coordinates(combined_data)  # Assume extract_coordinates is a function to get coordinates
