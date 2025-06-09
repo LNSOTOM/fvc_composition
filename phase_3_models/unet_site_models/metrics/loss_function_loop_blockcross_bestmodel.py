@@ -64,7 +64,7 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
             images, masks = batch
             images, masks = images.to(device), masks.to(device)
 
-            with autocast():
+            with autocast(device_type=device):
                 outputs = model(images)
                 loss = criterion(outputs, masks) / accumulation_steps
 
@@ -105,7 +105,7 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
                 images, masks = batch
                 images, masks = images.to(device), masks.to(device)
 
-                with autocast():
+                with autocast(device_type=device):
                     outputs = model(images)
                     loss = criterion(outputs, masks)
 
