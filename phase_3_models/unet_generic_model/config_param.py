@@ -173,12 +173,12 @@ APPLY_TRANSFORMS = False
 #     transforms.Lambda(lambda img: apply_horizontal_flip(img)),
 #     transforms.Lambda(lambda img: apply_random_affine(img))
 # ]) if APPLY_TRANSFORMS else None
-DATA_TRANSFORM = transforms.Compose([
-    transforms.Lambda(lambda img_mask: apply_color_jitter(img_mask[0], img_mask[1])),
-    transforms.Lambda(lambda img_mask: apply_vertical_flip(img_mask[0], img_mask[1])),
-    transforms.Lambda(lambda img_mask: apply_horizontal_flip(img_mask[0], img_mask[1])),
-    transforms.Lambda(lambda img_mask: apply_random_affine(img_mask[0], img_mask[1]))
-]) if APPLY_TRANSFORMS else None
+# DATA_TRANSFORM = transforms.Compose([
+#     transforms.Lambda(lambda img_mask: apply_color_jitter(img_mask[0], img_mask[1])),
+#     transforms.Lambda(lambda img_mask: apply_vertical_flip(img_mask[0], img_mask[1])),
+#     transforms.Lambda(lambda img_mask: apply_horizontal_flip(img_mask[0], img_mask[1])),
+#     transforms.Lambda(lambda img_mask: apply_random_affine(img_mask[0], img_mask[1]))
+# ]) if APPLY_TRANSFORMS else None
 
 
 #save Data augmentation
