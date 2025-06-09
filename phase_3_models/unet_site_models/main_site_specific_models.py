@@ -31,6 +31,14 @@ from torchmetrics.classification import ConfusionMatrix
 import pandas as pd
 
 
+def clear_gpu_memory():
+    """Clear GPU memory and cache"""
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+        torch.cuda.synchronize()
+        print("🧹 GPU memory cleared") 
+
 def print_gpu_memory_usage(stage=""):
     allocated = torch.cuda.memory_allocated() / (1024 ** 3)
     cached = torch.cuda.memory_reserved() / (1024 ** 3)
@@ -68,7 +76,22 @@ def setup_logging_and_checkpoints():
 
 
 def setup_model_and_optimizer():
-    model = UNetModule().to(config_param.DEVICE)
+    try:
+        # Create model and move to device
+        model = UNetModule().to(config_param.DEVICE)
+        
+        # Check device type by checking the string directly
+        if config_param.DEVICE == "cuda":
+            model = model.half()  # Use FP16 instead of FP32
+        
+    except RuntimeError as e:
+        if "CUDA out of memory" in str(e):
+            print("⚠️ CUDA out of memory, switching to CPU...")
+            config_param.DEVICE = "cpu"
+            model = UNetModule().to(config_param.DEVICE)
+        else:
+            raise e
+            
     optimizer = config_param.OPTIMIZER(
         model.parameters(), 
         lr=config_param.LEARNING_RATE, 
@@ -194,6 +217,18 @@ def save_best_validation_metrics(metrics, block_idx, output_dir):
 
 def main():
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+    
+    clear_gpu_memory()
+    
+    # Try CUDA memory optimization
+    if torch.cuda.is_available():
+        # Enable memory caching for faster reuse
+        torch.backends.cudnn.benchmark = True
+        # Use deterministic algorithms for better memory management
+        torch.backends.cudnn.deterministic = True
+        print(f"CUDA memory optimization enabled")
+        print_gpu_memory_usage("Initial")
     
     logger, checkpoint_callback = setup_logging_and_checkpoints()
     
@@ -203,6 +238,9 @@ def main():
     # output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense
     output_dir = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense' #dense
     os.makedirs(output_dir, exist_ok=True)
+    
+    # Add debug print at the top of your main script
+    print(f"🔧 Data augmentation enabled: {config_param.ENABLE_DATA_AUGMENTATION}")
 
     image_dirs = config_param.IMAGE_FOLDER
     mask_dirs = config_param.MASK_FOLDER
@@ -303,13 +341,60 @@ def main():
     all_val_metrics = []
     all_best_val_metrics = []
 
-    # Train, validate, and test using cross-validation splits
+    print(f"Number of blocks in block_cv_splits: {len(block_cv_splits)}")
+    print(f"🔍 Total number of blocks available: {len(block_cv_splits)}")
+    print(f"🔧 Data augmentation enabled: {config_param.ENABLE_DATA_AUGMENTATION}")
+    
+
+            
     for block_idx, (train_loader, val_loader, test_loader) in enumerate(block_cv_splits):
-        if train_loader is None or val_loader is None or test_loader is None:
-            print(f"Skipping block {block_idx + 1} due to missing data")
-            continue
+        clear_gpu_memory()
+        print(f"\n{'='*50}")
+        print(f"🏗️ PROCESSING BLOCK {block_idx + 1} of {len(block_cv_splits)}")
+        print(f"{'='*50}")
+        
+        train_dataset = train_loader.dataset if hasattr(train_loader, 'dataset') else train_loader
+        val_dataset = val_loader.dataset if hasattr(val_loader, 'dataset') else val_loader
+        test_dataset = test_loader.dataset if hasattr(test_loader, 'dataset') else test_loader
+
+        # Check if dataset has transform and print augmentation status
+        print(f"\n🔍 Block {block_idx+1} Dataset Analysis:")
+        if hasattr(train_dataset, 'transform'):
+            transform_exists = train_dataset.transform is not None
+            print(f"🔄 Train dataset has transform: {transform_exists}")
+            if transform_exists:
+                print(f"🎯 Transform type: {type(train_dataset.transform)}")
+        else:
+            print(f"⚠️ Train dataset has no transform attribute")
+
+        # Dataset size information
+        if hasattr(train_dataset, 'original_length'):
+            print(f"📊 Original training dataset size: {train_dataset.original_length}")
+        else:
+            print(f"📊 Original training dataset size: {len(train_dataset)}")
+
+        print(f"📊 Augmented training dataset size: {len(train_dataset)}")
+        print(f"📊 Block {block_idx+1}: Train={len(train_dataset)}, Val={len(val_dataset)}, Test={len(test_dataset)}")
+
+        # Test batch loading
+        print(f"🧪 Testing batch loading for Block {block_idx+1}:")
+        try:
+            sample_batch = next(iter(train_loader))
+            images, masks = sample_batch
+            print(f"✅ Batch loaded successfully - Images: {images.shape}, Masks: {masks.shape}")
+            
+            unique_mask_values = torch.unique(masks)
+            print(f"🎭 Mask unique values in batch: {unique_mask_values.tolist()}")
+            
+            # Check for underlying transforms in Subset
+            if hasattr(train_dataset, 'dataset') and hasattr(train_dataset.dataset, 'transform'):
+                underlying_transform = train_dataset.dataset.transform
+                print(f"🔧 Underlying dataset transform: {underlying_transform is not None}")
+        except Exception as e:
+            print(f"❌ Error testing batch: {e}")
 
         model, optimizer, criterion = setup_model_and_optimizer()
+        print(f"🚀 Starting training for Block {block_idx + 1}...")
         
         # Run training loop
         train_losses, val_losses, best_epoch_model_path, best_epoch_val_loss = run_training_loop(
