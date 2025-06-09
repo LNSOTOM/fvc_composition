@@ -63,9 +63,9 @@ class FocalLoss(nn.Module):
         outputs = outputs[valid_mask.view(-1)]
         targets = targets[valid_mask.view(-1)]
         
-        # ✅ Skip if no valid targets
-        if targets.numel() == 0:
-            return torch.tensor(0.0, device=outputs.device, requires_grad=True)
+        # # ✅ Skip if no valid targets
+        # if targets.numel() == 0:
+        #     return torch.tensor(0.0, device=outputs.device, requires_grad=True)
 
         # Compute the cross entropy loss
         logpt = F.cross_entropy(outputs, targets, reduction='none')
