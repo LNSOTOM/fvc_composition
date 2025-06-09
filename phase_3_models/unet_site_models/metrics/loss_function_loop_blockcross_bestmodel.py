@@ -41,6 +41,7 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
     val_losses_per_epoch = []
     best_val_loss = float('inf')
     best_model_path = None
+    device_type = 'cuda' if str(device).startswith('cuda') else 'cpu'
 
     os.makedirs(output_dir, exist_ok=True)
     writer = SummaryWriter(log_dir=logger.log_dir if logger else None)
@@ -64,7 +65,7 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
             images, masks = batch
             images, masks = images.to(device), masks.to(device)
 
-            with autocast(device_type=device):
+            with autocast(device_type=device_type):
                 outputs = model(images)
                 loss = criterion(outputs, masks) / accumulation_steps
 
@@ -105,7 +106,7 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
                 images, masks = batch
                 images, masks = images.to(device), masks.to(device)
 
-                with autocast(device_type=device):
+                with autocast(device_type=device_type):
                     outputs = model(images)
                     loss = criterion(outputs, masks)
 
