@@ -31,12 +31,18 @@ import psutil
 #     print(f"{stage} - RAM Usage: {ram_usage:.2f}GB")
 
 def print_gpu_memory_usage(stage=""):
-    allocated = torch.cuda.memory_allocated() / (1024 ** 3)  # Convert bytes to GB
-    cached = torch.cuda.memory_reserved() / (1024 ** 3)  # Convert bytes to GB
-    print(f"{stage} - Allocated memory: {allocated:.2f} GB, Cached memory: {cached:.2f} GB")
+    if torch.cuda.is_available():
+        allocated = torch.cuda.memory_allocated() / (1024 ** 3)
+        reserved = torch.cuda.memory_reserved() / (1024 ** 3)
+        max_allocated = torch.cuda.max_memory_allocated() / (1024 ** 3)
+        print(f"{stage} - Allocated: {allocated:.2f}GB, Reserved: {reserved:.2f}GB, Peak: {max_allocated:.2f}GB")
+        torch.cuda.reset_peak_memory_stats()
 
+    ram = psutil.Process(os.getpid()).memory_info().rss / (1024 ** 3)
+    print(f"{stage} - RAM: {ram:.2f}GB")
 
 def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max_epochs, block_idx, output_dir, device='cpu', logger=None, accumulation_steps=2):
+   
     train_losses_per_epoch = []
     val_losses_per_epoch = []
     best_val_loss = float('inf')
