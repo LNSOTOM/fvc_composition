@@ -106,7 +106,7 @@ IMAGE_FOLDER = [
 '''Num of epochs: how many times the learning algorithm will work through the entire training dataset. Helps to not overfit'''
 NUM_EPOCHS = 120 #120 # try also --> 100 and 20 for test and 40 minimum
 '''batch_size: number of training samples utilised in one iteration'''
-BATCH_SIZE =  16 #12  # minimum 16) | 32 
+BATCH_SIZE =  32 #12  # minimum 16) | 32 
 ##PATCH_SIZE = 256  # Used in dataset preprocessing, if applicable
 NUM_WORKERS = 2
 
