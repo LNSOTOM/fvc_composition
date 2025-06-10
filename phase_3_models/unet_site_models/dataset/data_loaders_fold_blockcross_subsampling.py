@@ -323,13 +323,20 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
             continue
         train_indices, val_indices = train_test_split(train_val_indices, test_size=0.2, random_state=42)
         
-        # For training data: use chosen (augmented or original) directories
+        # Create datasets For training data: use chosen (augmented or original) directories
         alb_train_transform = AlbumentationsTorchWrapper(get_train_augmentation())
         train_dataset_full = CalperumDataset(image_folders=[train_image_dir], mask_folders=[train_mask_dir], transform=alb_train_transform)
         # For validation/test: always use original, no augmentation
         alb_val_transform = AlbumentationsTorchWrapper(get_val_augmentation())
         val_dataset_full = CalperumDataset(image_folders=[config_param.SUBSAMPLE_IMAGE_DIR[0]], mask_folders=[config_param.SUBSAMPLE_MASK_DIR[0]], transform=alb_val_transform)
         test_dataset_full = CalperumDataset(image_folders=[config_param.SUBSAMPLE_IMAGE_DIR[0]], mask_folders=[config_param.SUBSAMPLE_MASK_DIR[0]], transform=alb_val_transform)
+
+        # REGENERATE indices for augmented data!
+        if use_aug:
+            train_indices = list(range(len(train_dataset_full)))
+            print(f"Using all {len(train_indices)} augmented samples for training.")
+        else:
+            train_indices, val_indices = train_test_split(train_val_indices, test_size=0.2, random_state=42)
 
         # --- Subsets for folds ---
         train_dataset = Subset(train_dataset_full, train_indices)

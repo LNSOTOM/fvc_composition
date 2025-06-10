@@ -16,6 +16,31 @@ import config_param
 
 import albumentations as A
 
+import os
+import rasterio
+
+def save_augmented_pair(orig_img_path, orig_mask_path, aug_image, aug_mask, aug_idx, aug_img_dir, aug_mask_dir):
+    img_name = os.path.basename(orig_img_path).replace('.tif', '')
+    mask_name = os.path.basename(orig_mask_path).replace('.tif', '')
+
+    aug_img_name = f"{img_name}_aug{aug_idx}.tif"
+    aug_mask_name = f"{mask_name}_aug{aug_idx}.tif"
+
+    aug_img_path = os.path.join(aug_img_dir, aug_img_name)
+    aug_mask_path = os.path.join(aug_mask_dir, aug_mask_name)
+
+    # Save image
+    with rasterio.open(orig_img_path) as src:
+        meta = src.meta.copy()
+    with rasterio.open(aug_img_path, 'w', **meta) as dst:
+        dst.write(aug_image)
+
+    # Save mask
+    with rasterio.open(orig_mask_path) as src:
+        meta = src.meta.copy()
+    with rasterio.open(aug_mask_path, 'w', **meta) as dst:
+        dst.write(aug_mask, 1)
+
 def get_train_augmentation():
     return A.Compose([
         A.HorizontalFlip(p=0.5),
