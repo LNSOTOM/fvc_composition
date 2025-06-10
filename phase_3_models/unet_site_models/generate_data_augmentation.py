@@ -9,6 +9,37 @@ from dataset.data_augmentation_wrapper import AlbumentationsTorchWrapper
 from dataset.data_augmentation import get_train_augmentation, save_augmented_pair
 import config_param
 
+def debug_visualize(image_np, mask_np, idx):
+    """Create visualization of the augmented image for debugging"""
+    import matplotlib.pyplot as plt
+    
+    # For multispectral data, create a RGB composite using bands 3,2,1 (if they exist)
+    rgb = None
+    if image_np.shape[0] >= 3:
+        # Use first 3 bands for visualization, scale to 0-255
+        rgb = image_np[:3].transpose(1, 2, 0).copy()
+        for i in range(3):
+            band = rgb[:,:,i]
+            p2 = np.percentile(band, 2)  # Dark end percentile
+            p98 = np.percentile(band, 98)  # Bright end percentile
+            rgb[:,:,i] = np.clip((band - p2) / (p98 - p2), 0, 1)
+    
+    plt.figure(figsize=(10, 5))
+    plt.subplot(1, 2, 1)
+    if rgb is not None:
+        plt.imshow(rgb)
+    else:
+        # Use first band if RGB composite isn't possible
+        plt.imshow(image_np[0], cmap='viridis')
+    plt.title("Augmented Image")
+    
+    plt.subplot(1, 2, 2)
+    plt.imshow(mask_np, cmap='tab20')
+    plt.title("Augmented Mask")
+    
+    plt.savefig(f"debug_aug_{idx}.png")
+    plt.close()
+
 def main():
     # Make sure output directories exist
     output_dir_img= '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/predictor_5b'
@@ -30,7 +61,7 @@ def main():
     albumentations_wrapper = AlbumentationsTorchWrapper(albumentations_transform)
 
     # 3. Decide how many augmentations per sample
-    NUM_AUG_PER_IMAGE = 3
+    NUM_AUG_PER_IMAGE = 2
 
     # 4. Iterate and generate augmentations
     print("Generating and saving augmented data...")
@@ -41,9 +72,13 @@ def main():
 
     for idx in tqdm(range(len(dataset))):
         image_tensor, mask_tensor = dataset[idx]
+          # Debug: Check loaded tensor values
+        print(f"Loaded tensor {idx}: min={image_tensor.min().item():.4f}, max={image_tensor.max().item():.4f}")
+        
         # Convert to numpy for rasterio saving
         # [C,H,W] -> rasterio expects [C,H,W] for multiband, mask [H,W]
         image_np = image_tensor.numpy()
+        print(f"Original image {idx}: min={image_np.min():.4f}, max={image_np.max():.4f}, mean={image_np.mean():.4f}")
         mask_np = mask_tensor.numpy()
 
         orig_img_path = os.path.join(orig_img_dir, orig_img_files[idx])
@@ -54,6 +89,17 @@ def main():
             aug_image, aug_mask = albumentations_wrapper(image_tensor, mask_tensor)
             aug_image_np = aug_image.numpy()
             aug_mask_np = aug_mask.numpy()
+            
+            # Print stats post-augmentation
+            print(f"  Aug {aug_idx}: min={aug_image_np.min():.4f}, max={aug_image_np.max():.4f}, mean={aug_image_np.mean():.4f}")
+                   
+            # Check for all-zero channels
+            for c in range(aug_image_np.shape[0]):
+                channel = aug_image_np[c]
+                if channel.min() == 0 and channel.max() == 0:
+                    print(f"  WARNING: Channel {c} is all zeros!")
+            # Debug visualization
+            debug_visualize(aug_image_np, aug_mask_np, f"{idx}_{aug_idx}")
             # Save
             save_augmented_pair(orig_img_path, orig_mask_path, aug_image_np, aug_mask_np, aug_idx, output_dir_img, output_dir_mask)
 

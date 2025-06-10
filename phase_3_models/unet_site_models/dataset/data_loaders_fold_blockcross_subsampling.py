@@ -2,7 +2,7 @@ import os
 import re
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
+from torch.utils.data import DataLoader, Subset, WeightedRandomSampler, ConcatDataset
 from sklearn.model_selection import train_test_split
 from sklearn.cluster import KMeans
 import rasterio
@@ -254,14 +254,26 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
     log_file = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/logfile.txt' #dense
     use_aug = config_param.USE_AUGMENTED_DATA if use_augmented_data is None else use_augmented_data
 
+    # Load datasets only once
+    alb_train_transform = AlbumentationsTorchWrapper(get_train_augmentation())
+    alb_val_transform = AlbumentationsTorchWrapper(get_val_augmentation())
+    
+    # Original dataset (subsampled data)
+    original_dataset = CalperumDataset(
+        image_folders=config_param.SUBSAMPLE_IMAGE_DIR,
+        mask_folders=config_param.SUBSAMPLE_MASK_DIR,
+        transform=alb_val_transform  # Use validation transform for original data
+    )
+    
+    # Augmented dataset (if needed)
+    augmented_dataset = None
     if use_aug:
-        train_image_dir = config_param.AUG_IMAGE_DIR
-        train_mask_dir  = config_param.AUG_MASK_DIR
-        print("Using AUGMENTED data for training!")
-    else:
-        train_image_dir = config_param.SUBSAMPLE_IMAGE_DIR[0]
-        train_mask_dir  = config_param.SUBSAMPLE_MASK_DIR[0]
-        print("Using ORIGINAL data for training!")
+        augmented_dataset = CalperumDataset(
+            image_folders=[config_param.AUG_IMAGE_DIR],
+            mask_folders=[config_param.AUG_MASK_DIR],
+            transform=alb_train_transform
+        )
+        print(f"Loaded augmented dataset with {len(augmented_dataset)} samples")
         
     coordinates = []
     
@@ -323,65 +335,37 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
             continue
         train_indices, val_indices = train_test_split(train_val_indices, test_size=0.2, random_state=42)
         
-        # Create datasets For training data: use chosen (augmented or original) directories
-        alb_train_transform = AlbumentationsTorchWrapper(get_train_augmentation())
-        train_dataset_full = CalperumDataset(image_folders=[train_image_dir], mask_folders=[train_mask_dir], transform=alb_train_transform)
-        # For validation/test: always use original, no augmentation
-        alb_val_transform = AlbumentationsTorchWrapper(get_val_augmentation())
-        val_dataset_full = CalperumDataset(image_folders=[config_param.SUBSAMPLE_IMAGE_DIR[0]], mask_folders=[config_param.SUBSAMPLE_MASK_DIR[0]], transform=alb_val_transform)
-        test_dataset_full = CalperumDataset(image_folders=[config_param.SUBSAMPLE_IMAGE_DIR[0]], mask_folders=[config_param.SUBSAMPLE_MASK_DIR[0]], transform=alb_val_transform)
-
-        # REGENERATE indices for augmented data!
-        if use_aug:
-            train_indices = list(range(len(train_dataset_full)))
-            print(f"Using all {len(train_indices)} augmented samples for training.")
+        # Create datasets for this block
+        train_original = Subset(original_dataset, train_indices)
+        val_dataset = Subset(original_dataset, val_indices)
+        test_dataset = Subset(original_dataset, test_indices)
+        
+        # Create combined dataset if using augmentation
+        if use_aug and augmented_dataset is not None:
+            train_dataset = ConcatDataset([train_original, augmented_dataset])
+            print(f"Combined training dataset: {len(train_original)} original + {len(augmented_dataset)} augmented = {len(train_dataset)} total")
         else:
-            train_indices, val_indices = train_test_split(train_val_indices, test_size=0.2, random_state=42)
-
-        # --- Subsets for folds ---
-        train_dataset = Subset(train_dataset_full, train_indices)
-        val_dataset = Subset(val_dataset_full, val_indices)
-        test_dataset = Subset(test_dataset_full, test_indices)
+            train_dataset = train_original
         
-        # --- Class balancing REBALANCE: WeightedRandomSampler for train_loader ---
-        # dominant_classes = np.array([get_dominant_class(dataset, idx) for idx in train_indices])
-        # valid_mask = dominant_classes >= 0
-        # filtered_train_indices = [idx for idx, valid in zip(train_indices, valid_mask) if valid]
-        # dominant_classes = dominant_classes[valid_mask]
-        # num_classes = config_param.OUT_CHANNELS
-
-        # class_sample_counts = np.bincount(dominant_classes, minlength=num_classes)
-        # class_percentages = [100.0 * x / len(dominant_classes) if len(dominant_classes) > 0 else 0 for x in class_sample_counts]
-        # class_weights = 1. / (class_sample_counts + 1e-6)
-        # sample_weights = class_weights[dominant_classes]
-        # sampler = WeightedRandomSampler(weights=sample_weights, num_samples=len(sample_weights), replacement=True)
-
-        # Print/log before rebalancing class counts
-        # before_msg = (
-        #     f"\nBlock {block} - Before Weighted Sampling (train split):\n"
-        #     f"Class counts: {class_sample_counts.tolist()}\n"
-        #     f"Class percentages: {[f'{p:.2f}%' for p in class_percentages]}\n"
-        # )
-        # print(before_msg)
-        # log_message(before_msg, log_file)
-        
-        # Print/log after rebalancing (expected, since sampler uses inverse freq so approx uniform)
-        # after_counts = [int(len(dominant_classes)/num_classes)] * num_classes
-        # after_percentages = [f"{100.0/num_classes:.2f}%" for _ in range(num_classes)]
-        # after_msg = (
-        #     f"Block {block} - Target After Weighted Sampling (train split):\n"
-        #     f"Expected class counts per batch: ~{after_counts}\n"
-        #     f"Expected class percentages per batch: {after_percentages}\n"
-        #     f"Effective class distribution will be approximately uniform across classes due to sampling.\n"
-        # )
-        # print(after_msg)
-        # log_message(after_msg, log_file)
-        
-        # filtered_train_dataset = Subset(train_dataset, filtered_train_indices)
-        train_loader = DataLoader(train_dataset, batch_size=config_param.BATCH_SIZE, shuffle=True, num_workers=config_param.NUM_WORKERS)
-        # train_loader = DataLoader(train_dataset, batch_size=config_param.BATCH_SIZE, shuffle=True, num_workers=config_param.NUM_WORKERS)
-        val_loader = DataLoader(val_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
-        test_loader = DataLoader(test_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
+        # Create loaders with the combined dataset
+        train_loader = DataLoader(
+            train_dataset, 
+            batch_size=config_param.BATCH_SIZE, 
+            shuffle=True, 
+            num_workers=config_param.NUM_WORKERS
+        )
+        val_loader = DataLoader(
+            val_dataset, 
+            batch_size=config_param.BATCH_SIZE, 
+            shuffle=False, 
+            num_workers=config_param.NUM_WORKERS
+        )
+        test_loader = DataLoader(
+            test_dataset, 
+            batch_size=config_param.BATCH_SIZE, 
+            shuffle=False, 
+            num_workers=config_param.NUM_WORKERS
+        )
 
         fold_assignments[block] = {
             'train_indices': train_indices,

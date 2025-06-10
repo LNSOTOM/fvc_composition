@@ -94,14 +94,22 @@ class CalperumDataset(Dataset):
                 raise IndexError(f"Index {idx} out of range for dataset of length {len(self.image_filenames)}")
 
             img_filename, mask_filename = self.image_filenames[idx]
+            
+            # Load the image and mask
             image, _ = load_raw_multispectral_image(img_filename)
             mask, _ = prep_mask(mask_filename)
+            # Debug: Check dimensions and values
+        print(f"Loaded image shape: {image.shape}, min={image.min()}, max={image.max()}, mean={image.mean():.4f}")
+        print(f"Loaded mask shape: {mask.shape}, unique values={np.unique(mask)}")
 
-        image_tensor = convertImg_to_tensor(image, dtype=torch.float32)
-        mask_tensor = convertMask_to_tensor(mask, dtype=torch.long)
+    
+        # image_tensor = convertImg_to_tensor(image, dtype=torch.float32)
+        # mask_tensor = convertMask_to_tensor(mask, dtype=torch.long)
+        image_tensor = torch.from_numpy(image).float()
+        mask_tensor = torch.from_numpy(mask).long()
         
         if self.transform is not None:
-            image_tensor, mask_tensor = self.transform((image_tensor, mask_tensor))
+            image_tensor, mask_tensor = self.transform(image_tensor, mask_tensor)
         
         return image_tensor, mask_tensor
 

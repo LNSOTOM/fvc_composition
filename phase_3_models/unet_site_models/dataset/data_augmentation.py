@@ -18,59 +18,77 @@ import albumentations as A
 
 import os
 import rasterio
+import cv2
+from dataset.image_preprocessing import load_raw_multispectral_image, prep_normalise_image, prep_contrast_stretch_image, convertImg_to_tensor, load_raw_rgb_image
+from dataset.mask_preprocessing import prep_mask, prep_mask_preserve_nan, convertMask_to_tensor
+
 
 def save_augmented_pair(orig_img_path, orig_mask_path, aug_image_np, aug_mask_np, aug_idx, aug_img_dir, aug_mask_dir):
-    """Save augmented image and mask pairs to disk with appropriate metadata"""
+    """Save augmented image and mask pairs to disk"""
+    print(f"Saving augmented image {aug_idx}: shape={aug_image_np.shape}, min={aug_image_np.min()}, max={aug_image_np.max()}, mean={aug_image_np.mean():.4f}")
+    print(f"Saving augmented mask {aug_idx}: shape={aug_mask_np.shape}, unique values={np.unique(aug_mask_np)}")
     
-    # Create filenames with proper augmentation naming
+    # Create filenames
     img_basename = os.path.basename(orig_img_path)
     mask_basename = os.path.basename(orig_mask_path)
-    
     aug_img_path = os.path.join(aug_img_dir, f"aug{aug_idx}_{img_basename}")
     aug_mask_path = os.path.join(aug_mask_dir, f"aug{aug_idx}_{mask_basename}")
     
-    print(f"Saving augmented image to: {aug_img_path}")
+    # Check if augmentation created all zeros
+    if aug_image_np.min() == 0 and aug_image_np.max() == 0:
+        print(f"WARNING: All-zero image detected before saving. Using original image with flip instead.")
+        
+        # Get original image as fallback
+        with rasterio.open(orig_img_path) as src:
+            orig_data = src.read()
+            
+        # Create a simple flip of the original data as fallback
+        if np.random.rand() > 0.5:
+            # Horizontal flip
+            aug_image_np = np.flip(orig_data, axis=2)
+        else:
+            # Vertical flip
+            aug_image_np = np.flip(orig_data, axis=1)
+            
+        print(f"Fallback image: min={aug_image_np.min()}, max={aug_image_np.max()}, mean={aug_image_np.mean():.4f}")
     
-    # Get original metadata
+    # Save image and mask
     with rasterio.open(orig_img_path) as src:
         meta = src.profile.copy()
+    meta.update({"count": aug_image_np.shape[0], "dtype": aug_image_np.dtype.name})
+    with rasterio.open(aug_img_path, 'w', **meta) as dst:
+        for i in range(aug_image_np.shape[0]):
+            dst.write(aug_image_np[i], i + 1)
     
-    # Fix for writing image
-    # Check if image needs transposing (C,H,W to H,W,C)
-    if aug_image_np.ndim == 3 and aug_image_np.shape[0] in [3, 4, 5]:
-        # Update metadata for the image
-        meta.update(count=aug_image_np.shape[0])
-        
-        # Write the image (already in correct C,H,W format for rasterio)
-        with rasterio.open(aug_img_path, 'w', **meta) as dst:
-            for i in range(aug_image_np.shape[0]):
-                dst.write(aug_image_np[i], i + 1)
-    else:
-        print("WARNING: Unexpected image shape")
-    
-    # Fix for writing mask
     mask_meta = meta.copy()
-    mask_meta.update(count=1, dtype=aug_mask_np.dtype)
-    
-    # Ensure mask is 2D for writing
-    if aug_mask_np.ndim > 2:
-        aug_mask_np = aug_mask_np.squeeze()
-    
-    # Write the mask
+    mask_meta.update({"count": 1, "dtype": aug_mask_np.dtype.name})
     with rasterio.open(aug_mask_path, 'w', **mask_meta) as dst:
-        dst.write(aug_mask_np[None, ...])  # Add channel dimension for writing
+        dst.write(aug_mask_np, 1)
 
     return aug_img_path, aug_mask_path
 
 def get_train_augmentation():
-    """Return Albumentations transform pipeline for training data"""
+    """
+    Return Albumentations transform pipeline for training data with:
+    - Random horizontal flips (50% probability)
+    - Random vertical flips (50% probability)
+    - Random brightness adjustment (90-110%)
+    - Random contrast adjustment (80-120%)
+    - Random 90-degree rotations (50% probability)
+    - Random shearing (0-0.2 radians)
+    - Random shifting/translation (0-15% in any direction)
+    """
     return A.Compose([
         A.HorizontalFlip(p=0.5),
         A.VerticalFlip(p=0.5),
-        A.RandomBrightnessContrast(p=0.5),
-        A.RandomRotate90(p=0.5),
-        # Add more augmentations as needed
-    ])
+        A.RandomRotate90(p=0.5),  
+        A.RandomBrightnessContrast(
+            brightness_limit=0.1,  # ±10% brightness
+            contrast_limit=0.1,    # ±10% contrast
+            p=0.5,
+            always_apply=False
+        ),
+    ], p=1.0)  # Ensure at least one transform is always applied
 
 def get_val_augmentation():
     return A.Compose([

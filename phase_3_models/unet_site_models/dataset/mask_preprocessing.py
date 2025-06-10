@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from PIL import Image
 import rasterio
+import cv2
 
 # def prep_mask(mask_name, replace_value=-1):
 #     """Read the mask, convert to grayscale, replace NaN values, and return as a numpy array."""
@@ -21,6 +22,13 @@ def prep_mask(mask_name, replace_value=-1):
         with rasterio.open(mask_name) as src:
             mask = src.read(1)  # Reading the first band
             profile = src.profile  # Get the profile containing metadata like CRS and affine transform
+         # Resize mask to match image dimensions if needed
+        if 'height' in profile and 'width' in profile:
+            target_height, target_width = profile['height'], profile['width']
+            if mask.shape != (target_height, target_width):
+                print(f"Resizing mask from {mask.shape} to {(target_height, target_width)}")
+                mask = cv2.resize(mask, (target_width, target_height), interpolation=cv2.INTER_NEAREST)
+        
     except Exception as e:
         raise IOError(f"Error reading mask file {mask_name}: {e}")
 

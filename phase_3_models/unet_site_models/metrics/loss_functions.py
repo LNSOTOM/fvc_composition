@@ -20,7 +20,8 @@ class DiceLoss(nn.Module):
 
         # Apply the valid mask
         outputs = outputs[valid_mask.view(-1)]
-        targets = targets[valid_mask.view(-1)]
+        # targets = targets[valid_mask.view(-1)]
+        targets = targets[valid_mask.view(-1)].long() 
 
         # Convert targets to one-hot encoding
         num_classes = outputs.size(1)
