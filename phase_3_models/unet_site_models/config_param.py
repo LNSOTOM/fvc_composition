@@ -116,7 +116,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # ======================
 # Training Hyperparameters
 # ======================
-NUM_EPOCHS    = 20
+NUM_EPOCHS    = 120
 BATCH_SIZE    = 16
 NUM_WORKERS   = 4
 
@@ -144,7 +144,7 @@ DATA_TRANSFORM = transforms.Compose([
 # ======================
 NUM_BLOCKS = 3
 ENABLE_WATER_REDISTRIBUTION = False
-USE_AUGMENTED_DATA = True
+USE_AUGMENTED_DATA = False  #False
 
 def combine_and_process_paths(image_dirs, mask_dirs):
     combined_data = []
