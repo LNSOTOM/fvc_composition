@@ -20,9 +20,6 @@ from dataset.image_preprocessing import prep_normalise_image, load_raw_multispec
 from map.plot_blocks_folds import plot_blocks_folds
 import json
 
-from dataset.data_augmentation_wrapper import TransformSubset
-from dataset.data_augmentation import get_transform
-
 
 def log_message(message, log_file):
     # Ensure the directory for the log file exists
@@ -206,7 +203,7 @@ def get_dataset_splits(image_folder, mask_folder, combined_data, transform, soil
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/logfile.txt' #low
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/logfile.txt' #medium
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/logfile.txt' #dense
-    log_file = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/logfile.txt'
+    log_file = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/logfile.txt' #dense
     start_time = time.time()
 
     dataset = CalperumDataset(image_folder, mask_folder, transform=None, save_augmented=False, augmented_save_dir=None)
@@ -251,7 +248,7 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/logfile.txt' #low
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/logfile.txt' #medium
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/logfile.txt' #dense
-    log_file = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/logfile.txt'
+    log_file = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/logfile.txt' #dense
     coordinates = []
     
     for idx, (_, _, img_path, _) in enumerate(combined_data):
@@ -291,12 +288,7 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
 
     kmeans.fit(coordinates)
     block_labels = kmeans.labels_
-    
-    print(f"🔍 Block Cross Validation Debug:")
-    print(f"   - Requested number of blocks: {num_blocks}")
-    print(f"   - Dataset size: {len(dataset)}")
-    print(f"   - Combined data size: {len(combined_data)}")
-    
+
     data_splits = []
     fold_assignments = {}
 
@@ -304,47 +296,20 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
         test_indices = [i for i in range(len(block_labels)) if block_labels[i] == block]
         train_val_indices = [i for i in range(len(block_labels)) if block_labels[i] != block]
         
-        print(f"   - Block {block}: Test={len(test_indices)}, Train+Val={len(train_val_indices)}")
-        
         if len(train_val_indices) == 0 or len(test_indices) == 0:
             log_message(f"Skipping block {block} due to insufficient data.", log_file)
             continue
 
         train_indices, val_indices = train_test_split(train_val_indices, test_size=0.2, random_state=42)
-        print(f"   - Block {block} final split: Train={len(train_indices)}, Val={len(val_indices)}, Test={len(test_indices)}")
-        
-         # Create transforms
-        train_transform = get_transform(train=True, enable_augmentation=config_param.ENABLE_DATA_AUGMENTATION)
-        
-        train_dataset = TransformSubset(dataset, train_indices, transform=train_transform)
+
+        train_dataset = Subset(dataset, train_indices)
         val_dataset = Subset(dataset, val_indices)
         test_dataset = Subset(dataset, test_indices)
-        
 
-    
-       
-        # Note: val and test datasets don't need augmentation transforms
-        
-        # Create DataLoaders
-        train_loader = DataLoader(
-            train_dataset, 
-            batch_size=config_param.BATCH_SIZE, 
-            shuffle=True, 
-            num_workers=config_param.NUM_WORKERS
-        )
-        val_loader = DataLoader(
-            val_dataset, 
-            batch_size=config_param.BATCH_SIZE, 
-            shuffle=False, 
-            num_workers=config_param.NUM_WORKERS
-        )
-        test_loader = DataLoader(
-            test_dataset, 
-            batch_size=config_param.BATCH_SIZE, 
-            shuffle=False, 
-            num_workers=config_param.NUM_WORKERS
-        )
-        
+        train_loader = DataLoader(train_dataset, batch_size=config_param.BATCH_SIZE, shuffle=True, num_workers=config_param.NUM_WORKERS)
+        val_loader = DataLoader(val_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
+        test_loader = DataLoader(test_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
+
         fold_assignments[block] = {
             'train_indices': train_indices,
             'val_indices': val_indices,

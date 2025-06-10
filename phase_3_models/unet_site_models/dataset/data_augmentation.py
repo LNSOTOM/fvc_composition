@@ -5,7 +5,6 @@ from collections import Counter
 import random
 from copy import deepcopy
 
-import cv2
 import numpy as np
 
 import torch
@@ -115,39 +114,48 @@ def get_transform(train: bool = False, enable_augmentation: bool = False):
 
 ###################
 
-def transform_image_by_channels(image, transform_fn):
-    """Apply a PIL-based transform to each channel of a tensor image."""
-    transformed_channels = []
-    for c in image:
-        pil_img = transforms.ToPILImage()(c.unsqueeze(0))
-        transformed = transform_fn(pil_img)
-        transformed_channels.append(transforms.ToTensor()(transformed).squeeze(0))
-    return torch.stack(transformed_channels)
-
 def apply_color_jitter(image, mask):
-    """Apply color jitter to the image only (brightness & contrast)."""
     transform = transforms.ColorJitter(
-        brightness=(0.9, 1.1),
-        contrast=(0.8, 1.2)
+        brightness=(0.9, 1.1),  # Brightness 90%-110%
+        contrast=(0.8, 1.2)     # Contrast 80%-120%
     )
-    image = transform_image_by_channels(image, transform)
-    return image, mask
+    channels = []
+    for i in range(image.shape[0]):
+        channel = transforms.ToPILImage()(image[i].unsqueeze(0))
+        channel = transform(channel)
+        channels.append(transforms.ToTensor()(channel).squeeze(0))
+    return torch.stack(channels), mask  # Return the mask unchanged
 
+# Function to apply vertical flip
 def apply_vertical_flip(image, mask):
-    """Apply vertical flip with 50% probability"""
-    if random.random() > 0.5:
-        print("Applied Vertical Flip")
-        image = torch.flip(image, dims=[1])  # Flip along height dimension
-        mask = torch.flip(mask, dims=[0])    # Flip along height dimension
+    transform = transforms.RandomVerticalFlip(p=1)
+    image = transform(image)
+    mask = transform(mask)
     return image, mask
 
+# Function to apply horizontal flip
 def apply_horizontal_flip(image, mask):
-    """Apply horizontal flip with 50% probability"""
-    if random.random() > 0.5:
-        print("Applied Horizontal Flip")
-        image = torch.flip(image, dims=[2])  # Flip along width dimension
-        mask = torch.flip(mask, dims=[1])    # Flip along width dimension
+    transform = transforms.RandomHorizontalFlip(p=1)
+    image = transform(image)
+    mask = transform(mask)
     return image, mask
+
+# Function to apply random affine transformation
+def apply_random_affine(image, mask):
+    transform = transforms.RandomAffine(degrees=20, translate=(0.15, 0.15))
+    channels = []
+    for i in range(image.shape[0]):
+        channel = transforms.ToPILImage()(image[i].unsqueeze(0))
+        channel = transform(channel)
+        channels.append(transforms.ToTensor()(channel).squeeze(0))
+
+    # Apply the same transformation to the mask
+    mask = transforms.ToPILImage()(mask)
+    mask = transform(mask)
+    mask = transforms.ToTensor()(mask)
+
+    return torch.stack(channels), mask
+
 
 def generate_random_affine_params():
     """Generate random affine transformation parameters."""

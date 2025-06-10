@@ -11,7 +11,7 @@ import numpy as np
 from torchvision.transforms import functional as F
 
 from dataset.calperum_dataset import CalperumDataset
-from dataset.data_augmentation import apply_color_jitter, apply_vertical_flip, apply_horizontal_flip
+from dataset.data_augmentation import apply_color_jitter, apply_vertical_flip, apply_horizontal_flip, apply_random_affine
 
 from torch.nn import CrossEntropyLoss, BCEWithLogitsLoss
 from metrics.loss_functions import FocalLoss, WeightedCrossEntropyLoss, calculate_class_weights, save_class_weights_to_file, DiceLoss, CombinedDiceFocalLoss
@@ -166,7 +166,7 @@ CRITERION = FocalLoss(alpha=1, gamma=2, ignore_index=-1)  # Now handles NaN valu
 # ]) if APPLY_TRANSFORMS else None
 
 # b) Without (set to False)/With Data Augmentation (set to True)
-# APPLY_TRANSFORMS = False  
+APPLY_TRANSFORMS = False  
 
 # Define transformations conditionally
 # DATA_TRANSFORM = transforms.Compose([
@@ -175,12 +175,12 @@ CRITERION = FocalLoss(alpha=1, gamma=2, ignore_index=-1)  # Now handles NaN valu
 #     transforms.Lambda(lambda img: apply_horizontal_flip(img)),
 #     transforms.Lambda(lambda img: apply_random_affine(img))
 # ]) if APPLY_TRANSFORMS else None
-# DATA_TRANSFORM = transforms.Compose([
-#     transforms.Lambda(lambda img_mask: apply_color_jitter(img_mask[0], img_mask[1])),
-#     transforms.Lambda(lambda img_mask: apply_vertical_flip(img_mask[0], img_mask[1])),
-#     transforms.Lambda(lambda img_mask: apply_horizontal_flip(img_mask[0], img_mask[1]))
-#     # transforms.Lambda(lambda img_mask: apply_random_affine(img_mask[0], img_mask[1]))
-# ]) if APPLY_TRANSFORMS else None
+DATA_TRANSFORM = transforms.Compose([
+    transforms.Lambda(lambda img_mask: apply_color_jitter(img_mask[0], img_mask[1])),
+    transforms.Lambda(lambda img_mask: apply_vertical_flip(img_mask[0], img_mask[1])),
+    transforms.Lambda(lambda img_mask: apply_horizontal_flip(img_mask[0], img_mask[1])),
+    transforms.Lambda(lambda img_mask: apply_random_affine(img_mask[0], img_mask[1]))
+]) if APPLY_TRANSFORMS else None
 
 
 #save Data augmentation
