@@ -340,12 +340,19 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
         val_dataset = Subset(original_dataset, val_indices)
         test_dataset = Subset(original_dataset, test_indices)
         
+        # Print validation and test set sizes
+        print(f"Block {block}:")
+        print(f"  Validation dataset: {len(val_dataset)} samples")
+        print(f"  Test dataset: {len(test_dataset)} samples")
+    
+        
         # Create combined dataset if using augmentation
         if use_aug and augmented_dataset is not None:
             train_dataset = ConcatDataset([train_original, augmented_dataset])
             print(f"Combined training dataset: {len(train_original)} original + {len(augmented_dataset)} augmented = {len(train_dataset)} total")
         else:
             train_dataset = train_original
+            print(f"  Training dataset: {len(train_dataset)} samples")
         
         # Create loaders with the combined dataset
         train_loader = DataLoader(
