@@ -33,8 +33,8 @@ class AlbumentationsTorchWrapper:
         mask_np = mask_tensor.numpy()
 
         # Debug: Print original values
-        print(f"Original image shape: {image_np.shape}, mask shape: {mask_np.shape}")
-        print(f"Original image stats: min={image_np.min():.6f}, max={image_np.max():.6f}, mean={image_np.mean():.6f}")
+        # print(f"Original image shape: {image_np.shape}, mask shape: {mask_np.shape}")
+        # print(f"Original image stats: min={image_np.min():.6f}, max={image_np.max():.6f}, mean={image_np.mean():.6f}")
         
         # Check if we need to recover data due to zero values
         if image_np.min() == 0 and image_np.max() == 0:
