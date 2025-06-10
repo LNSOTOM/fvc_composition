@@ -1,52 +1,61 @@
 import os
+import torch
+from tqdm import tqdm
+import numpy as np
 import rasterio
-from dataset.image_preprocessing import load_raw_multispectral_image
-from dataset.mask_preprocessing import prep_mask
-from config_param import IMAGE_FOLDER, MASK_FOLDER, AUG_IMAGE_DIR, AUG_MASK_DIR
 
-def save_augmented_pair(orig_img_path, orig_mask_path, aug_image, aug_mask, aug_idx, aug_img_dir, aug_mask_dir):
-    img_name = os.path.basename(orig_img_path).replace('.tif', '')
-    mask_name = os.path.basename(orig_mask_path).replace('.tif', '')
+from dataset.calperum_dataset import CalperumDataset
+from dataset.data_augmentation_wrapper import AlbumentationsTorchWrapper
+from dataset.data_augmentation import get_train_augmentation, save_augmented_pair
+import config_param
 
-    aug_img_name = f"{img_name}_aug{aug_idx}.tif"
-    aug_mask_name = f"{mask_name}_aug{aug_idx}.tif"
-    aug_img_path = os.path.join(aug_img_dir, aug_img_name)
-    aug_mask_path = os.path.join(aug_mask_dir, aug_mask_name)
+def main():
+    # Make sure output directories exist
+    output_dir_img= '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/predictor_5b'
+    output_dir_mask= '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/mask_fvc'
+    os.makedirs(output_dir_img, exist_ok=True)
+    os.makedirs(output_dir_mask, exist_ok=True)
 
-    # Save image
-    with rasterio.open(orig_img_path) as src:
-        meta = src.meta.copy()
-    with rasterio.open(aug_img_path, 'w', **meta) as dst:
-        dst.write(aug_image)
+    image_dirs = config_param.IMAGE_FOLDER
+    mask_dirs = config_param.MASK_FOLDER
+    # 1. Create dataset for originals (no transforms)
+    dataset = CalperumDataset(
+        image_folders=image_dirs,
+        mask_folders=mask_dirs,
+        transform=None
+    )
 
-    # Save mask
-    with rasterio.open(orig_mask_path) as src:
-        meta = src.meta.copy()
-    with rasterio.open(aug_mask_path, 'w', **meta) as dst:
-        dst.write(aug_mask, 1)
+    # 2. Create Albumentations transform
+    albumentations_transform = get_train_augmentation()
+    albumentations_wrapper = AlbumentationsTorchWrapper(albumentations_transform)
 
-def generate_and_save_augmentations():
-    from tqdm import tqdm
-    # Loop through all original image/mask pairs
-    for img_dir, mask_dir in zip(IMAGE_FOLDER, MASK_FOLDER):
-        img_files = sorted([f for f in os.listdir(img_dir) if f.endswith('.tif')])
-        mask_files = sorted([f for f in os.listdir(mask_dir) if f.endswith('.tif')])
+    # 3. Decide how many augmentations per sample
+    NUM_AUG_PER_IMAGE = 3
 
-        for img_file, mask_file in tqdm(zip(img_files, mask_files), total=len(img_files)):
-            img_path = os.path.join(img_dir, img_file)
-            mask_path = os.path.join(mask_dir, mask_file)
+    # 4. Iterate and generate augmentations
+    print("Generating and saving augmented data...")
+    orig_img_dir = image_dirs[0]
+    orig_mask_dir = mask_dirs[0]
+    orig_img_files = sorted([f for f in os.listdir(orig_img_dir) if f.endswith('.tif')])
+    orig_mask_files = sorted([f for f in os.listdir(orig_mask_dir) if f.endswith('.tif')])
 
-            # Load image and mask
-            image, _ = load_raw_multispectral_image(img_path)
-            mask, _ = prep_mask(mask_path)
+    for idx in tqdm(range(len(dataset))):
+        image_tensor, mask_tensor = dataset[idx]
+        # Convert to numpy for rasterio saving
+        # [C,H,W] -> rasterio expects [C,H,W] for multiband, mask [H,W]
+        image_np = image_tensor.numpy()
+        mask_np = mask_tensor.numpy()
 
-            # Example: create 3 augmentations per image
-            for aug_idx in range(1, 4):
-                # Replace this with your actual augmentation
-                aug_image = image  # TODO: Apply your augmentation here!
-                aug_mask = mask    # TODO: Apply your augmentation here!
-                save_augmented_pair(img_path, mask_path, aug_image, aug_mask, aug_idx, AUG_IMAGE_DIR, AUG_MASK_DIR)
+        orig_img_path = os.path.join(orig_img_dir, orig_img_files[idx])
+        orig_mask_path = os.path.join(orig_mask_dir, orig_mask_files[idx])
 
-if __name__ == '__main__':
-    # Uncomment this block to generate augmented data before training
-    generate_and_save_augmentations()
+        for aug_idx in range(1, NUM_AUG_PER_IMAGE+1):
+            # Apply augmentation
+            aug_image, aug_mask = albumentations_wrapper(image_tensor, mask_tensor)
+            aug_image_np = aug_image.numpy()
+            aug_mask_np = aug_mask.numpy()
+            # Save
+            save_augmented_pair(orig_img_path, orig_mask_path, aug_image_np, aug_mask_np, aug_idx, output_dir_img, output_dir_mask)
+
+if __name__ == "__main__":
+    main()
