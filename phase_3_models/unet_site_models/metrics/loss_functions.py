@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-import numpy as np
+
 
 class DiceLoss(nn.Module):
     def __init__(self, smooth=1, ignore_index=-1):
@@ -41,7 +41,7 @@ class DiceLoss(nn.Module):
 
         return dice_loss
 
-##ORGININAL FOCAL LOSS IMPLEMENTATION
+
 class FocalLoss(nn.Module):
     def __init__(self, alpha=1, gamma=2, ignore_index=-1):
         super(FocalLoss, self).__init__()
@@ -52,9 +52,7 @@ class FocalLoss(nn.Module):
     def forward(self, outputs, targets):
         # Create a mask to ignore NaN values (or the specified ignore_index)
         valid_mask = (targets != self.ignore_index)
-        
-        # Check if the mask is completely empty
-       
+
         # Flatten the tensors to apply the mask
         outputs = outputs.permute(0, 2, 3, 1).reshape(-1, outputs.size(1))  # Shape: [batch_size * height * width, num_classes]
         targets = targets.view(-1)  # Shape: [batch_size * height * width]
@@ -62,10 +60,6 @@ class FocalLoss(nn.Module):
         # Apply the valid mask
         outputs = outputs[valid_mask.view(-1)]
         targets = targets[valid_mask.view(-1)]
-        
-        # # ✅ Skip if no valid targets
-        # if targets.numel() == 0:
-        #     return torch.tensor(0.0, device=outputs.device, requires_grad=True)
 
         # Compute the cross entropy loss
         logpt = F.cross_entropy(outputs, targets, reduction='none')
@@ -76,128 +70,6 @@ class FocalLoss(nn.Module):
 
         return focal_loss.mean()
 
-
-###VERSION 2
-# class FocalLoss(nn.Module):
-#     def __init__(self, alpha=1, gamma=2, ignore_index=-1):
-#         super(FocalLoss, self).__init__()
-#         self.alpha = torch.tensor(alpha) if isinstance(alpha, (list, np.ndarray)) else alpha
-#         self.gamma = gamma
-#         self.ignore_index = ignore_index
-
-#     def forward(self, outputs, targets):
-#         # Create a mask to ignore NaN values (or the specified ignore_index)
-#         valid_mask = (targets != self.ignore_index)
-
-#         # Flatten the tensors to apply the mask
-#         outputs = outputs.permute(0, 2, 3, 1).reshape(-1, outputs.size(1))  # Shape: [batch_size * height * width, num_classes]
-#         targets = targets.view(-1)  # Shape: [batch_size * height * width]
-
-#         # Apply the valid mask
-#         outputs = outputs[valid_mask.view(-1)]
-#         targets = targets[valid_mask.view(-1)]
-
-#         # Compute the cross entropy loss
-#         logpt = F.cross_entropy(outputs, targets, reduction='none')
-#         pt = torch.exp(-logpt)
-
-#         # Convert alpha to a tensor and index it using the targets
-#         if isinstance(self.alpha, torch.Tensor):
-#             self.alpha = self.alpha.to(outputs.device)  # Ensure alpha is on the same device as outputs
-#             alpha_t = self.alpha[targets]  # Index alpha using the target classes
-#         else:
-#             alpha_t = self.alpha  # Use scalar alpha if provided
-
-#         # Apply Focal Loss formula
-#         focal_loss = alpha_t * ((1 - pt) ** self.gamma) * logpt
-
-#         return focal_loss.mean()
-
-
-####VERSION3
-# class FocalLoss(nn.Module):
-#     def __init__(self, alpha=1, gamma=2.0, ignore_index=-1):
-#         super(FocalLoss, self).__init__()
-#         if isinstance(alpha, (list, np.ndarray)):
-#             self.alpha = torch.tensor(alpha, dtype=torch.float32)
-#         else:
-#             self.alpha = alpha
-#         self.gamma = gamma
-#         self.ignore_index = ignore_index
-
-#     def forward(self, outputs, targets):
-#         B, C, H, W = outputs.size()
-#         outputs = outputs.permute(0, 2, 3, 1).reshape(-1, C)
-#         targets = targets.view(-1)
-
-#         # Mask out ignore_index
-#         valid_mask = targets != self.ignore_index
-#         if valid_mask.sum() == 0:
-#             return torch.tensor(0.0, dtype=outputs.dtype, device=outputs.device)
-
-#         outputs = outputs[valid_mask]
-#         targets = targets[valid_mask]
-
-#         # Compute log_probs and probs
-#         log_probs = F.log_softmax(outputs, dim=1)
-#         probs = torch.exp(log_probs)
-
-#         # Convert to one-hot and compute pt
-#         targets_one_hot = F.one_hot(targets, num_classes=C).float()
-#         pt = (probs * targets_one_hot).sum(dim=1).clamp(min=1e-7)  # Avoid log(0)
-#         logpt = (log_probs * targets_one_hot).sum(dim=1)
-
-#         # Apply alpha weighting
-#         if isinstance(self.alpha, torch.Tensor):
-#             alpha = self.alpha.to(outputs.device)
-#             at = alpha[targets]
-#         else:
-#             at = self.alpha
-
-#         # Focal Loss formula
-#         loss = -at * ((1 - pt) ** self.gamma) * logpt
-
-#         # Catch NaNs (if any)
-#         if torch.isnan(loss).any():
-#             print("⚠️ NaN encountered in FocalLoss computation. Returning zero loss.")
-#             return torch.tensor(0.0, dtype=loss.dtype, device=loss.device)
-
-#         return loss.mean()
-
-###version 4
-# class FocalLoss(nn.Module):
-#     def __init__(self, alpha=1, gamma=2.0, ignore_index=-1):
-#         super(FocalLoss, self).__init__()
-#         if isinstance(alpha, (list, np.ndarray)):
-#             self.alpha = torch.tensor(alpha, dtype=torch.float32)
-#         elif isinstance(alpha, torch.Tensor):
-#             self.alpha = alpha.float()
-#         else:
-#             self.alpha = torch.tensor([alpha], dtype=torch.float32)
-#         self.gamma = gamma
-#         self.ignore_index = ignore_index
-
-#     def forward(self, outputs, targets):
-#         outputs = outputs.permute(0, 2, 3, 1).reshape(-1, outputs.size(1))
-#         targets = targets.view(-1)
-#         valid_mask = targets != self.ignore_index
-#         if valid_mask.sum() == 0:
-#             return torch.tensor(0.0, dtype=outputs.dtype, device=outputs.device)
-#         outputs = outputs[valid_mask]
-#         targets = targets[valid_mask]
-#         logpt = F.cross_entropy(outputs, targets, reduction='none')
-#         pt = torch.exp(-logpt)
-#         if isinstance(self.alpha, torch.Tensor) and self.alpha.numel() > 1:
-#             alpha = self.alpha.to(outputs.device)
-#             at = alpha[targets]
-#         else:
-#             at = self.alpha.to(outputs.device)
-#         loss = at * ((1 - pt) ** self.gamma) * logpt
-#         if torch.isnan(loss).any():
-#             print("\u26a0\ufe0f NaN encountered in FocalLoss computation. Returning zero loss.")
-#             return torch.tensor(0.0, dtype=loss.dtype, device=loss.device)
-#         return loss.mean()
-    
 '''
 The alpha parameter controls the weighting between Focal Loss and Dice Loss in the combined loss function.
 alpha=0.8: This gives 80% of the total loss weight to Focal Loss and 20% to Dice Loss. 
