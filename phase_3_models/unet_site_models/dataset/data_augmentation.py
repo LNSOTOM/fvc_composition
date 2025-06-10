@@ -19,35 +19,56 @@ import albumentations as A
 import os
 import rasterio
 
-def save_augmented_pair(orig_img_path, orig_mask_path, aug_image, aug_mask, aug_idx, aug_img_dir, aug_mask_dir):
-    img_name = os.path.basename(orig_img_path).replace('.tif', '')
-    mask_name = os.path.basename(orig_mask_path).replace('.tif', '')
-
-    aug_img_name = f"{img_name}_aug{aug_idx}.tif"
-    aug_mask_name = f"{mask_name}_aug{aug_idx}.tif"
-
-    aug_img_path = os.path.join(aug_img_dir, aug_img_name)
-    aug_mask_path = os.path.join(aug_mask_dir, aug_mask_name)
-
-    # Save image
+def save_augmented_pair(orig_img_path, orig_mask_path, aug_image_np, aug_mask_np, aug_idx, aug_img_dir, aug_mask_dir):
+    """Save augmented image and mask pairs to disk with appropriate metadata"""
+    
+    # Create filenames with proper augmentation naming
+    img_basename = os.path.basename(orig_img_path)
+    mask_basename = os.path.basename(orig_mask_path)
+    
+    aug_img_path = os.path.join(aug_img_dir, f"aug{aug_idx}_{img_basename}")
+    aug_mask_path = os.path.join(aug_mask_dir, f"aug{aug_idx}_{mask_basename}")
+    
+    print(f"Saving augmented image to: {aug_img_path}")
+    
+    # Get original metadata
     with rasterio.open(orig_img_path) as src:
-        meta = src.meta.copy()
-    with rasterio.open(aug_img_path, 'w', **meta) as dst:
-        dst.write(aug_image)
+        meta = src.profile.copy()
+    
+    # Fix for writing image
+    # Check if image needs transposing (C,H,W to H,W,C)
+    if aug_image_np.ndim == 3 and aug_image_np.shape[0] in [3, 4, 5]:
+        # Update metadata for the image
+        meta.update(count=aug_image_np.shape[0])
+        
+        # Write the image (already in correct C,H,W format for rasterio)
+        with rasterio.open(aug_img_path, 'w', **meta) as dst:
+            for i in range(aug_image_np.shape[0]):
+                dst.write(aug_image_np[i], i + 1)
+    else:
+        print("WARNING: Unexpected image shape")
+    
+    # Fix for writing mask
+    mask_meta = meta.copy()
+    mask_meta.update(count=1, dtype=aug_mask_np.dtype)
+    
+    # Ensure mask is 2D for writing
+    if aug_mask_np.ndim > 2:
+        aug_mask_np = aug_mask_np.squeeze()
+    
+    # Write the mask
+    with rasterio.open(aug_mask_path, 'w', **mask_meta) as dst:
+        dst.write(aug_mask_np[None, ...])  # Add channel dimension for writing
 
-    # Save mask
-    with rasterio.open(orig_mask_path) as src:
-        meta = src.meta.copy()
-    with rasterio.open(aug_mask_path, 'w', **meta) as dst:
-        dst.write(aug_mask, 1)
+    return aug_img_path, aug_mask_path
 
 def get_train_augmentation():
+    """Return Albumentations transform pipeline for training data"""
     return A.Compose([
         A.HorizontalFlip(p=0.5),
         A.VerticalFlip(p=0.5),
+        A.RandomBrightnessContrast(p=0.5),
         A.RandomRotate90(p=0.5),
-        A.ShiftScaleRotate(shift_limit=0.10, scale_limit=0.10, rotate_limit=15, border_mode=0, p=0.4),
-        # A.RandomBrightnessContrast(p=0.2),  # Uncomment if you want
         # Add more augmentations as needed
     ])
 

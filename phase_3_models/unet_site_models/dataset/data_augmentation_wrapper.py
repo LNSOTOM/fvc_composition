@@ -2,24 +2,37 @@ import torch
 import gc
 from torch.utils.data import ConcatDataset
 from dataset.data_augmentation import apply_combined_augmentations
-
+import numpy as np
 import torch
 
 class AlbumentationsTorchWrapper:
-    def __init__(self, albumentations_transform):
-        self.transform = albumentations_transform
-
+    """Wrapper for Albumentations transforms to work with PyTorch tensors"""
+    def __init__(self, transform):
+        self.transform = transform
+        
     def __call__(self, image_tensor, mask_tensor):
-        # image_tensor: torch tensor [C,H,W]
-        # mask_tensor: torch tensor [H,W] or [1,H,W]
-        image = image_tensor.permute(1,2,0).cpu().numpy()  # [C,H,W] -> [H,W,C]
-        mask = mask_tensor.cpu().numpy()
-        augmented = self.transform(image=image, mask=mask)
-        image_aug = augmented["image"]
-        mask_aug = augmented["mask"]
-        image_out = torch.from_numpy(image_aug).permute(2,0,1).float()
-        mask_out = torch.from_numpy(mask_aug).long()
-        return image_out, mask_out
+        """Convert tensors to numpy, apply transform, then convert back to tensors"""
+        # Convert from PyTorch tensors to numpy arrays
+        image_np = image_tensor.numpy()
+        mask_np = mask_tensor.numpy()
+        
+        # Adjust dimensions for albumentations (expects HWC for image)
+        if image_np.ndim == 3 and image_np.shape[0] > 1:  # CHW format
+            image_np = np.transpose(image_np, (1, 2, 0))  # Convert to HWC
+        
+        # Apply albumentations transform
+        transformed = self.transform(image=image_np, mask=mask_np)
+        transformed_image = transformed['image']
+        transformed_mask = transformed['mask']
+        
+        # Convert back to PyTorch tensor and original format
+        if transformed_image.ndim == 3 and transformed_image.shape[2] > 1:  # HWC format
+            transformed_image = np.transpose(transformed_image, (2, 0, 1))  # Convert back to CHW
+        
+        image_tensor = torch.from_numpy(transformed_image)
+        mask_tensor = torch.from_numpy(transformed_mask)
+        
+        return image_tensor, mask_tensor
 
 class MemoryEfficientAugmentation(torch.utils.data.Dataset):
     """Memory-efficient augmentation that doesn't duplicate the dataset in memory.
