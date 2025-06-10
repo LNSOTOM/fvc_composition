@@ -151,7 +151,7 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
     plt.legend()
     plt.grid(True)
     plt.savefig(os.path.join(output_dir, f'block_{block_idx + 1}_training_validation_loss_plot.png'))
-    plt.show()
+    # plt.show()
     print(f"Plot saved")
 
     writer.close()
