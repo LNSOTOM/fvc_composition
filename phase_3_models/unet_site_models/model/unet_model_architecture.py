@@ -112,7 +112,6 @@ class UNetModel(nn.Module):
 
             if x.shape != skip_connection.shape:
                 # x = F.interpolate(x, size=skip_connection.shape[2:])
-                # x = F.interpolate(x, size=skip_connection.shape[2:], mode='nearest')
                 x = F.interpolate(x, size=skip_connection.shape[2:], mode='bilinear', align_corners=False)
 
             concat_skip = torch.cat((skip_connection, x), dim=1)
