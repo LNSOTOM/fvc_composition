@@ -3,6 +3,24 @@ import gc
 from torch.utils.data import ConcatDataset
 from dataset.data_augmentation import apply_combined_augmentations
 
+import torch
+
+class AlbumentationsTorchWrapper:
+    def __init__(self, albumentations_transform):
+        self.transform = albumentations_transform
+
+    def __call__(self, image_tensor, mask_tensor):
+        # image_tensor: torch tensor [C,H,W]
+        # mask_tensor: torch tensor [H,W] or [1,H,W]
+        image = image_tensor.permute(1,2,0).cpu().numpy()  # [C,H,W] -> [H,W,C]
+        mask = mask_tensor.cpu().numpy()
+        augmented = self.transform(image=image, mask=mask)
+        image_aug = augmented["image"]
+        mask_aug = augmented["mask"]
+        image_out = torch.from_numpy(image_aug).permute(2,0,1).float()
+        mask_out = torch.from_numpy(mask_aug).long()
+        return image_out, mask_out
+
 class MemoryEfficientAugmentation(torch.utils.data.Dataset):
     """Memory-efficient augmentation that doesn't duplicate the dataset in memory.
     

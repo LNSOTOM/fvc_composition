@@ -14,6 +14,23 @@ from torchvision.transforms import InterpolationMode
 import random
 import config_param
 
+import albumentations as A
+
+def get_train_augmentation():
+    return A.Compose([
+        A.HorizontalFlip(p=0.5),
+        A.VerticalFlip(p=0.5),
+        A.RandomRotate90(p=0.5),
+        A.ShiftScaleRotate(shift_limit=0.10, scale_limit=0.10, rotate_limit=15, border_mode=0, p=0.4),
+        # A.RandomBrightnessContrast(p=0.2),  # Uncomment if you want
+        # Add more augmentations as needed
+    ])
+
+def get_val_augmentation():
+    return A.Compose([
+        # Only normalization or resizing if needed
+    ])
+
 class RandomAffineTransform:
     def __init__(self, degrees=20, translate=(0.15, 0.15), shear=11.5, p=0.8):
         self.degrees = degrees

@@ -2,7 +2,7 @@ import os
 import re
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
 from sklearn.model_selection import train_test_split
 from sklearn.cluster import KMeans
 import rasterio
@@ -19,6 +19,9 @@ from dataset.threshold_be_subsampling import subsample_tiles, estimate_class_fre
 from dataset.image_preprocessing import prep_normalise_image, load_raw_multispectral_image
 from map.plot_blocks_folds import plot_blocks_folds
 import json
+
+from dataset.data_augmentation_wrapper import AlbumentationsTorchWrapper
+from dataset.data_augmentation import get_train_augmentation, get_val_augmentation
 
 
 def log_message(message, log_file):
@@ -291,6 +294,14 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
 
     data_splits = []
     fold_assignments = {}
+    
+    def get_dominant_class(dataset, idx):
+        _, mask = dataset[idx]
+        mask_np = mask.cpu().numpy() if hasattr(mask, 'cpu') else np.array(mask)
+        mask_flat = mask_np[mask_np >= 0].flatten()  # Exclude -1
+        if mask_flat.size == 0:
+            return -1  # All void
+        return np.bincount(mask_flat).argmax()
 
     for block in np.unique(block_labels):
         test_indices = [i for i in range(len(block_labels)) if block_labels[i] == block]
@@ -301,12 +312,58 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
             continue
 
         train_indices, val_indices = train_test_split(train_val_indices, test_size=0.2, random_state=42)
+        
+        # --- Albumentations transforms ---
+        alb_train_transform = AlbumentationsTorchWrapper(get_train_augmentation())
+        alb_val_transform = AlbumentationsTorchWrapper(get_val_augmentation())
+        
+        # --- Datasets with transforms ---
+        train_dataset_full = CalperumDataset(transform=alb_train_transform, in_memory_data=(dataset.images, dataset.masks))
+        val_dataset_full = CalperumDataset(transform=alb_val_transform, in_memory_data=(dataset.images, dataset.masks))
+        test_dataset_full = CalperumDataset(transform=alb_val_transform, in_memory_data=(dataset.images, dataset.masks))
 
+        # --- Subsets for folds ---
         train_dataset = Subset(dataset, train_indices)
         val_dataset = Subset(dataset, val_indices)
         test_dataset = Subset(dataset, test_indices)
+        
+        # --- Class balancing REBALANCE: WeightedRandomSampler for train_loader ---
+        dominant_classes = np.array([get_dominant_class(dataset, idx) for idx in train_indices])
+        valid_mask = dominant_classes >= 0
+        filtered_train_indices = [idx for idx, valid in zip(train_indices, valid_mask) if valid]
+        dominant_classes = dominant_classes[valid_mask]
+        num_classes = config_param.OUT_CHANNELS
 
-        train_loader = DataLoader(train_dataset, batch_size=config_param.BATCH_SIZE, shuffle=True, num_workers=config_param.NUM_WORKERS)
+        class_sample_counts = np.bincount(dominant_classes, minlength=num_classes)
+        class_percentages = [100.0 * x / len(dominant_classes) if len(dominant_classes) > 0 else 0 for x in class_sample_counts]
+        class_weights = 1. / (class_sample_counts + 1e-6)
+        sample_weights = class_weights[dominant_classes]
+        sampler = WeightedRandomSampler(weights=sample_weights, num_samples=len(sample_weights), replacement=True)
+
+        # Print/log before rebalancing class counts
+        before_msg = (
+            f"\nBlock {block} - Before Weighted Sampling (train split):\n"
+            f"Class counts: {class_sample_counts.tolist()}\n"
+            f"Class percentages: {[f'{p:.2f}%' for p in class_percentages]}\n"
+        )
+        print(before_msg)
+        log_message(before_msg, log_file)
+        
+        # Print/log after rebalancing (expected, since sampler uses inverse freq so approx uniform)
+        after_counts = [int(len(dominant_classes)/num_classes)] * num_classes
+        after_percentages = [f"{100.0/num_classes:.2f}%" for _ in range(num_classes)]
+        after_msg = (
+            f"Block {block} - Target After Weighted Sampling (train split):\n"
+            f"Expected class counts per batch: ~{after_counts}\n"
+            f"Expected class percentages per batch: {after_percentages}\n"
+            f"Effective class distribution will be approximately uniform across classes due to sampling.\n"
+        )
+        print(after_msg)
+        log_message(after_msg, log_file)
+        
+        filtered_train_dataset = Subset(dataset, filtered_train_indices)
+        train_loader = DataLoader(filtered_train_dataset, batch_size=config_param.BATCH_SIZE, sampler=sampler, num_workers=config_param.NUM_WORKERS)
+        # train_loader = DataLoader(train_dataset, batch_size=config_param.BATCH_SIZE, shuffle=True, num_workers=config_param.NUM_WORKERS)
         val_loader = DataLoader(val_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
         test_loader = DataLoader(test_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
 

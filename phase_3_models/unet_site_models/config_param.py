@@ -104,7 +104,7 @@ IMAGE_FOLDER = [
 
 # 3.Hyperparameters for training
 '''Num of epochs: how many times the learning algorithm will work through the entire training dataset. Helps to not overfit'''
-NUM_EPOCHS = 120 #120 # try also --> 100 and 20 for test and 40 minimum
+NUM_EPOCHS = 20 #120 # try also --> 100 and 20 for test and 40 minimum
 '''batch_size: number of training samples utilised in one iteration'''
 BATCH_SIZE =  16 #12  # minimum 16) | 32 
 ##PATCH_SIZE = 256  # Used in dataset preprocessing, if applicable
@@ -226,13 +226,13 @@ NUM_BLOCKS = 3
 INDICES_SAVE_PATHS = [
     # '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/subsampled_indices.json',
     # '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/subsampled_indices.json'
-    '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/subsampled_indices.json'
+    '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/subsampled_indices.json'
 ]
 
 COMBINED_INDICES_SAVE_PATHS = [
     # '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/combined_indices.json'
     # '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/combined_indices.json'
-    '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/combined_indices.json'
+    '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/combined_indices.json'
 ]
 
 ## Display tensorboard
@@ -252,3 +252,14 @@ ENABLE_DATA_AUGMENTATION = True  # Set to False to disable augmentation
 #     apply_horizontal_flip,
 #     apply_random_affine
 # ]
+import sys
+
+# ------------- Add augmentation (output) folder path -------------
+AUGMENTATION_OUTPUT_DIR = "/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug"
+os.makedirs(AUGMENTATION_OUTPUT_DIR, exist_ok=True)
+# ---------------------------------------------------------------
+
+# Optional: Add code-augmentation modules folder to sys.path if you keep augmentation code in a custom folder:
+AUGMENTATION_CODE_DIR = os.path.join(os.path.dirname(__file__), "augmentations")
+if AUGMENTATION_CODE_DIR not in sys.path:
+    sys.path.insert(0, AUGMENTATION_CODE_DIR)
