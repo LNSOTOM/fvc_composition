@@ -10,7 +10,7 @@ import random
 import numpy as np
 from torchvision.transforms import functional as F
 
-from dataset.calperum_dataset import CalperumDataset
+# from dataset.calperum_dataset import CalperumDataset
 from dataset.data_augmentation import apply_color_jitter, apply_vertical_flip, apply_horizontal_flip, apply_random_affine
 
 from torch.nn import CrossEntropyLoss, BCEWithLogitsLoss
@@ -19,17 +19,26 @@ from metrics.loss_functions import FocalLoss, WeightedCrossEntropyLoss, calculat
 
 def get_num_classes_from_mask(mask_path):
     """Get the unique classes in the mask, excluding NaN values (represented as -1)."""
-    # Load the mask and profile, but ignore the profile
-    mask, _ = CalperumDataset.load_mask(mask_path)
-
-    # Convert the mask to a tensor
+    # Import inside the function to avoid circular import
+    from dataset.calperum_dataset import CalperumDataset
+    mask = CalperumDataset.load_mask(mask_path)  # Only one output is returned
     mask_tensor = torch.tensor(mask)
-
-    # Exclude NaN values (-1) and get unique values
     unique_classes = torch.unique(mask_tensor[mask_tensor != -1])
-
-    # Return the unique classes
     return unique_classes
+
+# def get_num_classes_from_mask(mask_path):
+#     """Get the unique classes in the mask, excluding NaN values (represented as -1)."""
+#     # Load the mask and profile, but ignore the profile
+#     mask, _ = CalperumDataset.load_mask(mask_path)
+
+#     # Convert the mask to a tensor
+#     mask_tensor = torch.tensor(mask)
+
+#     # Exclude NaN values (-1) and get unique values
+#     unique_classes = torch.unique(mask_tensor[mask_tensor != -1])
+
+#     # Return the unique classes
+#     return unique_classes
 
 # Define the class labels
 class_labels = {'BE': 0, 'NPV': 1, 'PV': 2, 'SI': 3, 'WI': 4}
@@ -252,8 +261,11 @@ USE_AUGMENTED_DATA = True
 #     apply_horizontal_flip,
 #     apply_random_affine
 # ]
-AUGMENTATION_OUTPUT_DIR = "/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug"
-AUG_IMAGE_DIR = os.path.join(AUGMENTATION_OUTPUT_DIR, "images")
-AUG_MASK_DIR = os.path.join(AUGMENTATION_OUTPUT_DIR, "masks")
+# Augmentation output directories
+AUG_IMAGE_DIR = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/predictor_5b'
+AUG_MASK_DIR = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/mask_fvc'
+
+# Create directories if they don't exist
+import os
 os.makedirs(AUG_IMAGE_DIR, exist_ok=True)
 os.makedirs(AUG_MASK_DIR, exist_ok=True)
