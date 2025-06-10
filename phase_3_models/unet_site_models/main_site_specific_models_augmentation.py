@@ -30,95 +30,12 @@ import json
 from torchmetrics.classification import ConfusionMatrix
 import pandas as pd
 
-from balance_mask_water import integrate_water_distribution, has_water_class
-import gc 
-import psutil
 
-
-# === Environment Reset ===
-# def reset_torch_environment(verbose=True):
-#     import gc
-#     import torch
-#     import psutil
+def print_gpu_memory_usage(stage=""):
+    allocated = torch.cuda.memory_allocated() / (1024 ** 3)
+    cached = torch.cuda.memory_reserved() / (1024 ** 3)
+    print(f"{stage} - Allocated memory: {allocated:.2f} GB, Cached memory: {cached:.2f}")
     
-
-#     if verbose: print("🔁 Cleaning up environment...")
-
-#     # Step 1: Selectively delete user variables (skip core ones)
-#     safe_names = {
-#         "gc", "torch", "psutil", "os", "reset_torch_environment", 
-#         "TensorBoardLogger",
-#         "setup_logging_and_checkpoints",  # Add this function
-#         "print_gpu_memory_usage", "clear_memory", "log_message",
-#         "setup_model_and_optimizer", "save_model", "save_loss_metrics",
-#         "save_average_loss_plot", "save_final_model_metrics", 
-#         "save_best_model_metrics", "convert_ndarray_to_list",
-#         "save_validation_metrics", "save_best_validation_metrics",
-#         "main"  # Important to keep main function
-#     }
-#     for name in list(globals()):
-#         if not name.startswith('_') and name not in safe_names:
-#             try:
-#                 del globals()[name]
-#             except Exception as e:
-#                 if verbose:
-#                     print(f"⚠️ Could not delete {name}: {e}")
-
-#     # Step 2: Garbage collection (clears CPU memory)
-#     gc.collect()
-#     if verbose: print("✅ Garbage collection done.")
-
-#     # Step 3: Empty CUDA cache (clears GPU memory)
-#     if torch.cuda.is_available():
-#         torch.cuda.empty_cache()
-#         torch.cuda.ipc_collect()
-#         if verbose:
-#             print("✅ CUDA cache cleared.")
-#             print(f"📉 Memory Allocated: {torch.cuda.memory_allocated() / 1024**3:.2f} GB")
-#             print(f"📉 Memory Reserved : {torch.cuda.memory_reserved() / 1024**3:.2f} GB")
-
-#     # Step 4: RAM usage info
-#     if verbose:
-#         vm = psutil.virtual_memory()
-#         print(f"💾 RAM Usage: {vm.used / 1024**3:.2f} GB / {vm.total / 1024**3:.2f} GB")
-
-#     if verbose: print("✅ Torch environment successfully reset.\n")
-
-
-def print_gpu_memory_usage(stage="", reset_peak=False):
-    """Enhanced memory tracking with option to reset peak memory usage."""
-    if torch.cuda.is_available():
-        allocated = torch.cuda.memory_allocated() / (1024 ** 3)
-        reserved = torch.cuda.memory_reserved() / (1024 ** 3)
-        max_allocated = torch.cuda.max_memory_allocated() / (1024 ** 3)
-        
-        print(f"{stage} - GPU Memory: "
-              f"Current={allocated:.2f}GB, "
-              f"Reserved={reserved:.2f}GB, "
-              f"Peak={max_allocated:.2f}GB")
-        
-        # Reset peak memory stats if requested
-        if reset_peak:
-            torch.cuda.reset_peak_memory_stats()
-            
-    # CPU memory
-    process = psutil.Process(os.getpid())
-    ram_usage = process.memory_info().rss / (1024 ** 3)
-    print(f"{stage} - RAM Usage: {ram_usage:.2f}GB")
-
-def clear_memory(model=None):
-    """Release GPU memory and perform garbage collection."""
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-    
-    # If model is provided and on GPU, move to CPU temporarily to free GPU memory
-    if model is not None and next(model.parameters()).is_cuda:
-        device = next(model.parameters()).device
-        model.cpu()
-        torch.cuda.empty_cache()
-        model.to(device)
-    
-    gc.collect()   
     
 def log_message(message, log_file):
     log_directory = os.path.dirname(log_file)
@@ -150,32 +67,8 @@ def setup_logging_and_checkpoints():
     return logger, checkpoint_callback
 
 
-# def setup_model_and_optimizer():
-#     # Clear any existing memory first
-#     torch.cuda.empty_cache()
-#     gc.collect()
-    
-#     # Create a NEW model with randomized weights
-#     model = UNetModule().to(config_param.DEVICE)
-#     optimizer = config_param.OPTIMIZER(
-#         model.parameters(), 
-#         lr=config_param.LEARNING_RATE, 
-#         betas=(0.9, 0.999), 
-#         weight_decay=config_param.WEIGHT_DECAY
-#     )
-#     criterion = config_param.CRITERION
-#     return model, optimizer, criterion
 def setup_model_and_optimizer():
-    # COMPLETE reset (not just empty_cache)
-    torch.cuda.empty_cache()
-    if torch.cuda.is_available():
-        torch.cuda.reset_max_memory_allocated()
-        torch.cuda.reset_peak_memory_stats()
-        
-    # Initialize model with FRESH weights
     model = UNetModule().to(config_param.DEVICE)
-    
-    # Create new optimizer with REDUCED learning rate
     optimizer = config_param.OPTIMIZER(
         model.parameters(), 
         lr=config_param.LEARNING_RATE, 
@@ -301,11 +194,11 @@ def save_best_validation_metrics(metrics, block_idx, output_dir):
 
 def main():
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:128'
     
-    # reset_torch_environment(verbose=True)
-    torch.cuda.empty_cache()
-    gc.collect()
+    # --- ADD FLAG FOR AUGMENTATION CHOICE HERE ---
+    USE_AUGMENTED_DATA = config_param.USE_AUGMENTED_DATA
+    print(f"\n==== Data Augmentation ENABLED? {USE_AUGMENTED_DATA} ====\n")
+    # ---------------------------------------------
     
     logger, checkpoint_callback = setup_logging_and_checkpoints()
     
@@ -387,47 +280,17 @@ def main():
     
     print(f"Subsampled Indices Length: {len(subsampled_indices)}")
     print(f"Number of Blocks: {config_param.NUM_BLOCKS}")
-    
-    # For water distrution
-    water_class_name = 'WI'
-    water_class_idx = config_param.class_labels[water_class_name]
-    # Check if water is present
-    water_present = has_water_class(masks, water_class=water_class_idx)
 
+    # --- PASS THE AUGMENTATION FLAG TO block_cross_validation ---
     # Perform block cross-validation using the same centroids
     block_cv_splits = block_cross_validation(
         dataset=dataset,
         combined_data=[combined_data[i] for i in subsampled_indices],
         num_blocks=config_param.NUM_BLOCKS,
-        kmeans_centroids=centroids  # Pass the centroids to the function
+        kmeans_centroids=centroids,  # Pass the centroids to the function
+        use_augmented_data=USE_AUGMENTED_DATA  # <--- IF AUGMENTED OR NOT!
     )
-    # Print block sizes BEFORE water redistribution
-    print("Block splits BEFORE water redistribution:")
-    print(f"Number of blocks in block_cv_splits: {len(block_cv_splits)}")
-    for i, fold in enumerate(block_cv_splits):
-        if len(fold) == 3:
-            print(f"Block {i+1}: Train={len(fold[0].dataset)}, Val={len(fold[1].dataset)}, Test={len(fold[2].dataset)}")
-        else:
-            print(f"Block {i+1}: Invalid fold (len={len(fold)})")
-    
-    # --- CONDITIONAL WATER REDISTRIBUTION ---
-    if water_present and config_param.ENABLE_WATER_REDISTRIBUTION:
-        print("Water class detected and water redistribution is ENABLED.")
-        final_folds, _ = integrate_water_distribution(
-            dataset, masks, block_cv_splits, config_param.NUM_BLOCKS, config_param.BATCH_SIZE, config_param.NUM_WORKERS
-        )
-        
-        print(f"Number of blocks in final_folds: {len(final_folds)}")
-        for i, fold in enumerate(final_folds):
-            if len(fold) == 3:
-                print(f"Block {i+1}: Train={len(fold[0].dataset)}, Val={len(fold[1].dataset)}, Test={len(fold[2].dataset)}")
-            else:
-                print(f"Block {i+1}: Invalid fold (len={len(fold)})")
-        folds_to_use = final_folds        
-    else:   
-        print("Water redistribution is DISABLED or no water class present.")
-        folds_to_use = block_cv_splits
-    
+
     # Initialize all required data structures
     all_metrics = initialize_all_metrics(num_blocks=config_param.NUM_BLOCKS)
     conf_matrices = []  # List to store confusion matrices for each block
@@ -449,10 +312,7 @@ def main():
     all_best_val_metrics = []
 
     # Train, validate, and test using cross-validation splits
-    # for block_idx, (train_loader, val_loader, test_loader) in enumerate(block_cv_splits):
-    # for block_idx, (train_loader, val_loader, test_loader) in enumerate(final_folds):
-    for block_idx, (train_loader, val_loader, test_loader) in enumerate(folds_to_use):
-        # print(f"Block {block_idx+1}: Train={len(train_loader.dataset)}, Val={len(val_loader.dataset)}, Test={len(test_loader.dataset)}")
+    for block_idx, (train_loader, val_loader, test_loader) in enumerate(block_cv_splits):
         if train_loader is None or val_loader is None or test_loader is None:
             print(f"Skipping block {block_idx + 1} due to missing data")
             continue
@@ -475,7 +335,6 @@ def main():
         evaluator = ModelEvaluator(model, test_loader, device=config_param.DEVICE)
         final_metrics = evaluator.run_evaluation(block_idx, all_metrics, conf_matrices)
         all_final_model_metrics.append(final_metrics)
-       
         # Save metrics for the final model on the test set
         save_final_model_metrics(final_metrics, block_idx, output_dir)
         
@@ -645,6 +504,5 @@ def main():
 
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
-    # reset_torch_environment()
