@@ -98,9 +98,9 @@ class CalperumDataset(Dataset):
             # Load the image and mask
             image, _ = load_raw_multispectral_image(img_filename)
             mask, _ = prep_mask(mask_filename)
-            # Debug: Check dimensions and values
-        print(f"Loaded image shape: {image.shape}, min={image.min()}, max={image.max()}, mean={image.mean():.4f}")
-        print(f"Loaded mask shape: {mask.shape}, unique values={np.unique(mask)}")
+        # Debug: Check dimensions and values
+        # print(f"Loaded image shape: {image.shape}, min={image.min()}, max={image.max()}, mean={image.mean():.4f}")
+        # print(f"Loaded mask shape: {mask.shape}, unique values={np.unique(mask)}")
 
     
         # image_tensor = convertImg_to_tensor(image, dtype=torch.float32)

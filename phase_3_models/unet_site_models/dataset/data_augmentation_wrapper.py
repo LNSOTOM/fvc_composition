@@ -74,14 +74,14 @@ class AlbumentationsTorchWrapper:
             if image_np.ndim == 3 and image_np.shape[0] > 1:  # If it has multiple channels
                 image_np = np.transpose(image_np, (1, 2, 0))  # [C,H,W] -> [H,W,C]
             
-        print(f"Transposed image shape: {image_np.shape}, mask shape: {mask_np.shape}")
+        # print(f"Transposed image shape: {image_np.shape}, mask shape: {mask_np.shape}")
 
         # Apply albumentations transform
         transformed = self.transform(image=image_np, mask=mask_np)
         transformed_image = transformed['image']
         transformed_mask = transformed['mask']
         
-        print(f"Transformed image shape: {transformed_image.shape}, mask shape: {transformed_mask.shape}")
+        # print(f"Transformed image shape: {transformed_image.shape}, mask shape: {transformed_mask.shape}")
         
         # Check for zero values after augmentation and apply fallback if needed
         if transformed_image.min() == 0 and transformed_image.max() == 0:
@@ -109,8 +109,8 @@ class AlbumentationsTorchWrapper:
         image_tensor = torch.from_numpy(transformed_image).to(dtype=orig_img_dtype)
         mask_tensor = torch.from_numpy(transformed_mask).to(dtype=orig_mask_dtype)
     
-        print(f"Final tensor shapes - image: {image_tensor.shape}, mask: {mask_tensor.shape}")
-        print(f"Final image stats: min={image_tensor.min().item():.6f}, max={image_tensor.max().item():.6f}")
+        # print(f"Final tensor shapes - image: {image_tensor.shape}, mask: {mask_tensor.shape}")
+        # print(f"Final image stats: min={image_tensor.min().item():.6f}, max={image_tensor.max().item():.6f}")
         
         return image_tensor, mask_tensor
 
