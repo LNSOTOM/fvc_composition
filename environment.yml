@@ -63,6 +63,18 @@ dependencies:
 #   pytorch-cuda=11.8 \
 #   -c nvidia -c pytorch -c conda-forge
 
+# #IF issues with proj packages
+# micromamba install proj proj-data -c conda-forge
+
+# #Set the PROJ_LIB environment variable
+# export PROJ_LIB=/home/laura/.local/share/mamba/envs/fvc_composition/share/proj
+
+# mkdir -p ~/.local/share/mamba/envs/fvc_composition/etc/conda/activate.d
+
+# echo 'export PROJ_LIB=$CONDA_PREFIX/share/proj' > ~/.local/share/mamba/envs/fvc_composition/etc/conda/activate.d/env_vars.sh
+# source ~/.bashrc
+
+
 # micromamba install proj pyproj -c conda-forge
 # micromamba install dask -c conda-forge
 # micromamba install torchmetrics=1.4.0 pytorch-lightning=2.2.3 -c conda-forge -c pytorch
