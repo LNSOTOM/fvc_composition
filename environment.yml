@@ -1,8 +1,8 @@
 name: fvc_composition
 channels:
-  - conda-forge
   - pytorch
   - nvidia
+  - conda-forge
 dependencies:
   - python=3.10
   - pip
@@ -14,34 +14,55 @@ dependencies:
   - matplotlib
   - numpy<2.0
   - pandas
+  - proj=9.4.1
   - scipy
   - seaborn
   - jupyterlab
   - ipykernel
   - tqdm
   - pyyaml
-  - pytorch-lightning
-  - tensorboard
+  - mkl=2023.2.0
+  - numexpr>=2.8.4
+  - cudatoolkit=11.8
+  - torchmetrics=1.4.0
+  - tensorflow=2.17
+  - tensorboard=2.17
   - scikit-image
   - ipympl
   - pillow
   - protobuf
   - pyproj
+  - dask
   - pip:
-    - anywidget==0.6.5
-    - iterative-stratification==0.1.9
-    - leafmap==0.35.11
-    - lonboard==0.3.0
-    - opencv-python==4.11.0.86
-    - palettable==3.3.3
-    - pyarrow==13.0.0
-    - python-dotenv==1.0.1
-    - torch-summary==1.4.5
-    - triton==2.2.0
-    - nvidia-ml-py3
-    - albumentations
-    - open3d
+      - anywidget==0.6.5
+      - iterative-stratification==0.1.9
+      - leafmap==0.35.11
+      - lonboard==0.3.0
+      - opencv-python==4.11.0.86
+      - palettable==3.3.3
+      - pyarrow==13.0.0
+      - python-dotenv==1.0.1
+      - torch-summary==1.4.5
+      - triton==2.2.0
+      - nvidia-ml-py3
+      - albumentations
+      - open3d
+
+
 
 # variables:
 #   PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cu118
 # prefix: /home/laura/miniconda3/envs/fvc_composition
+
+# micromamba install \
+#   pytorch=2.3.1 \
+#   pytorch-lightning=2.3.3 \
+#   torchaudio=2.3.1 \
+#   torchvision=0.18.1 \
+#   torchmetrics=1.4.0 \
+#   pytorch-cuda=11.8 \
+#   -c nvidia -c pytorch -c conda-forge
+
+# micromamba install proj pyproj -c conda-forge
+# micromamba install dask -c conda-forge
+# micromamba install torchmetrics=1.4.0 pytorch-lightning=2.2.3 -c conda-forge -c pytorch
