@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from dataset.image_preprocessing import load_raw_multispectral_image, prep_normalise_image, prep_contrast_stretch_image, convertImg_to_tensor, load_raw_rgb_image
 from dataset.mask_preprocessing import prep_mask, prep_mask_preserve_nan, convertMask_to_tensor
-
+import rasterio
 
 class AlbumentationsTorchWrapper:
     """Wrapper for Albumentations transforms to work with PyTorch tensors."""
