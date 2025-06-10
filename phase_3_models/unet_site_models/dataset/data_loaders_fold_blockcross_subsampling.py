@@ -247,11 +247,22 @@ def get_dataset_splits(image_folder, mask_folder, combined_data, transform, soil
     return dataset, subsampled_indices, subsampled_images, subsampled_masks 
 
 
-def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=None):
+def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=None, use_augmented_data=None):
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/logfile.txt' #low
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/logfile.txt' #medium
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/logfile.txt' #dense
     log_file = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/logfile.txt' #dense
+    use_aug = config_param.USE_AUGMENTED_DATA if use_augmented_data is None else use_augmented_data
+
+    if use_aug:
+        train_image_dir = config_param.AUG_IMAGE_DIR
+        train_mask_dir  = config_param.AUG_MASK_DIR
+        print("Using AUGMENTED data for training!")
+    else:
+        train_image_dir = config_param.SUBSAMPLE_IMAGE_DIR[0]
+        train_mask_dir  = config_param.SUBSAMPLE_MASK_DIR[0]
+        print("Using ORIGINAL data for training!")
+        
     coordinates = []
     
     for idx, (_, _, img_path, _) in enumerate(combined_data):
@@ -295,13 +306,13 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
     data_splits = []
     fold_assignments = {}
     
-    def get_dominant_class(dataset, idx):
-        _, mask = dataset[idx]
-        mask_np = mask.cpu().numpy() if hasattr(mask, 'cpu') else np.array(mask)
-        mask_flat = mask_np[mask_np >= 0].flatten()  # Exclude -1
-        if mask_flat.size == 0:
-            return -1  # All void
-        return np.bincount(mask_flat).argmax()
+    # def get_dominant_class(dataset, idx):
+    #     _, mask = dataset[idx]
+    #     mask_np = mask.cpu().numpy() if hasattr(mask, 'cpu') else np.array(mask)
+    #     mask_flat = mask_np[mask_np >= 0].flatten()  # Exclude -1
+    #     if mask_flat.size == 0:
+    #         return -1  # All void
+    #     return np.bincount(mask_flat).argmax()
 
     for block in np.unique(block_labels):
         test_indices = [i for i in range(len(block_labels)) if block_labels[i] == block]
@@ -310,59 +321,57 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
         if len(train_val_indices) == 0 or len(test_indices) == 0:
             log_message(f"Skipping block {block} due to insufficient data.", log_file)
             continue
-
         train_indices, val_indices = train_test_split(train_val_indices, test_size=0.2, random_state=42)
         
-        # --- Albumentations transforms ---
+        # For training data: use chosen (augmented or original) directories
         alb_train_transform = AlbumentationsTorchWrapper(get_train_augmentation())
+        train_dataset_full = CalperumDataset(image_folders=[train_image_dir], mask_folders=[train_mask_dir], transform=alb_train_transform)
+        # For validation/test: always use original, no augmentation
         alb_val_transform = AlbumentationsTorchWrapper(get_val_augmentation())
-        
-        # --- Datasets with transforms ---
-        train_dataset_full = CalperumDataset(transform=alb_train_transform, in_memory_data=(dataset.images, dataset.masks))
-        val_dataset_full = CalperumDataset(transform=alb_val_transform, in_memory_data=(dataset.images, dataset.masks))
-        test_dataset_full = CalperumDataset(transform=alb_val_transform, in_memory_data=(dataset.images, dataset.masks))
+        val_dataset_full = CalperumDataset(image_folders=[config_param.SUBSAMPLE_IMAGE_DIR[0]], mask_folders=[config_param.SUBSAMPLE_MASK_DIR[0]], transform=alb_val_transform)
+        test_dataset_full = CalperumDataset(image_folders=[config_param.SUBSAMPLE_IMAGE_DIR[0]], mask_folders=[config_param.SUBSAMPLE_MASK_DIR[0]], transform=alb_val_transform)
 
         # --- Subsets for folds ---
-        train_dataset = Subset(dataset, train_indices)
-        val_dataset = Subset(dataset, val_indices)
-        test_dataset = Subset(dataset, test_indices)
+        train_dataset = Subset(train_dataset_full, train_indices)
+        val_dataset = Subset(val_dataset_full, val_indices)
+        test_dataset = Subset(test_dataset_full, test_indices)
         
         # --- Class balancing REBALANCE: WeightedRandomSampler for train_loader ---
-        dominant_classes = np.array([get_dominant_class(dataset, idx) for idx in train_indices])
-        valid_mask = dominant_classes >= 0
-        filtered_train_indices = [idx for idx, valid in zip(train_indices, valid_mask) if valid]
-        dominant_classes = dominant_classes[valid_mask]
-        num_classes = config_param.OUT_CHANNELS
+        # dominant_classes = np.array([get_dominant_class(dataset, idx) for idx in train_indices])
+        # valid_mask = dominant_classes >= 0
+        # filtered_train_indices = [idx for idx, valid in zip(train_indices, valid_mask) if valid]
+        # dominant_classes = dominant_classes[valid_mask]
+        # num_classes = config_param.OUT_CHANNELS
 
-        class_sample_counts = np.bincount(dominant_classes, minlength=num_classes)
-        class_percentages = [100.0 * x / len(dominant_classes) if len(dominant_classes) > 0 else 0 for x in class_sample_counts]
-        class_weights = 1. / (class_sample_counts + 1e-6)
-        sample_weights = class_weights[dominant_classes]
-        sampler = WeightedRandomSampler(weights=sample_weights, num_samples=len(sample_weights), replacement=True)
+        # class_sample_counts = np.bincount(dominant_classes, minlength=num_classes)
+        # class_percentages = [100.0 * x / len(dominant_classes) if len(dominant_classes) > 0 else 0 for x in class_sample_counts]
+        # class_weights = 1. / (class_sample_counts + 1e-6)
+        # sample_weights = class_weights[dominant_classes]
+        # sampler = WeightedRandomSampler(weights=sample_weights, num_samples=len(sample_weights), replacement=True)
 
         # Print/log before rebalancing class counts
-        before_msg = (
-            f"\nBlock {block} - Before Weighted Sampling (train split):\n"
-            f"Class counts: {class_sample_counts.tolist()}\n"
-            f"Class percentages: {[f'{p:.2f}%' for p in class_percentages]}\n"
-        )
-        print(before_msg)
-        log_message(before_msg, log_file)
+        # before_msg = (
+        #     f"\nBlock {block} - Before Weighted Sampling (train split):\n"
+        #     f"Class counts: {class_sample_counts.tolist()}\n"
+        #     f"Class percentages: {[f'{p:.2f}%' for p in class_percentages]}\n"
+        # )
+        # print(before_msg)
+        # log_message(before_msg, log_file)
         
         # Print/log after rebalancing (expected, since sampler uses inverse freq so approx uniform)
-        after_counts = [int(len(dominant_classes)/num_classes)] * num_classes
-        after_percentages = [f"{100.0/num_classes:.2f}%" for _ in range(num_classes)]
-        after_msg = (
-            f"Block {block} - Target After Weighted Sampling (train split):\n"
-            f"Expected class counts per batch: ~{after_counts}\n"
-            f"Expected class percentages per batch: {after_percentages}\n"
-            f"Effective class distribution will be approximately uniform across classes due to sampling.\n"
-        )
-        print(after_msg)
-        log_message(after_msg, log_file)
+        # after_counts = [int(len(dominant_classes)/num_classes)] * num_classes
+        # after_percentages = [f"{100.0/num_classes:.2f}%" for _ in range(num_classes)]
+        # after_msg = (
+        #     f"Block {block} - Target After Weighted Sampling (train split):\n"
+        #     f"Expected class counts per batch: ~{after_counts}\n"
+        #     f"Expected class percentages per batch: {after_percentages}\n"
+        #     f"Effective class distribution will be approximately uniform across classes due to sampling.\n"
+        # )
+        # print(after_msg)
+        # log_message(after_msg, log_file)
         
-        filtered_train_dataset = Subset(dataset, filtered_train_indices)
-        train_loader = DataLoader(filtered_train_dataset, batch_size=config_param.BATCH_SIZE, sampler=sampler, num_workers=config_param.NUM_WORKERS)
+        # filtered_train_dataset = Subset(train_dataset, filtered_train_indices)
+        train_loader = DataLoader(train_dataset, batch_size=config_param.BATCH_SIZE, shuffle=True, num_workers=config_param.NUM_WORKERS)
         # train_loader = DataLoader(train_dataset, batch_size=config_param.BATCH_SIZE, shuffle=True, num_workers=config_param.NUM_WORKERS)
         val_loader = DataLoader(val_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)
         test_loader = DataLoader(test_dataset, batch_size=config_param.BATCH_SIZE, shuffle=False, num_workers=config_param.NUM_WORKERS)

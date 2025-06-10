@@ -242,8 +242,8 @@ COMBINED_INDICES_SAVE_PATHS = [
 ENABLE_WATER_REDISTRIBUTION = False  #False True
 
 # Data augmentation control
-ENABLE_DATA_AUGMENTATION = True  # Set to False to disable augmentation
-
+# Set this to True to use pre-generated augmented data
+USE_AUGMENTED_DATA = True
 
 # Define augmentation functions
 # AUGMENTATION_FUNCTIONS = [
@@ -252,14 +252,8 @@ ENABLE_DATA_AUGMENTATION = True  # Set to False to disable augmentation
 #     apply_horizontal_flip,
 #     apply_random_affine
 # ]
-import sys
-
-# ------------- Add augmentation (output) folder path -------------
 AUGMENTATION_OUTPUT_DIR = "/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug"
-os.makedirs(AUGMENTATION_OUTPUT_DIR, exist_ok=True)
-# ---------------------------------------------------------------
-
-# Optional: Add code-augmentation modules folder to sys.path if you keep augmentation code in a custom folder:
-AUGMENTATION_CODE_DIR = os.path.join(os.path.dirname(__file__), "augmentations")
-if AUGMENTATION_CODE_DIR not in sys.path:
-    sys.path.insert(0, AUGMENTATION_CODE_DIR)
+AUG_IMAGE_DIR = os.path.join(AUGMENTATION_OUTPUT_DIR, "images")
+AUG_MASK_DIR = os.path.join(AUGMENTATION_OUTPUT_DIR, "masks")
+os.makedirs(AUG_IMAGE_DIR, exist_ok=True)
+os.makedirs(AUG_MASK_DIR, exist_ok=True)
