@@ -108,7 +108,7 @@ NUM_EPOCHS = 120 #120 # try also --> 100 and 20 for test and 40 minimum
 '''batch_size: number of training samples utilised in one iteration'''
 BATCH_SIZE =  16 #12  # minimum 16) | 32 
 ##PATCH_SIZE = 256  # Used in dataset preprocessing, if applicable
-NUM_WORKERS = 3
+NUM_WORKERS = 4
 
 ##5bands
 # CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low'  #low
