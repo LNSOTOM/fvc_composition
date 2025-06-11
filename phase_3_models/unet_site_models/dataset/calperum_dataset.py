@@ -1,91 +1,59 @@
 import os
 import torch
-from torch.utils.data import Dataset, DataLoader, Subset, random_split
-from sklearn.model_selection import GroupKFold
-from PIL import Image
-from torchvision import transforms
-import numpy as np
-import geopandas as gpd
-import pandas as pd
-from shapely.geometry import box
-import rasterio
-from dask import delayed, compute
-from dask.diagnostics import ProgressBar
-import time
-
-import config_param
-
+from torch.utils.data import Dataset
 from torchvision.utils import save_image
+import numpy as np
+import rasterio
 
-from dataset.image_preprocessing import load_raw_multispectral_image, prep_normalise_image, prep_contrast_stretch_image, convertImg_to_tensor, load_raw_rgb_image
-from dataset.mask_preprocessing import prep_mask, prep_mask_preserve_nan, convertMask_to_tensor
+from dataset.image_preprocessing import load_raw_multispectral_image, convertImg_to_tensor
+from dataset.mask_preprocessing import prep_mask, convertMask_to_tensor
 
-from dataset.threshold_be_subsampling import subsample_tiles, estimate_class_frequencies
-
-from dataset.data_augmentation_wrapper import AlbumentationsTorchWrapper
-from dataset.data_augmentation import get_train_augmentation, get_val_augmentation
-
-
-# 2.1 Dataset Handling
 class CalperumDataset(Dataset):
     def __init__(self, image_folders=None, mask_folders=None, transform=None, in_memory_data=None, save_augmented=False, augmented_save_dir=None):
         self.save_augmented = save_augmented
         self.augmented_save_dir = augmented_save_dir
-        
+        self.transform = transform
+
         if in_memory_data is not None:
             self.images, self.masks = in_memory_data
             if len(self.images) != len(self.masks):
                 raise ValueError("The number of images and masks must be the same.")
-        else:
-            if isinstance(image_folders, str):
-                image_folders = [image_folders]
-            if isinstance(mask_folders, str):
-                mask_folders = [mask_folders]
+            return
 
-            if not isinstance(image_folders, list) or not isinstance(mask_folders, list):
-                raise TypeError("image_folders and mask_folders should be lists of strings or single string paths.")
-        
-            self.image_filenames = []
-            for image_folder, mask_folder in zip(image_folders, mask_folders):
-                image_files = sorted([f for f in os.listdir(image_folder) if f.endswith('.tif')])
-                mask_files = sorted([f for f in os.listdir(mask_folder) if f.endswith('.tif')])
+        if isinstance(image_folders, str):
+            image_folders = [image_folders]
+        if isinstance(mask_folders, str):
+            mask_folders = [mask_folders]
 
-                # Build a dict for fast mask lookup
-                mask_dict = {os.path.basename(f): f for f in mask_files}
+        if not isinstance(image_folders, list) or not isinstance(mask_folders, list):
+            raise TypeError("image_folders and mask_folders should be lists of strings or single string paths.")
 
-                for image_file in image_files:
-                    # For original: tiles_multispectral_11868.tif -> mask_tiles_multispectral_11868.tif
-                    # For augmented: tiles_multispectral_11868_aug1.tif -> mask_tiles_multispectral_11868_aug1.tif
-                    if image_file.startswith("tiles_multispectral_"):
-                        mask_candidate = "mask_" + image_file
-                    else:
-                        # fallback, just prepend mask_ to whatever image_file is
-                        mask_candidate = "mask_" + image_file
-                    
-                    mask_file = mask_dict.get(mask_candidate, None)
-                    
-                    if mask_file is None:
-                        # fallback: try matching by unique number suffix
-                        image_num = image_file.split("_")[-1]
-                        for candidate in mask_files:
-                            if candidate.endswith(image_num):
-                                mask_file = candidate
-                                break
+        self.image_filenames = []
 
-                    if mask_file is not None:
-                        self.image_filenames.append(
-                            (os.path.join(image_folder, image_file), os.path.join(mask_folder, mask_file))
-                        )
-                    else:
-                        print(f"Warning: No matching mask found for image {image_file} in {mask_folder}")
+        for image_folder, mask_folder in zip(image_folders, mask_folders):
+            image_files = sorted([f for f in os.listdir(image_folder) if f.endswith('.tif')])
+            mask_files = sorted([f for f in os.listdir(mask_folder) if f.endswith('.tif')])
 
-            print(f"Loaded {len(self.image_filenames)} image/mask pairs from {image_folders}, {mask_folders}")
-            if len(self.image_filenames) < 10:
-                print("Sample pairs:", self.image_filenames)
+            mask_dict = {os.path.basename(f): f for f in mask_files}
 
-        self.transform = transform
+            for image_file in image_files:
+                base = image_file.split("tiles_multispectral_")[-1]
+                prefix = image_file.split("tiles_multispectral_")[0]
+                if prefix.startswith("aug"):
+                    mask_file = prefix + "mask_tiles_multispectral_" + base
+                else:
+                    mask_file = "mask_tiles_multispectral_" + base
 
-    def __getitem__(self, idx):     
+                if mask_file in mask_dict:
+                    self.image_filenames.append(
+                        (os.path.join(image_folder, image_file), os.path.join(mask_folder, mask_file))
+                    )
+                else:
+                    print(f"Warning: No matching mask found for image {image_file} in {mask_folder}")
+
+        print(f"Loaded {len(self.image_filenames)} image/mask pairs from {image_folders}, {mask_folders}")
+
+    def __getitem__(self, idx):
         if hasattr(self, 'images'):
             image = self.images[idx]
             mask = self.masks[idx]
@@ -94,39 +62,43 @@ class CalperumDataset(Dataset):
                 raise IndexError(f"Index {idx} out of range for dataset of length {len(self.image_filenames)}")
 
             img_filename, mask_filename = self.image_filenames[idx]
-            
-            # Load the image and mask
             image, _ = load_raw_multispectral_image(img_filename)
             mask, _ = prep_mask(mask_filename)
-        # Debug: Check dimensions and values
-        # print(f"Loaded image shape: {image.shape}, min={image.min()}, max={image.max()}, mean={image.mean():.4f}")
-        # print(f"Loaded mask shape: {mask.shape}, unique values={np.unique(mask)}")
 
-    
-        # image_tensor = convertImg_to_tensor(image, dtype=torch.float32)
-        # mask_tensor = convertMask_to_tensor(mask, dtype=torch.long)
-        image_tensor = torch.from_numpy(image).float()
-        mask_tensor = torch.from_numpy(mask).long()
-        
+        if len(image.shape) != 3:
+            raise ValueError(f"Expected image shape [C, H, W], got {image.shape}")
+
+        if len(mask.shape) != 2:
+            if len(mask.shape) == 3:
+                mask = mask[0]
+            else:
+                raise ValueError(f"Expected mask shape [H, W], got {mask.shape}")
+
+        image_tensor = convertImg_to_tensor(image, dtype=torch.float32)
+        mask_tensor = convertMask_to_tensor(mask, dtype=torch.long)
+
         if self.transform is not None:
-            image_tensor, mask_tensor = self.transform(image_tensor, mask_tensor)
-        
+            # Fix here: Call transform with separate arguments, not a tuple
+            if hasattr(self.transform, '__call__') and callable(self.transform.__call__):
+                try:
+                    # Try the correct way - passing as separate arguments
+                    image_tensor, mask_tensor = self.transform(image_tensor, mask_tensor)
+                except TypeError:
+                    # Fallback for transforms that expect a tuple
+                    image_tensor, mask_tensor = self.transform((image_tensor, mask_tensor))
+
         return image_tensor, mask_tensor
 
     def __len__(self):
-        if hasattr(self, 'images'):
-            return len(self.images)
-        return len(self.image_filenames)
-    
-    @staticmethod
-    def load_mask(mask_path):
-        mask = prep_mask(mask_path)
-        return mask
+        return len(self.images) if hasattr(self, 'images') else len(self.image_filenames)
 
     @staticmethod
-    def load_subsampled_data(image_subsample_dir, mask_subsample_dir, transform=None):
-        images = []
-        masks = []
+    def load_mask(mask_path):
+        return prep_mask(mask_path)
+
+    @staticmethod
+    def load_subsampled_data(image_subsample_dir, mask_subsample_dir, transform=None, as_tensor=True):
+        images, masks = [], []
 
         if isinstance(image_subsample_dir, (str, os.PathLike)):
             image_subsample_dir = [image_subsample_dir]
@@ -151,9 +123,15 @@ class CalperumDataset(Dataset):
                 mask_tensor = convertMask_to_tensor(mask, dtype=torch.long)
 
                 if transform is not None:
-                    image_tensor, mask_tensor = transform((image_tensor, mask_tensor))
+                    try:
+                        image_tensor, mask_tensor = transform(image_tensor, mask_tensor)
+                    except TypeError:
+                        image_tensor, mask_tensor = transform((image_tensor, mask_tensor))
 
                 images.append(image_tensor)
                 masks.append(mask_tensor)
 
-        return images, masks
+        if as_tensor:
+            return torch.stack(images), torch.stack(masks)
+        else:
+            return images, masks

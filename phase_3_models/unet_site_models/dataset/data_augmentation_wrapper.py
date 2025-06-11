@@ -10,77 +10,150 @@ import rasterio
 from albumentations import Compose
 from dataset.data_augmentation import get_train_augmentation
 
+import numpy as np
+import torch
+from dataset.data_augmentation import get_train_augmentation
+
+import torch
+import gc
+from torch.utils.data import ConcatDataset
+from dataset.data_augmentation import apply_combined_augmentations
+import numpy as np
+import torch
+from dataset.image_preprocessing import load_raw_multispectral_image, prep_normalise_image, prep_contrast_stretch_image, convertImg_to_tensor, load_raw_rgb_image
+from dataset.mask_preprocessing import prep_mask, prep_mask_preserve_nan, convertMask_to_tensor
+import rasterio
+from albumentations import Compose
+from dataset.data_augmentation import get_train_augmentation
+
+
 class AlbumentationsTorchWrapper:
-    """Wrapper for albumentations transforms to work with PyTorch tensors and preserve NaN values"""
-    
+    """
+    Wrapper to apply Albumentations transforms to PyTorch tensors.
+
+    Handles:
+    - Conversion between torch tensors and numpy arrays
+    - Safe handling of NaNs in masks
+    - GPU compatibility
+    """
+
     def __init__(self, transform=None):
-        if transform is None:
-            from dataset.data_augmentation import get_train_augmentation
-            self.transform = get_train_augmentation()
+        self.transform = transform if transform else get_train_augmentation()
+
+    def __call__(self, *args):
+        """
+        Args:
+            args: Either (image_tensor, mask_tensor) or a tuple containing both.
+
+        Returns:
+            Tuple of transformed (image_tensor, mask_tensor)
+        """
+        # Unpack inputs
+        if len(args) == 1 and isinstance(args[0], tuple):
+            image_tensor, mask_tensor = args[0]
+        elif len(args) == 2:
+            image_tensor, mask_tensor = args
         else:
-            self.transform = transform
-            
-    def __call__(self, image_tensor, mask_tensor):
-        """Apply albumentations transforms to inputs (as numpy arrays) and preserve no‐data (NaN) pixels in the mask.
-        Uses the augmented image's zero-value pixels as the reference to set no‐data regions in the mask."""
-        import numpy as np
-        import torch
+            raise ValueError("Expected (image_tensor, mask_tensor) or a tuple containing both.")
 
-        # Convert inputs to numpy arrays if needed
-        image_np = image_tensor if not isinstance(image_tensor, torch.Tensor) else image_tensor.numpy()
-        mask_np  = mask_tensor  if not isinstance(mask_tensor, torch.Tensor) else mask_tensor.numpy()
+        # Save original dtypes
+        orig_img_dtype = image_tensor.dtype
+        orig_mask_dtype = mask_tensor.dtype
 
-        # Ensure mask is float32 (so it can represent NaN)
-        if not np.issubdtype(mask_np.dtype, np.floating):
-            mask_np = mask_np.astype(np.float32)
+        # Move to CPU and convert to numpy
+        image_np = image_tensor.detach().cpu().numpy()
+        mask_np = mask_tensor.detach().cpu().numpy()
 
-        # Debug: Pre-transform info
-        num_nan_before = np.sum(np.isnan(mask_np))
-        # print(f"📊 PRE-AUG: mask shape={mask_np.shape}, dtype={mask_np.dtype}")
-        # print(f"  - Original NaN count: {num_nan_before}")
-        # print(f"  - Unique valid values: {np.unique(mask_np[~np.isnan(mask_np)])}")
+        # Convert image to [H, W, C] for Albumentations
+        if image_np.ndim == 3 and image_np.shape[0] > 1:
+            image_np = np.transpose(image_np, (1, 2, 0))
 
         try:
-            # Transform the image and mask as usual
-            transformed = self.transform(
-                image = image_np.transpose(1, 2, 0),  # [C, H, W] -> [H, W, C]
-                mask  = mask_np                        # [H, W]
-            )
-            aug_image_np = transformed['image'].transpose(2, 0, 1)  # Back to [C, H, W]
-            aug_mask_np  = transformed['mask']
+            transformed = self.transform(image=image_np, mask=mask_np)
+            image_np = transformed['image']
+            mask_np = transformed['mask']
 
-            # Use the augmented image as reference:
-            # Create a binary mask where the augmented image has value 0
-            ref_nan_mask = np.all(aug_image_np == 0, axis=0).astype(np.uint8)
-            
-            # Now force all pixels in the augmented mask corresponding to ref_nan_mask==1 to NaN.
-            aug_mask_np[ref_nan_mask == 1] = np.nan
-
-            # Ensure aug_mask_np is float32 so that it can carry NaN values.
-            if not np.issubdtype(aug_mask_np.dtype, np.floating):
-                aug_mask_np = aug_mask_np.astype(np.float32)
-
-            # Debug: Post-transform info
-            num_nan_after = np.sum(np.isnan(aug_mask_np))
-            # print(f"📊 POST-AUG: mask shape={aug_mask_np.shape}, dtype={aug_mask_np.dtype}")
-            # print(f"  - NaN count after aug: {num_nan_after}")
-            # print(f"  - Min value (excluding NaN): {np.nanmin(aug_mask_np)}")
-            # print(f"  - Unique valid values: {np.unique(aug_mask_np[~np.isnan(aug_mask_np)])}")
-
-            # Return NumPy arrays for visualization/saving.
-            if isinstance(image_tensor, torch.Tensor):
-                aug_image_tensor = torch.tensor(aug_image_np, dtype=torch.float32)
-                aug_mask_tensor  = torch.tensor(aug_mask_np, dtype=torch.float32)
-                return (aug_image_tensor, aug_mask_tensor), (aug_image_np, aug_mask_np)
-            else:
-                return (aug_image_np, aug_mask_np)
+            # Convert NaNs to -1 for mask
+            if np.isnan(mask_np).any():
+                mask_np = np.where(np.isnan(mask_np), -1, mask_np)
 
         except Exception as e:
-            print(f"❌ Augmentation error: {e}")
-            if isinstance(image_tensor, torch.Tensor):
-                return (image_tensor, mask_tensor), (image_np, mask_np)
-            else:
-                return (image_np, mask_np)
+            print(f"❌ Augmentation failed: {e}")
+            print("➡️ Using original data instead.")
+            # Fallback to original data
+            if image_np.ndim == 3 and image_np.shape[2] > 1:
+                image_np = np.transpose(image_np, (2, 0, 1))
+            return image_tensor, mask_tensor
+
+        # Convert image back to [C, H, W] format if needed
+        if image_np.ndim == 3 and image_np.shape[2] > 1:
+            image_np = np.transpose(image_np, (2, 0, 1))
+
+        # Convert back to torch tensors
+        image_tensor = torch.from_numpy(np.ascontiguousarray(image_np)).to(dtype=orig_img_dtype)
+        mask_tensor = torch.from_numpy(np.ascontiguousarray(mask_np.astype(int))).to(dtype=orig_mask_dtype)
+
+        return image_tensor, mask_tensor
+
+# class AlbumentationsTorchWrapper:
+#     """
+#     Wrapper for Albumentations transforms to work with PyTorch tensors and preserve NaN values.
+#     NaN mask pixels are reassigned using the augmented image’s zero regions.
+#     """
+
+#     def __init__(self, transform=None):
+#         self.transform = transform if transform is not None else get_train_augmentation()
+
+#     def __call__(self, image_tensor, mask_tensor):
+#         # Ensure inputs are torch tensors and convert to numpy
+#         if isinstance(image_tensor, torch.Tensor):
+#             image_np = image_tensor.cpu().numpy()
+#         elif isinstance(image_tensor, np.ndarray):
+#             image_np = image_tensor
+#         else:
+#             raise TypeError(f"Unsupported image type: {type(image_tensor)}")
+
+#         if isinstance(mask_tensor, torch.Tensor):
+#             mask_np = mask_tensor.cpu().numpy()
+#         elif isinstance(mask_tensor, np.ndarray):
+#             mask_np = mask_tensor
+#         else:
+#             raise TypeError(f"Unsupported mask type: {type(mask_tensor)}")
+
+#         # Ensure float32 for NaN support
+#         if not np.issubdtype(mask_np.dtype, np.floating):
+#             mask_np = mask_np.astype(np.float32)
+
+#         try:
+#             # Apply Albumentations transform
+#             transformed = self.transform(
+#                 image=image_np.transpose(1, 2, 0),  # CHW -> HWC
+#                 mask=mask_np
+#             )
+#             aug_image_np = transformed['image'].transpose(2, 0, 1)  # HWC -> CHW
+#             aug_mask_np = transformed['mask']
+
+#             # Identify NaN areas using zero-valued pixels in the image
+#             nan_mask = np.all(aug_image_np == 0, axis=0)
+#             aug_mask_np[nan_mask] = np.nan
+
+#             # Ensure float32 for NaNs
+#             if not np.issubdtype(aug_mask_np.dtype, np.floating):
+#                 aug_mask_np = aug_mask_np.astype(np.float32)
+
+#             # Convert back to tensors
+#             aug_image_tensor = torch.from_numpy(aug_image_np).float()
+#             aug_mask_tensor = torch.from_numpy(aug_mask_np).float()  # Still float, will be cast to long later
+
+#             return aug_image_tensor, aug_mask_tensor
+
+#         except Exception as e:
+#             print(f"❌ Albumentations augmentation failed: {e}")
+#             # Fallback to original inputs
+#             image_tensor = torch.from_numpy(image_np).float() if isinstance(image_tensor, np.ndarray) else image_tensor
+#             mask_tensor = torch.from_numpy(mask_np).float() if isinstance(mask_tensor, np.ndarray) else mask_tensor
+#             return image_tensor, mask_tensor
+
     
 
 class MemoryEfficientAugmentation(torch.utils.data.Dataset):

@@ -61,6 +61,7 @@ class FocalLoss(nn.Module):
         # Apply the valid mask
         outputs = outputs[valid_mask.view(-1)]
         targets = targets[valid_mask.view(-1)]
+        
 
         # Compute the cross entropy loss
         logpt = F.cross_entropy(outputs, targets, reduction='none')
