@@ -22,7 +22,7 @@ class AlbumentationsTorchWrapper:
             
     def __call__(self, image_tensor, mask_tensor):
         """Apply albumentations transforms to inputs (as numpy arrays) and preserve no‐data (NaN) pixels in the mask.
-        Uses the augmented image's NaN pixels as the reference to set no‐data regions in the mask."""
+        Uses the augmented image's zero-value pixels as the reference to set no‐data regions in the mask."""
         import numpy as np
         import torch
 
@@ -50,9 +50,8 @@ class AlbumentationsTorchWrapper:
             aug_mask_np  = transformed['mask']
 
             # Use the augmented image as reference:
-            # Since the no-data values are preserved as NaN in the augmented image,
-            # we create a binary reference mask where any channel is NaN.
-            ref_nan_mask = np.any(np.isnan(aug_image_np), axis=0).astype(np.uint8)
+            # Create a binary mask where the augmented image has value 0
+            ref_nan_mask = np.all(aug_image_np == 0, axis=0).astype(np.uint8)
             
             # Now force all pixels in the augmented mask corresponding to ref_nan_mask==1 to NaN.
             aug_mask_np[ref_nan_mask == 1] = np.nan
