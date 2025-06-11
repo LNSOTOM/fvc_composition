@@ -7,6 +7,8 @@ import rasterio
 from dataset.calperum_dataset import CalperumDataset
 from dataset.data_augmentation_wrapper import AlbumentationsTorchWrapper
 from dataset.data_augmentation import get_train_augmentation, save_augmented_pair
+from dataset.mask_preprocessing import prep_mask_preserve_nan
+from dataset.image_preprocessing import load_raw_multispectral_image
 import config_param
 
 #rgb
@@ -103,216 +105,118 @@ import config_param
 #     plt.close()
 
 #Multispectral with original
-def debug_visualize(orig_image_np, aug_image_np, aug_mask_np, idx):
-    """Create visualization comparing original and augmented image with mask"""
+def debug_visualize(orig_image_np, aug_image_np, aug_mask_np, idx, visualize="both"):
+    """
+    Visualize original and/or augmented images and masks with NaNs preserved.
+    
+    visualize options:
+    - "both": show original, augmented image, and mask
+    - "image": show only images
+    - "mask": show only the mask
+    """
     import matplotlib.pyplot as plt
     from matplotlib.colors import ListedColormap
     import numpy as np
-    
-    # 🔍 DEBUG: Check what's actually in the mask
-    print(f"\n=== DEBUG {idx} MASK ANALYSIS ===")
-    print(f"Mask shape: {aug_mask_np.shape}")
-    print(f"Mask dtype: {aug_mask_np.dtype}")
-    print(f"Mask min: {np.nanmin(aug_mask_np)}, max: {np.nanmax(aug_mask_np)}")
-    
-    # Check for different types of "no data"
-    num_nan = np.sum(np.isnan(aug_mask_np))
-    num_neg_one = np.sum(aug_mask_np == -1)
-    num_zero = np.sum(aug_mask_np == 0)
-    
-    print(f"NaN values: {num_nan}")
-    print(f"-1 values (converted from NaN): {num_neg_one}")
-    print(f"0 values (BE class): {num_zero}")
-    print(f"Unique values: {np.unique(aug_mask_np)}")
-    
-    # 🔍 CRITICAL CHECK: Check -1 pixels in augmented image (not black 0 pixels)
-    aug_mean = np.mean(aug_image_np, axis=0)  # Average across bands
-    no_data_pixels = aug_mean == -1  # Pixels with -1 value (no-data)
-    
-    if np.any(no_data_pixels):
-        mask_values_at_no_data = aug_mask_np[no_data_pixels]
-        unique_at_no_data = np.unique(mask_values_at_no_data)
-        
-        print(f"🔍 CHECKING: No-data pixels in augmented image (value = -1)")
-        print(f"   Number of no-data pixels: {np.sum(no_data_pixels)}")
-        print(f"   Mask values at no-data pixels: {unique_at_no_data}")
-        
-        # 🎯 CHECK: Are no-data areas properly marked as -1 in mask?
-        if -1 in unique_at_no_data and len(unique_at_no_data) == 1:
-            print("✅ PERFECT: All no-data pixels have -1 (NaN) values in mask!")
-        elif len(unique_at_no_data) == 0:
-            print("✅ PERFECT: All no-data pixels have NaN values in mask!")
-        else:
-            print(f"❌ PROBLEM: No-data pixels have mixed values: {unique_at_no_data}")
-    else:
-        print("ℹ️  No no-data pixels (-1) detected in augmented image")
-    
-    # 🔍 ALSO CHECK: Make sure no fake BE class (0) pixels in borders
-    black_pixels = aug_mean < 0.05  # Very dark pixels  
-    if np.any(black_pixels):
-        print(f"⚠️  WARNING: Found {np.sum(black_pixels)} black pixels (< 0.05)")
-        print("   These might be fake BE class pixels if value=0 was used!")
-    
-    # 🎯 ANALYZE: Original vs Augmented areas
-    orig_mean = np.mean(orig_image_np, axis=0)
-    orig_black = orig_mean < 0.05
-    
-    # New black areas = black in augmented but not black in original
-    new_black_areas = black_pixels & ~orig_black
-    
-    if np.any(new_black_areas):
-        print(f"\n🎯 NEW BLACK AREAS FROM AUGMENTATION:")
-        print(f"   Number of new black pixels: {np.sum(new_black_areas)}")
-        mask_values_at_new_black = aug_mask_np[new_black_areas]
-        unique_at_new_black = np.unique(mask_values_at_new_black)
-        
-        if -1 in unique_at_new_black and len(unique_at_new_black) == 1:
-            print("✅ PERFECT: All new black areas have -1 (NaN) values!")
-        elif len(unique_at_new_black) == 0:
-            print("✅ PERFECT: All new black areas have NaN values!")
-        else:
-            print(f"❌ PROBLEM: New black areas have mixed values: {unique_at_new_black}")
-    else:
-        print("ℹ️  No new black areas created by augmentation")
-    
-    # Rest of your visualization code stays the same...
-    unique_mask_values = sorted(np.unique(aug_mask_np[~np.isnan(aug_mask_np)]))
-    print(f"Final unique mask values (excluding NaN): {unique_mask_values}")
-    
-    # 🎯 COLOR MAPPING - Include -1 as white and handle NaN
-    color_mapping = {
-        -1: '#FFFFFF',  # NaN/No-data (converted from NaN) - White
-        0: '#dae22f',   # BE - Yellow-green  
-        1: '#6332ea',   # NPV - Purple
-        2: '#e346ee',   # PV - Magenta
-        3: '#6da4d4',   # SI - Light blue
-        4: '#68e8d3'    # WI - Cyan
-    }
-    
-    label_mapping = {
-        -1: 'NaN',
-        0: 'BE',
-        1: 'NPV', 
-        2: 'PV',
-        3: 'SI',
-        4: 'WI'
-    }
-    
-    # Handle NaN in display mask
-    display_mask_values = unique_mask_values.copy()
-    if num_nan > 0:
-        display_mask_values = [-1] + display_mask_values  # Add NaN as -1 for display
-    
-    # Build colors and labels based on what exists
-    class_colors = []
-    class_labels = []
-    
-    for mask_value in display_mask_values:
-        if mask_value in color_mapping:
-            class_colors.append(color_mapping[mask_value])
-            class_labels.append(label_mapping[mask_value])
-        else:
-            class_colors.append('#808080')  # Gray
-            class_labels.append(f'Class {int(mask_value)}')
-    
-    cmap = ListedColormap(class_colors)
-    
-    # Create display mask (convert NaN to -1 for visualization)
-    display_mask = aug_mask_np.copy()
-    if num_nan > 0:
-        display_mask = np.where(np.isnan(aug_mask_np), -1, aug_mask_np)
-    
-    # Map to display indices for colormap
-    final_display_mask = np.zeros_like(display_mask, dtype=int)
-    for i, mask_value in enumerate(display_mask_values):
-        final_display_mask[display_mask == mask_value] = i
-    
-    # Rest of visualization code (unchanged)
-    def create_rgb_composite(image_np):
-        rgb = None
+
+    # ✅ Convert -1 to NaN
+    aug_mask_np = aug_mask_np.astype(np.float32)
+    aug_mask_np[aug_mask_np == -1] = np.nan
+
+    def create_rgb(image_np):
         if image_np.shape[0] >= 5:
-            band_indices = [4, 2, 0]
-            rgb = np.zeros((image_np.shape[1], image_np.shape[2], 3))
-            for i, band_idx in enumerate(band_indices):
-                band = image_np[band_idx].copy()
-                p2 = np.percentile(band, 2)
-                p98 = np.percentile(band, 98)
-                rgb[:,:,i] = np.clip((band - p2) / (p98 - p2), 0, 1)
+            indices = [4, 2, 0]
         elif image_np.shape[0] >= 3:
-            rgb = image_np[:3].transpose(1, 2, 0).copy()
-            for i in range(3):
-                band = rgb[:,:,i]
-                p2 = np.percentile(band, 2)
-                p98 = np.percentile(band, 98)
-                rgb[:,:,i] = np.clip((band - p2) / (p98 - p2), 0, 1)
+            indices = [2, 1, 0]
+        else:
+            return None
+        rgb = np.zeros((image_np.shape[1], image_np.shape[2], 3))
+        for i, b in enumerate(indices):
+            band = image_np[b]
+            p2, p98 = np.percentile(band, 2), np.percentile(band, 98)
+            rgb[..., i] = np.clip((band - p2) / (p98 - p2), 0, 1)
         return rgb
-    
-    orig_rgb = create_rgb_composite(orig_image_np)
-    aug_rgb = create_rgb_composite(aug_image_np)
-    
-    plt.figure(figsize=(20, 6))
-    
-    # Original image
-    plt.subplot(1, 3, 1)
-    if orig_rgb is not None:
-        plt.imshow(orig_rgb)
-        plt.title("Original Image (Bands 5,3,1)")
-    else:
-        plt.imshow(orig_image_np[0], cmap='viridis')
-        plt.title("Original Image (Band 1)")
-    plt.axis('off')
-    
-    # Augmented image
-    plt.subplot(1, 3, 2)
-    if aug_rgb is not None:
-        plt.imshow(aug_rgb)
-        plt.title("Augmented Image (Bands 5,3,1)")
-    else:
-        plt.imshow(aug_image_np[0], cmap='viridis')
-        plt.title("Augmented Image (Band 1)")
-    plt.axis('off')
-    
-    # Augmented mask
-    plt.subplot(1, 3, 3)
 
-    # Create a white background first
-    plt.imshow(np.ones_like(aug_mask_np), cmap='gray', vmin=0, vmax=1)
+    orig_rgb = create_rgb(orig_image_np)
+    aug_rgb = create_rgb(aug_image_np)
 
-    # Get the class values (excluding NaN)
-    unique_mask_values = sorted(np.unique(aug_mask_np[~np.isnan(aug_mask_np)]))
+    # ---------------- Print mask stats including NaN ----------------
+    nan_count = np.isnan(aug_mask_np).sum()
+    unique_vals = np.unique(aug_mask_np[~np.isnan(aug_mask_np)])
+    nan_first_list = (['NaN'] if nan_count > 0 else []) + list(unique_vals)
 
-    # Define your original color palette
-    class_colors = ['#dae22f', '#6332ea', '#e346ee', '#6da4d4', '#68e8d3']  # Original class colors
-    cmap = ListedColormap(class_colors[:len(unique_mask_values)])
+    print(f"\n=== DEBUG {idx} MASK ANALYSIS ===")
+    print(f"Mask dtype: {aug_mask_np.dtype}")
+    print(f"Mask shape: {aug_mask_np.shape}")
+    print(f"Mask min: {np.nanmin(aug_mask_np):.4f}, max: {np.nanmax(aug_mask_np):.4f}")
+    print(f"NaN count: {nan_count}")
+    print(f"Unique values (excluding NaN): {unique_vals}")
+    print(f"Unique values (with NaN): {nan_first_list}")
 
-    # Create a masked array to handle NaNs properly
-    masked_display = np.ma.masked_array(
-        aug_mask_np, 
+    # ---------------- Visualization Mode Setup ----------------
+    class_labels = ['BE', 'NPV', 'PV', 'SI', 'WI']
+    class_colors = ['#dae22f', '#6332ea', '#e346ee', '#6da4d4', '#68e8d3']
+    cmap = ListedColormap(class_colors[:len(class_labels)])
+
+    valid_mask = ~np.isnan(aug_mask_np)
+    masked_mask = np.ma.masked_array(
+        aug_mask_np,
         mask=np.isnan(aug_mask_np)  # Mask where values are NaN
     )
 
-    # Plot the mask with NaN areas showing the white background
-    im = plt.imshow(masked_display, interpolation='nearest', cmap=cmap,
-                    vmin=0, vmax=len(unique_mask_values)-1)
+    if visualize == "both":
+        fig, axes = plt.subplots(1, 3, figsize=(20, 6))
+        titles = ["Original Image", "Augmented Image", "Augmented Mask"]
+        panels = [orig_rgb, aug_rgb, masked_mask]
+        cmaps = [None, None, cmap]
 
-    # Optional hatching for NaN areas for better visibility
-    nan_mask = np.isnan(aug_mask_np)
-    if np.any(nan_mask):
-        plt.contourf(nan_mask, hatches=['//'], colors='none', alpha=0.15)
+    elif visualize == "image":
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        titles = ["Original Image", "Augmented Image"]
+        panels = [orig_rgb, aug_rgb]
+        cmaps = [None, None]
 
-    plt.title(f"Augmented Mask ({len(unique_mask_values)} classes + NaN)")
-    plt.axis('off')
+    elif visualize == "mask":
+        fig, axes = plt.subplots(1, 1, figsize=(6, 6))
+        axes = [axes]  # ensure iterable
+        titles = ["Augmented Mask"]
+        panels = [masked_mask]
+        cmaps = [cmap]
 
-    # Colorbar showing the actual classes
-    colorbar = plt.colorbar(im, ax=plt.gca(), orientation='vertical', fraction=0.046, pad=0.04)
-    colorbar.set_ticks(range(len(unique_mask_values)))
-    class_labels = ['BE', 'NPV', 'PV', 'SI', 'WI'][:len(unique_mask_values)]
-    colorbar.ax.set_yticklabels(class_labels, fontsize=10)
-    
+    else:
+        raise ValueError(f"Invalid visualize option: {visualize}")
+
+    # ---------------- Plot panels ----------------
+    for ax, panel, title, cm in zip(axes, panels, titles, cmaps):
+        if title == "Augmented Mask":
+            # First plot white background
+            ax.imshow(np.ones_like(aug_mask_np), cmap='gray', vmin=0, vmax=1)
+            
+            # Then plot only the valid values with correct color mapping
+            im = ax.imshow(masked_mask, cmap=cm, interpolation='nearest', vmin=0, vmax=len(class_labels)-1)
+            
+            # Add hatching to NaN areas for better visibility
+            if np.any(np.isnan(aug_mask_np)):
+                ax.contourf(np.isnan(aug_mask_np), hatches=['//'], colors='none', alpha=0.15)
+            
+            cbar = plt.colorbar(im, ax=ax, orientation='vertical', fraction=0.045, pad=0.04)
+            cbar.set_ticks(np.arange(len(class_labels)))
+            cbar.ax.set_yticklabels(class_labels)
+        else:
+            if panel is not None:
+                ax.imshow(panel)
+            else:
+                ax.imshow(orig_image_np[0], cmap='gray')
+        ax.set_title(title)
+        ax.axis('off')
+
     plt.tight_layout()
     plt.savefig(f"debug_aug_{idx}.png", dpi=150, bbox_inches='tight')
     plt.close()
-     
+
+
+
+
+
 
 # def main():
 #     # Make sure output directories exist
@@ -367,9 +271,11 @@ def debug_visualize(orig_image_np, aug_image_np, aug_mask_np, idx):
 #                     desc=f"Augmenting image {idx}", 
 #                     leave=False):
 #             # Apply augmentation
-#             aug_image, aug_mask = albumentations_wrapper(image_tensor, mask_tensor)
-#             aug_image_np = aug_image.numpy()
-#             aug_mask_np = aug_mask.numpy()
+#             (aug_image_tensor, aug_mask_tensor), (aug_image_np, aug_mask_np) = albumentations_wrapper(image_tensor, mask_tensor)
+    
+#             # aug_image, aug_mask = albumentations_wrapper(image_tensor, mask_tensor)
+#             # aug_image_np = aug_image.numpy()
+#             # aug_mask_np = aug_mask.numpy()
             
 #             # Print stats post-augmentation
 #             print(f"  Aug {aug_idx}: min={aug_image_np.min():.4f}, max={aug_image_np.max():.4f}, mean={aug_image_np.mean():.4f}")
@@ -388,15 +294,93 @@ def debug_visualize(orig_image_np, aug_image_np, aug_mask_np, idx):
 #             # Save
 #             save_augmented_pair(orig_img_path, orig_mask_path, aug_image_np, aug_mask_np, aug_idx, output_dir_img, output_dir_mask)
 
+###test 5 files
+# def main():
+#     # Make sure output directories exist
+#     output_dir_img= '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/predictor_5b'
+#     output_dir_mask= '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/mask_fvc'
+#     os.makedirs(output_dir_img, exist_ok=True)
+#     os.makedirs(output_dir_mask, exist_ok=True)
+
+#     image_dirs = config_param.IMAGE_FOLDER
+#     mask_dirs = config_param.MASK_FOLDER
+#     # 1. Create dataset for originals (no transforms)
+#     dataset = CalperumDataset(
+#         image_folders=image_dirs,
+#         mask_folders=mask_dirs,
+#         transform=None
+#     )
+
+#     # 2. Create Albumentations transform
+#     # a) Create augmentation wrapper - it will automatically use get_train_augmentation()
+#     albumentations_transform = get_train_augmentation() 
+#     albumentations_wrapper = AlbumentationsTorchWrapper(albumentations_transform)
+
+
+#     # 3. Decide how many augmentations per sample
+#     NUM_AUG_PER_IMAGE = 2
+    
+#     # 🎯 TESTING: Process only first 5 images
+#     NUM_TEST_IMAGES = 5
+#     total_images = min(NUM_TEST_IMAGES, len(dataset))
+    
+#     print(f"🧪 TESTING MODE: Processing only {total_images} images out of {len(dataset)} total")
+
+#     # 4. Iterate and generate augmentations
+#     print("Generating and saving augmented data...")
+#     orig_img_dir = image_dirs[0]
+#     orig_mask_dir = mask_dirs[0]
+#     orig_img_files = sorted([f for f in os.listdir(orig_img_dir) if f.endswith('.tif')])
+#     orig_mask_files = sorted([f for f in os.listdir(orig_mask_dir) if f.endswith('.tif')])
+
+#     # 🎯 MODIFIED: Only process first 5 images
+#     # In your generate_data_augmentation.py main() function:
+
+#     # Then in the main() function:
+#     for idx in tqdm(range(total_images), desc="Processing images"):
+#         # 1. Load image and mask directly as NumPy arrays (not tensors)
+#         img_filename = os.path.join(orig_img_dir, orig_img_files[idx])
+#         mask_filename = os.path.join(orig_mask_dir, orig_mask_files[idx])
+        
+#         # Load directly as NumPy arrays with NaN preserved
+#         image_np, _ = load_raw_multispectral_image(img_filename)
+#         mask_np, _ = prep_mask_preserve_nan(mask_filename)  # Use preserve_nan version!
+        
+#         print(f"Original image {idx}: min={image_np.min():.4f}, max={image_np.max():.4f}, mean={image_np.mean():.4f}")
+#         print(f"Original mask {idx}: shape={mask_np.shape}, dtype={mask_np.dtype}")
+#         print(f"  - NaN values: {np.sum(np.isnan(mask_np))}")
+#         print(f"  - Unique values: {np.unique(mask_np[~np.isnan(mask_np)])}")
+        
+#         for aug_idx in tqdm(range(1, NUM_AUG_PER_IMAGE+1), 
+#                     desc=f"Augmenting image {idx}", 
+#                     leave=False):
+            
+#             # 2. Apply augmentation directly with NumPy arrays
+#             aug_image_np, aug_mask_np = albumentations_wrapper(image_np, mask_np)
+            
+#             # 3. Debug visualization with NumPy arrays
+#             debug_visualize(image_np, aug_image_np, aug_mask_np, f"{idx}_{aug_idx}")
+            
+#             # 4. Save with NumPy arrays (NaN preserved)
+#             save_augmented_pair(img_filename, mask_filename, aug_image_np, aug_mask_np, aug_idx, output_dir_img, output_dir_mask)
+        
+#         # 📊 Summary
+#         print(f"\n✅ TESTING COMPLETE!")
+#         print(f"   - Processed: {total_images} original images")
+#         print(f"   - Generated: {total_images * NUM_AUG_PER_IMAGE} augmented images") 
+#         print(f"   - Debug visualizations: {total_images * NUM_AUG_PER_IMAGE} PNG files")
+#         print(f"   - Total files created: {total_images * NUM_AUG_PER_IMAGE * 2} (images + masks)")
+
 def main():
     # Make sure output directories exist
-    output_dir_img= '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/predictor_5b'
-    output_dir_mask= '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/mask_fvc'
+    output_dir_img = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/predictor_5b'
+    output_dir_mask = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/mask_fvc'
     os.makedirs(output_dir_img, exist_ok=True)
     os.makedirs(output_dir_mask, exist_ok=True)
 
     image_dirs = config_param.IMAGE_FOLDER
     mask_dirs = config_param.MASK_FOLDER
+
     # 1. Create dataset for originals (no transforms)
     dataset = CalperumDataset(
         image_folders=image_dirs,
@@ -404,20 +388,16 @@ def main():
         transform=None
     )
 
-    # 2. Create Albumentations transform
-    # a) Create augmentation wrapper - it will automatically use get_train_augmentation()
+    # 2. Create Albumentations transform and wrapper
     albumentations_transform = get_train_augmentation() 
     albumentations_wrapper = AlbumentationsTorchWrapper(albumentations_transform)
 
-
     # 3. Decide how many augmentations per sample
     NUM_AUG_PER_IMAGE = 2
-    
-    # 🎯 TESTING: Process only first 5 images
-    NUM_TEST_IMAGES = 5
-    total_images = min(NUM_TEST_IMAGES, len(dataset))
-    
-    print(f"🧪 TESTING MODE: Processing only {total_images} images out of {len(dataset)} total")
+
+    # Process all images in the dataset
+    total_images = len(dataset)
+    print(f"🚀 Processing all {total_images} images in the dataset")
 
     # 4. Iterate and generate augmentations
     print("Generating and saving augmented data...")
@@ -426,43 +406,41 @@ def main():
     orig_img_files = sorted([f for f in os.listdir(orig_img_dir) if f.endswith('.tif')])
     orig_mask_files = sorted([f for f in os.listdir(orig_mask_dir) if f.endswith('.tif')])
 
-    # 🎯 MODIFIED: Only process first 5 images
-    for idx in tqdm(range(total_images), desc="Processing test images"):
-        image_tensor, mask_tensor = dataset[idx]
+    for idx in tqdm(range(total_images), desc="Processing images"):
+        # 1. Load image and mask directly as NumPy arrays (not tensors)
+        img_filename = os.path.join(orig_img_dir, orig_img_files[idx])
+        mask_filename = os.path.join(orig_mask_dir, orig_mask_files[idx])
         
-        # Debug: Check loaded tensor values
-        print(f"Loaded tensor {idx}: min={image_tensor.min().item():.4f}, max={image_tensor.max().item():.4f}")
+        # Load directly as NumPy arrays with NaN preserved
+        image_np, _ = load_raw_multispectral_image(img_filename)
+        mask_np, _ = prep_mask_preserve_nan(mask_filename)
         
-        # Convert to numpy for debug visualization
-        image_np = image_tensor.numpy()
         print(f"Original image {idx}: min={image_np.min():.4f}, max={image_np.max():.4f}, mean={image_np.mean():.4f}")
-        mask_np = mask_tensor.numpy()
-
-        orig_img_path = os.path.join(orig_img_dir, orig_img_files[idx])
-        orig_mask_path = os.path.join(orig_mask_dir, orig_mask_files[idx])
-
+        print(f"Original mask {idx}: shape={mask_np.shape}, dtype={mask_np.dtype}")
+        print(f"  - NaN values: {np.sum(np.isnan(mask_np))}")
+        print(f"  - Unique values: {np.unique(mask_np[~np.isnan(mask_np)])}")
+        
         for aug_idx in tqdm(range(1, NUM_AUG_PER_IMAGE+1), 
-                    desc=f"Augmenting image {idx}", 
-                    leave=False):
-                    
-            # Apply augmentation - NOW RETURNS BOTH TENSOR AND RAW NUMPY
-            (aug_image_tensor, aug_mask_tensor), (aug_image_np, aug_mask_np) = albumentations_wrapper(image_tensor, mask_tensor)
+                            desc=f"Augmenting image {idx}", 
+                            leave=False):
+            # 2. Apply augmentation directly with NumPy arrays
+            aug_image_np, aug_mask_np = albumentations_wrapper(image_np, mask_np)
             
-            # Print stats
-            print(f"  Aug {aug_idx}: min={aug_image_np.min():.4f}, max={aug_image_np.max():.4f}, mean={aug_image_np.mean():.4f}")
-            
-            # Use raw numpy arrays with NaN for debug and saving
+            # 3. Debug visualization with NumPy arrays
             debug_visualize(image_np, aug_image_np, aug_mask_np, f"{idx}_{aug_idx}")
             
-            # Save using raw numpy arrays (with NaN preserved)
-            save_augmented_pair(orig_img_path, orig_mask_path, aug_image_np, aug_mask_np, aug_idx, output_dir_img, output_dir_mask)
+            # 4. Save with NumPy arrays (NaN preserved)
+            save_augmented_pair(img_filename, mask_filename, aug_image_np, aug_mask_np,
+                                aug_idx, output_dir_img, output_dir_mask)
     
     # 📊 Summary
-    print(f"\n✅ TESTING COMPLETE!")
+    print(f"\n✅ AUGMENTATION COMPLETE!")
     print(f"   - Processed: {total_images} original images")
-    print(f"   - Generated: {total_images * NUM_AUG_PER_IMAGE} augmented images") 
+    print(f"   - Generated: {total_images * NUM_AUG_PER_IMAGE} augmented images")
     print(f"   - Debug visualizations: {total_images * NUM_AUG_PER_IMAGE} PNG files")
     print(f"   - Total files created: {total_images * NUM_AUG_PER_IMAGE * 2} (images + masks)")
+
+
 
 if __name__ == "__main__":
     main()
