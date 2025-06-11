@@ -9,36 +9,173 @@ from dataset.data_augmentation_wrapper import AlbumentationsTorchWrapper
 from dataset.data_augmentation import get_train_augmentation, save_augmented_pair
 import config_param
 
-def debug_visualize(image_np, mask_np, idx):
-    """Create visualization of the augmented image for debugging"""
+#rgb
+# def debug_visualize(image_np, mask_np, idx):
+#     """Create visualization of the augmented image for debugging"""
+#     import matplotlib.pyplot as plt
+    
+#     # For multispectral data, create a RGB composite using bands 3,2,1 (if they exist)
+#     rgb = None
+#     if image_np.shape[0] >= 3:
+#         # Use first 3 bands for visualization, scale to 0-255
+#         rgb = image_np[:3].transpose(1, 2, 0).copy()
+#         for i in range(3):
+#             band = rgb[:,:,i]
+#             p2 = np.percentile(band, 2)  # Dark end percentile
+#             p98 = np.percentile(band, 98)  # Bright end percentile
+#             rgb[:,:,i] = np.clip((band - p2) / (p98 - p2), 0, 1)
+    
+#     plt.figure(figsize=(10, 5))
+#     plt.subplot(1, 2, 1)
+#     if rgb is not None:
+#         plt.imshow(rgb)
+#     else:
+#         # Use first band if RGB composite isn't possible
+#         plt.imshow(image_np[0], cmap='viridis')
+#     plt.title("Augmented Image")
+    
+#     plt.subplot(1, 2, 2)
+#     plt.imshow(mask_np, cmap='tab20')
+#     plt.title("Augmented Mask")
+    
+#     plt.savefig(f"debug_aug_{idx}.png")
+#     plt.close()
+
+#multispectral without orginal
+# def debug_visualize(image_np, mask_np, idx):
+#     """Create visualization of the augmented image for debugging"""
+#     import matplotlib.pyplot as plt
+#     from matplotlib.colors import ListedColormap
+    
+#     # Define the dense site color palette
+#     class_colors = ['#dae22f', '#6332ea', '#e346ee', '#6da4d4', '#68e8d3']  # Colors for BE, NPV, PV, SI, WI classes (dense)
+#     cmap = ListedColormap(class_colors)
+    
+#     # For multispectral data, create a RGB composite using bands 5,3,1 (if they exist)
+#     rgb = None
+#     if image_np.shape[0] >= 5:  # Make sure we have at least 5 bands
+#         # Use bands 5,3,1 for visualization (0-indexed: bands 4,2,0)
+#         band_indices = [4, 2, 0]  # 5th, 3rd, 1st bands (0-indexed)
+#         rgb = np.zeros((image_np.shape[1], image_np.shape[2], 3))
+        
+#         for i, band_idx in enumerate(band_indices):
+#             band = image_np[band_idx].copy()
+#             p2 = np.percentile(band, 2)  # Dark end percentile
+#             p98 = np.percentile(band, 98)  # Bright end percentile
+#             rgb[:,:,i] = np.clip((band - p2) / (p98 - p2), 0, 1)
+#     elif image_np.shape[0] >= 3:
+#         # Fallback to first 3 bands if we don't have 5 bands
+#         rgb = image_np[:3].transpose(1, 2, 0).copy()
+#         for i in range(3):
+#             band = rgb[:,:,i]
+#             p2 = np.percentile(band, 2)
+#             p98 = np.percentile(band, 98)
+#             rgb[:,:,i] = np.clip((band - p2) / (p98 - p2), 0, 1)
+    
+#     plt.figure(figsize=(15, 5))  # Made wider to accommodate colorbar
+#     plt.subplot(1, 2, 1)
+#     if rgb is not None:
+#         plt.imshow(rgb)
+#         plt.title("Augmented Image (Bands 5,3,1)")
+#     else:
+#         # Use first band if RGB composite isn't possible
+#         plt.imshow(image_np[0], cmap='viridis')
+#         plt.title("Augmented Image (Band 1)")
+#     plt.axis('off')
+    
+#     plt.subplot(1, 2, 2)
+#     im = plt.imshow(mask_np, cmap=cmap, interpolation='nearest')
+#     plt.title("Augmented Mask")
+#     plt.axis('off')
+    
+#     plt.subplot(1, 2, 2)
+#     im = plt.imshow(mask_np, cmap=cmap, interpolation='nearest')
+#     plt.title("Augmented Mask")
+#     plt.axis('off')
+    
+#     # Add colorbar with proper labels
+#     colorbar = plt.colorbar(im, ax=plt.gca(), orientation='vertical', fraction=0.046, pad=0.04)
+#     colorbar.set_ticks([0, 1, 2, 3, 4])  # Set ticks for 5 classes (0-4)
+#     colorbar.ax.set_yticklabels(['BE class', 'NPV class', 'PV class', 'SI class', 'WI class'], fontsize=10)
+    
+#     plt.tight_layout()
+#     plt.savefig(f"debug_aug_{idx}.png", dpi=150, bbox_inches='tight')
+#     plt.close()
+
+#Multispectral with original
+def debug_visualize(orig_image_np, aug_image_np, aug_mask_np, idx):
+    """Create visualization comparing original and augmented image with mask"""
     import matplotlib.pyplot as plt
+    from matplotlib.colors import ListedColormap
     
-    # For multispectral data, create a RGB composite using bands 3,2,1 (if they exist)
-    rgb = None
-    if image_np.shape[0] >= 3:
-        # Use first 3 bands for visualization, scale to 0-255
-        rgb = image_np[:3].transpose(1, 2, 0).copy()
-        for i in range(3):
-            band = rgb[:,:,i]
-            p2 = np.percentile(band, 2)  # Dark end percentile
-            p98 = np.percentile(band, 98)  # Bright end percentile
-            rgb[:,:,i] = np.clip((band - p2) / (p98 - p2), 0, 1)
+    # Define the dense site color palette
+    class_colors = ['#dae22f', '#6332ea', '#e346ee', '#6da4d4', '#68e8d3']  # Colors for BE, NPV, PV, SI, WI classes (dense)
+    cmap = ListedColormap(class_colors)
     
-    plt.figure(figsize=(10, 5))
-    plt.subplot(1, 2, 1)
-    if rgb is not None:
-        plt.imshow(rgb)
+    # Function to create RGB composite
+    def create_rgb_composite(image_np):
+        rgb = None
+        if image_np.shape[0] >= 5:  # Make sure we have at least 5 bands
+            # Use bands 5,3,1 for visualization (0-indexed: bands 4,2,0)
+            band_indices = [4, 2, 0]  # 5th, 3rd, 1st bands (0-indexed)
+            rgb = np.zeros((image_np.shape[1], image_np.shape[2], 3))
+            
+            for i, band_idx in enumerate(band_indices):
+                band = image_np[band_idx].copy()
+                p2 = np.percentile(band, 2)  # Dark end percentile
+                p98 = np.percentile(band, 98)  # Bright end percentile
+                rgb[:,:,i] = np.clip((band - p2) / (p98 - p2), 0, 1)
+        elif image_np.shape[0] >= 3:
+            # Fallback to first 3 bands if we don't have 5 bands
+            rgb = image_np[:3].transpose(1, 2, 0).copy()
+            for i in range(3):
+                band = rgb[:,:,i]
+                p2 = np.percentile(band, 2)
+                p98 = np.percentile(band, 98)
+                rgb[:,:,i] = np.clip((band - p2) / (p98 - p2), 0, 1)
+        return rgb
+    
+    # Create RGB composites
+    orig_rgb = create_rgb_composite(orig_image_np)
+    aug_rgb = create_rgb_composite(aug_image_np)
+    
+    plt.figure(figsize=(20, 6))  # Made wider to accommodate 3 subplots
+    
+    # Original image
+    plt.subplot(1, 3, 1)
+    if orig_rgb is not None:
+        plt.imshow(orig_rgb)
+        plt.title("Original Image (Bands 5,3,1)")
     else:
-        # Use first band if RGB composite isn't possible
-        plt.imshow(image_np[0], cmap='viridis')
-    plt.title("Augmented Image")
+        plt.imshow(orig_image_np[0], cmap='viridis')
+        plt.title("Original Image (Band 1)")
+    plt.axis('off')
     
-    plt.subplot(1, 2, 2)
-    plt.imshow(mask_np, cmap='tab20')
+    # Augmented image
+    plt.subplot(1, 3, 2)
+    if aug_rgb is not None:
+        plt.imshow(aug_rgb)
+        plt.title("Augmented Image (Bands 5,3,1)")
+    else:
+        plt.imshow(aug_image_np[0], cmap='viridis')
+        plt.title("Augmented Image (Band 1)")
+    plt.axis('off')
+    
+    # Augmented mask
+    plt.subplot(1, 3, 3)
+    im = plt.imshow(aug_mask_np, cmap=cmap, interpolation='nearest')
     plt.title("Augmented Mask")
+    plt.axis('off')
     
-    plt.savefig(f"debug_aug_{idx}.png")
-    plt.close()
+    # Add colorbar with proper labels
+    colorbar = plt.colorbar(im, ax=plt.gca(), orientation='vertical', fraction=0.046, pad=0.04)
+    colorbar.set_ticks([0, 1, 2, 3, 4])  # Set ticks for 5 classes (0-4)
+    colorbar.ax.set_yticklabels(['BE class', 'NPV class', 'PV class', 'SI class', 'WI class'], fontsize=10)
+    
+    plt.tight_layout()
+    plt.savefig(f"debug_aug_{idx}.png", dpi=150, bbox_inches='tight')
+    plt.close()  
+     
 
 def main():
     # Make sure output directories exist
@@ -98,8 +235,12 @@ def main():
                 channel = aug_image_np[c]
                 if channel.min() == 0 and channel.max() == 0:
                     print(f"  WARNING: Channel {c} is all zeros!")
+                    
             # Debug visualization
-            debug_visualize(aug_image_np, aug_mask_np, f"{idx}_{aug_idx}")
+            # debug_visualize(aug_image_np, aug_mask_np, f"{idx}_{aug_idx}")
+            # Debug visualization with original image included
+            debug_visualize(image_np, aug_image_np, aug_mask_np, f"{idx}_{aug_idx}")
+            
             # Save
             save_augmented_pair(orig_img_path, orig_mask_path, aug_image_np, aug_mask_np, aug_idx, output_dir_img, output_dir_mask)
 
