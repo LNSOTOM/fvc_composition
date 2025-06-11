@@ -74,18 +74,22 @@ class CalperumDataset(Dataset):
             else:
                 raise ValueError(f"Expected mask shape [H, W], got {mask.shape}")
 
-        image_tensor = convertImg_to_tensor(image, dtype=torch.float32)
-        mask_tensor = convertMask_to_tensor(mask, dtype=torch.long)
-
+        # float for NaN-compatible transforms
+        # image_tensor = convertImg_to_tensor(image, dtype=torch.float32)
+        # mask_tensor = convertMask_to_tensor(mask, dtype=torch.long)      
+        mask_tensor = convertMask_to_tensor(mask, dtype=torch.float32) 
+      
+        image_tensor = torch.from_numpy(image).float()
+        # mask_tensor = torch.from_numpy(mask).long()
+        
         if self.transform is not None:
-            # Fix here: Call transform with separate arguments, not a tuple
-            if hasattr(self.transform, '__call__') and callable(self.transform.__call__):
-                try:
-                    # Try the correct way - passing as separate arguments
-                    image_tensor, mask_tensor = self.transform(image_tensor, mask_tensor)
-                except TypeError:
-                    # Fallback for transforms that expect a tuple
-                    image_tensor, mask_tensor = self.transform((image_tensor, mask_tensor))
+            image_tensor, mask_tensor = self.transform(image_tensor, mask_tensor)
+
+        # mask_tensor = mask_tensor.long()  # safe to convert after transform
+
+        # Final print
+        # print(f"🖼️ image_tensor shape: {image_tensor.shape}, dtype: {image_tensor.dtype}, min: {torch.nan_to_num(image_tensor).min().item():.2f}, max: {torch.nan_to_num(image_tensor).max().item():.2f}")
+        # print(f"🗺️ mask_tensor shape: {mask_tensor.shape}, dtype: {mask_tensor.dtype}, unique values: {torch.unique(mask_tensor)}")
 
         return image_tensor, mask_tensor
 
@@ -97,8 +101,9 @@ class CalperumDataset(Dataset):
         return prep_mask(mask_path)
 
     @staticmethod
-    def load_subsampled_data(image_subsample_dir, mask_subsample_dir, transform=None, as_tensor=True):
-        images, masks = [], []
+    def load_subsampled_data(image_subsample_dir, mask_subsample_dir, transform=None):
+        images = []
+        masks = []
 
         if isinstance(image_subsample_dir, (str, os.PathLike)):
             image_subsample_dir = [image_subsample_dir]
@@ -123,15 +128,9 @@ class CalperumDataset(Dataset):
                 mask_tensor = convertMask_to_tensor(mask, dtype=torch.long)
 
                 if transform is not None:
-                    try:
-                        image_tensor, mask_tensor = transform(image_tensor, mask_tensor)
-                    except TypeError:
-                        image_tensor, mask_tensor = transform((image_tensor, mask_tensor))
+                    image_tensor, mask_tensor = transform((image_tensor, mask_tensor))
 
                 images.append(image_tensor)
                 masks.append(mask_tensor)
 
-        if as_tensor:
-            return torch.stack(images), torch.stack(masks)
-        else:
-            return images, masks
+        return images, masks
