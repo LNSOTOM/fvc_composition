@@ -565,9 +565,9 @@ def plot_raster(raster_path, rgb_path1, rgb_path2, save_path):
     rgb_image2 = imread(rgb_path2)
     
     # Define a discrete color palette for the raster classes
-    class_colors = ['#dae22f', '#6332ea', '#e346ee', '#6da4d4']  # Colors for Bare earth, NPV, PV, SI classes (medium)
+    # class_colors = ['#dae22f', '#6332ea', '#e346ee', '#6da4d4']  # Colors for Bare earth, NPV, PV, SI classes (medium)
     # class_colors = ['#dae22f', '#6332ea', '#e346ee']  # Colors for Bare earth, NPV, PV, SI classes (low)
-    # class_colors = ['#dae22f', '#6332ea', '#e346ee', '#68e8d3']  # Colors for Bare earth, NPV, PV, WI classes (dense)
+    class_colors = ['#dae22f', '#6332ea', '#e346ee', '#6da4d4', '#68e8d3']  # Colors for Bare earth, NPV, PV, WI classes (dense)
     cmap = ListedColormap(class_colors)
     
     # Plotting
@@ -598,7 +598,7 @@ def plot_raster(raster_path, rgb_path1, rgb_path2, save_path):
     # colorbar.ax.set_yticklabels(['BE class', 'NPV class', 'PV class'], fontsize=24)  # low
     ##dense
     # colorbar.set_ticks([0, 1, 2, 3])  # Set ticks to match the number of classes #dense
-    # colorbar.ax.set_yticklabels(['BE class', 'NPV class', 'PV class', 'WI class'], fontsize=24)  #dense
+    # colorbar.ax.set_yticklabels(['BE class', 'NPV class', 'PV class', 'SI class', 'WI class'], fontsize=24)  #dense
     
     # Center the y-tick labels
     colorbar.ax.yaxis.set_ticks_position('right')
