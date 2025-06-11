@@ -21,8 +21,8 @@ class AlbumentationsTorchWrapper:
             self.transform = transform
             
     def __call__(self, image_tensor, mask_tensor):
-        """Apply albumentations transforms to inputs (as numpy arrays) and preserve no-data (NaN) pixels in the mask.
-        The augmented image is used as the reference for setting no-data pixels."""
+        """Apply albumentations transforms to inputs (as numpy arrays) and preserve no‐data (NaN) pixels in the mask.
+        Uses the augmented image's NaN pixels as the reference to set no‐data regions in the mask."""
         import numpy as np
         import torch
 
@@ -30,7 +30,7 @@ class AlbumentationsTorchWrapper:
         image_np = image_tensor if not isinstance(image_tensor, torch.Tensor) else image_tensor.numpy()
         mask_np  = mask_tensor  if not isinstance(mask_tensor, torch.Tensor) else mask_tensor.numpy()
 
-        # Ensure mask is float32 so it can represent NaN
+        # Ensure mask is float32 (so it can represent NaN)
         if not np.issubdtype(mask_np.dtype, np.floating):
             mask_np = mask_np.astype(np.float32)
 
@@ -43,23 +43,21 @@ class AlbumentationsTorchWrapper:
         try:
             # Transform the image and mask as usual
             transformed = self.transform(
-                image=image_np.transpose(1, 2, 0),  # [C, H, W] -> [H, W, C]
-                mask=mask_np                        # [H, W]
+                image = image_np.transpose(1, 2, 0),  # [C, H, W] -> [H, W, C]
+                mask  = mask_np                        # [H, W]
             )
             aug_image_np = transformed['image'].transpose(2, 0, 1)  # Back to [C, H, W]
             aug_mask_np  = transformed['mask']
 
-            # --- Use augmented image as reference for no-data regions ---
-            # For example, if your augmentation fills no-data in the image as -1 across all channels,
-            # build a reference mask where all channels equal -1.
-            # Here we assume that a no-data pixel in the augmented image has -1 in every channel.
-            # Adjust the fill value as needed.
-            ref_nan_mask = np.all(aug_image_np == -1, axis=0).astype(np.uint8)
-
-            # Set all pixels in the augmented mask corresponding to ref_nan_mask==1 to NaN.
+            # Use the augmented image as reference:
+            # Since the no-data values are preserved as NaN in the augmented image,
+            # we create a binary reference mask where any channel is NaN.
+            ref_nan_mask = np.any(np.isnan(aug_image_np), axis=0).astype(np.uint8)
+            
+            # Now force all pixels in the augmented mask corresponding to ref_nan_mask==1 to NaN.
             aug_mask_np[ref_nan_mask == 1] = np.nan
 
-            # Ensure aug_mask_np is float32 so it can permanently carry NaN values.
+            # Ensure aug_mask_np is float32 so that it can carry NaN values.
             if not np.issubdtype(aug_mask_np.dtype, np.floating):
                 aug_mask_np = aug_mask_np.astype(np.float32)
 
@@ -67,10 +65,10 @@ class AlbumentationsTorchWrapper:
             num_nan_after = np.sum(np.isnan(aug_mask_np))
             print(f"📊 POST-AUG: mask shape={aug_mask_np.shape}, dtype={aug_mask_np.dtype}")
             print(f"  - NaN count after aug: {num_nan_after}")
-            print(f"  - Min value (excl. NaN): {np.nanmin(aug_mask_np)}")
+            print(f"  - Min value (excluding NaN): {np.nanmin(aug_mask_np)}")
             print(f"  - Unique valid values: {np.unique(aug_mask_np[~np.isnan(aug_mask_np)])}")
 
-            # Return both NumPy arrays and, if desired, tensor versions.
+            # Return NumPy arrays for visualization/saving.
             if isinstance(image_tensor, torch.Tensor):
                 aug_image_tensor = torch.tensor(aug_image_np, dtype=torch.float32)
                 aug_mask_tensor  = torch.tensor(aug_mask_np, dtype=torch.float32)
