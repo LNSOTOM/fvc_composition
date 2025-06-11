@@ -144,7 +144,7 @@ DATA_TRANSFORM = transforms.Compose([
 # ======================
 NUM_BLOCKS = 3
 ENABLE_WATER_REDISTRIBUTION = False
-USE_AUGMENTED_DATA = False  #False
+USE_AUGMENTED_DATA = True #False
 
 def combine_and_process_paths(image_dirs, mask_dirs):
     combined_data = []
