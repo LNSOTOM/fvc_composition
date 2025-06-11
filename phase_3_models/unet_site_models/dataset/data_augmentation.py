@@ -92,14 +92,7 @@ def save_augmented_pair(orig_img_path, orig_mask_path, aug_image_np, aug_mask_np
 #complex augmentation function
 def get_train_augmentation():
     """
-    Return Albumentations transform pipeline for training data with:
-    - Random horizontal flips (50% probability)
-    - Random vertical flips (50% probability)
-    - Random brightness adjustment (90-110%)
-    - Random contrast adjustment (80-120%)
-    - Random 90-degree rotations (50% probability)
-    - Random shearing (0-0.2 radians)
-    - Random shifting/translation (0-15% in any direction)
+    Return Albumentations transform pipeline with proper no-data handling
     """
     return A.Compose([
         A.HorizontalFlip(p=0.5),
@@ -112,21 +105,20 @@ def get_train_augmentation():
             always_apply=False
         ),
         A.ShiftScaleRotate(
-            shift_limit=0.15,      # ±15% shifting (matching your docstring)
+            shift_limit=0.15,      # ±15% shifting
             scale_limit=0.0,       # No scaling
-            rotate_limit=0,        # No rotation (handled by RandomRotate90)
-            border_mode=cv2.BORDER_CONSTANT,
-            value=0,
-            mask_value=0,
+            rotate_limit=0,        # No rotation
+            border_mode=cv2.BORDER_REFLECT_101,
+            # value=np.nan,          # 🔧 FIX: Use NaN for image fill (no-data)
+            # mask_value=-1,         # 🔧 FIX: Use -1 for mask fill (no-data)
             p=0.9
         ),
-        # Add separate shearing transformation
         A.Affine(
             shear=(-11.46, 11.46),  # 0-0.2 radians = ±11.46 degrees
-            mode=cv2.BORDER_CONSTANT,
-            cval=0,
-            cval_mask=0,
-            p=0.5  # 50% probability for shearing
+            mode=cv2.BORDER_REFLECT_101,
+            # cval=np.nan,           # 🔧 FIX: Use NaN for image fill (no-data)
+            # cval_mask=-1,          # 🔧 FIX: Use -1 for mask fill (no-data)
+            p=0.5
         ),
     ], p=1.0)
 

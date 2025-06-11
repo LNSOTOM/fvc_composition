@@ -7,111 +7,75 @@ import torch
 from dataset.image_preprocessing import load_raw_multispectral_image, prep_normalise_image, prep_contrast_stretch_image, convertImg_to_tensor, load_raw_rgb_image
 from dataset.mask_preprocessing import prep_mask, prep_mask_preserve_nan, convertMask_to_tensor
 import rasterio
+from albumentations import Compose
+from dataset.data_augmentation import get_train_augmentation
 
 class AlbumentationsTorchWrapper:
-    """Wrapper for Albumentations transforms to work with PyTorch tensors."""
-    
-    def __init__(self, transform):
-        self.transform = transform
-             
+    """
+    Wrapper to apply Albumentations transforms to PyTorch tensors.
+
+    Handles:
+    - Conversion between torch tensors and numpy arrays
+    - Safe handling of NaNs in masks
+    - GPU compatibility
+    """
+
+    def __init__(self, transform=None):
+        self.transform = transform if transform else get_train_augmentation()
+
     def __call__(self, *args):
-        """Convert tensors to numpy, apply transform, then convert back to tensors with proper types"""
-        # Handle both tuple input and separate arguments
+        """
+        Args:
+            args: Either (image_tensor, mask_tensor) or a tuple containing both.
+
+        Returns:
+            Tuple of transformed (image_tensor, mask_tensor)
+        """
+        # Unpack inputs
         if len(args) == 1 and isinstance(args[0], tuple):
             image_tensor, mask_tensor = args[0]
         elif len(args) == 2:
             image_tensor, mask_tensor = args
         else:
-            raise ValueError("Expected either a tuple of (image, mask) or separate image and mask arguments")
+            raise ValueError("Expected (image_tensor, mask_tensor) or a tuple containing both.")
 
-        # Store original tensor dtypes for conversion back later
+        # Save original dtypes
         orig_img_dtype = image_tensor.dtype
         orig_mask_dtype = mask_tensor.dtype
-        
-        # Convert to numpy for transformations
-        image_np = image_tensor.numpy()
-        mask_np = mask_tensor.numpy()
 
-        # Debug: Print original values
-        # print(f"Original image shape: {image_np.shape}, mask shape: {mask_np.shape}")
-        # print(f"Original image stats: min={image_np.min():.6f}, max={image_np.max():.6f}, mean={image_np.mean():.6f}")
-        
-        # Check if we need to recover data due to zero values
-        if image_np.min() == 0 and image_np.max() == 0:
-            print("WARNING: Input image is all zeros! Attempting recovery...")
-            
-            # Try to access file path if available
-            if hasattr(image_tensor, 'file_path') and image_tensor.file_path:
-                try:
-                    print(f"Recovery attempt using file_path: {image_tensor.file_path}")
-                    with rasterio.open(image_tensor.file_path) as src:
-                        recovered_image = src.read()
-                        print(f"Recovery successful: min={recovered_image.min()}, max={recovered_image.max()}")
-                        
-                        # Convert recovered image to HWC format for Albumentations
-                        if recovered_image.ndim == 3 and recovered_image.shape[0] > 1:
-                            image_np = np.transpose(recovered_image, (1, 2, 0))  # [C,H,W] -> [H,W,C]
-                        else:
-                            image_np = recovered_image
-                            
-                except Exception as e:
-                    print(f"Recovery failed using file_path: {e}")
-                    # Create dummy data as absolute fallback
-                    if image_np.ndim == 3:
-                        image_np = np.random.uniform(0.1, 0.5, size=image_np.shape).astype(np.float32)
-                    else:
-                        image_np = np.random.uniform(0.1, 0.5, size=(256, 256, 5)).astype(np.float32)
-            else:
-                print("No file_path available, creating dummy data")
-                # Create dummy data as fallback
-                if image_np.ndim == 3 and image_np.shape[0] <= 5:
-                    # Input is in CHW format, transpose to HWC for augmentation
-                    image_np = np.random.uniform(0.1, 0.5, size=(256, 256, 5)).astype(np.float32)
-                else:
-                    image_np = np.random.uniform(0.1, 0.5, size=image_np.shape).astype(np.float32)
-        else:
-            # Convert image from NCHW to HWC format for Albumentations
-            if image_np.ndim == 3 and image_np.shape[0] > 1:  # If it has multiple channels
-                image_np = np.transpose(image_np, (1, 2, 0))  # [C,H,W] -> [H,W,C]
-            
-        # print(f"Transposed image shape: {image_np.shape}, mask shape: {mask_np.shape}")
+        # Move to CPU and convert to numpy
+        image_np = image_tensor.detach().cpu().numpy()
+        mask_np = mask_tensor.detach().cpu().numpy()
 
-        # Apply albumentations transform
-        transformed = self.transform(image=image_np, mask=mask_np)
-        transformed_image = transformed['image']
-        transformed_mask = transformed['mask']
-        
-        # print(f"Transformed image shape: {transformed_image.shape}, mask shape: {transformed_mask.shape}")
-        
-        # Check for zero values after augmentation and apply fallback if needed
-        if transformed_image.min() == 0 and transformed_image.max() == 0:
-            print("WARNING: All-zero image after augmentation! Using fallback...")
-            # Fallback: Apply simple flip instead
-            if np.random.rand() > 0.5:
-                transformed_image = np.flip(image_np, axis=1).copy()  # Horizontal flip
-            else:
-                transformed_image = np.flip(image_np, axis=0).copy()  # Vertical flip
-                
-            if np.random.rand() > 0.5:
-                transformed_mask = np.flip(mask_np, axis=0).copy()
-            else:
-                transformed_mask = np.flip(mask_np, axis=1).copy()
-        
-        # Convert back from HWC to NCHW format for PyTorch
-        if transformed_image.ndim == 3 and transformed_image.shape[2] > 1:
-            transformed_image = np.transpose(transformed_image, (2, 0, 1))  # [H,W,C] -> [C,H,W]
-        
-        # Ensure arrays are C-contiguous to avoid stride issues
-        transformed_image = np.ascontiguousarray(transformed_image)
-        transformed_mask = np.ascontiguousarray(transformed_mask)
-        
-        # Convert directly back to PyTorch tensor with ORIGINAL dtypes
-        image_tensor = torch.from_numpy(transformed_image).to(dtype=orig_img_dtype)
-        mask_tensor = torch.from_numpy(transformed_mask).to(dtype=orig_mask_dtype)
-    
-        # print(f"Final tensor shapes - image: {image_tensor.shape}, mask: {mask_tensor.shape}")
-        # print(f"Final image stats: min={image_tensor.min().item():.6f}, max={image_tensor.max().item():.6f}")
-        
+        # Convert image to [H, W, C] for Albumentations
+        if image_np.ndim == 3 and image_np.shape[0] > 1:
+            image_np = np.transpose(image_np, (1, 2, 0))
+
+        try:
+            transformed = self.transform(image=image_np, mask=mask_np)
+            image_np = transformed['image']
+            mask_np = transformed['mask']
+
+            # Convert NaNs to -1 for mask
+            if np.isnan(mask_np).any():
+                mask_np = np.where(np.isnan(mask_np), -1, mask_np)
+
+        except Exception as e:
+            print(f"❌ Augmentation failed: {e}")
+            print("➡️ Using original data instead.")
+            # Fallback to original data
+            if image_np.ndim == 3 and image_np.shape[2] > 1:
+                image_np = np.transpose(image_np, (2, 0, 1))
+            return image_tensor, mask_tensor
+
+        # Convert image back to [C, H, W] format if needed
+        if image_np.ndim == 3 and image_np.shape[2] > 1:
+            image_np = np.transpose(image_np, (2, 0, 1))
+
+        # Convert back to torch tensors
+        image_tensor = torch.from_numpy(np.ascontiguousarray(image_np)).to(dtype=orig_img_dtype)
+        mask_tensor = torch.from_numpy(np.ascontiguousarray(mask_np.astype(int))).to(dtype=orig_mask_dtype)
+
         return image_tensor, mask_tensor
 
 class MemoryEfficientAugmentation(torch.utils.data.Dataset):
