@@ -36,9 +36,9 @@ class AlbumentationsTorchWrapper:
 
         # Debug: Pre-transform info
         num_nan_before = np.sum(np.isnan(mask_np))
-        print(f"📊 PRE-AUG: mask shape={mask_np.shape}, dtype={mask_np.dtype}")
-        print(f"  - Original NaN count: {num_nan_before}")
-        print(f"  - Unique valid values: {np.unique(mask_np[~np.isnan(mask_np)])}")
+        # print(f"📊 PRE-AUG: mask shape={mask_np.shape}, dtype={mask_np.dtype}")
+        # print(f"  - Original NaN count: {num_nan_before}")
+        # print(f"  - Unique valid values: {np.unique(mask_np[~np.isnan(mask_np)])}")
 
         try:
             # Transform the image and mask as usual
@@ -62,10 +62,10 @@ class AlbumentationsTorchWrapper:
 
             # Debug: Post-transform info
             num_nan_after = np.sum(np.isnan(aug_mask_np))
-            print(f"📊 POST-AUG: mask shape={aug_mask_np.shape}, dtype={aug_mask_np.dtype}")
-            print(f"  - NaN count after aug: {num_nan_after}")
-            print(f"  - Min value (excluding NaN): {np.nanmin(aug_mask_np)}")
-            print(f"  - Unique valid values: {np.unique(aug_mask_np[~np.isnan(aug_mask_np)])}")
+            # print(f"📊 POST-AUG: mask shape={aug_mask_np.shape}, dtype={aug_mask_np.dtype}")
+            # print(f"  - NaN count after aug: {num_nan_after}")
+            # print(f"  - Min value (excluding NaN): {np.nanmin(aug_mask_np)}")
+            # print(f"  - Unique valid values: {np.unique(aug_mask_np[~np.isnan(aug_mask_np)])}")
 
             # Return NumPy arrays for visualization/saving.
             if isinstance(image_tensor, torch.Tensor):
