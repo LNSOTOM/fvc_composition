@@ -75,11 +75,11 @@ class CalperumDataset(Dataset):
                 raise ValueError(f"Expected mask shape [H, W], got {mask.shape}")
 
         # float for NaN-compatible transforms
-        # image_tensor = convertImg_to_tensor(image, dtype=torch.float32)
+        image_tensor = convertImg_to_tensor(image, dtype=torch.float32)
         # mask_tensor = convertMask_to_tensor(mask, dtype=torch.long)      
         mask_tensor = convertMask_to_tensor(mask, dtype=torch.float32) 
       
-        image_tensor = torch.from_numpy(image).float()
+        # image_tensor = torch.from_numpy(image).float()
         # mask_tensor = torch.from_numpy(mask).long()
         
         if self.transform is not None:
