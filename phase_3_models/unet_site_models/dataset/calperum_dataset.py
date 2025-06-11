@@ -85,7 +85,7 @@ class CalperumDataset(Dataset):
         if self.transform is not None:
             image_tensor, mask_tensor = self.transform(image_tensor, mask_tensor)
 
-        # mask_tensor = mask_tensor.long()  # safe to convert after transform
+        mask_tensor = mask_tensor.long()  # safe to convert after transform
 
         # Final print
         # print(f"🖼️ image_tensor shape: {image_tensor.shape}, dtype: {image_tensor.dtype}, min: {torch.nan_to_num(image_tensor).min().item():.2f}, max: {torch.nan_to_num(image_tensor).max().item():.2f}")
