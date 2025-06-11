@@ -24,9 +24,29 @@ from dataset.mask_preprocessing import prep_mask, prep_mask_preserve_nan, conver
 
 
 def save_augmented_pair(orig_img_path, orig_mask_path, aug_image_np, aug_mask_np, aug_idx, aug_img_dir, aug_mask_dir):
-    """Save augmented image and mask pairs to disk"""
+    """Save augmented image and mask pairs to disk, preserving NaN values in mask"""
+    
+    # 🎯 FINAL CHECK: Convert any -1 values to NaN before saving
+    # This ensures min value will be 0 in saved files
+    if not np.issubdtype(aug_mask_np.dtype, np.floating):
+        aug_mask_np = aug_mask_np.astype(np.float32)  # Convert to float to support NaN
+    
+    # Convert any remaining -1 values to NaN
+    if np.any(aug_mask_np == -1):
+        print(f"Converting {np.sum(aug_mask_np == -1)} values of -1 to NaN before saving")
+        aug_mask_np[aug_mask_np == -1] = np.nan
+    
+    # Verify min value is now 0
+    if not np.any(np.isnan(aug_mask_np)):
+        min_val = np.min(aug_mask_np)
+    else:
+        min_val = np.nanmin(aug_mask_np)  # Use nanmin to ignore NaN values
+    
+    if min_val < 0:
+        print(f"❌ WARNING: Mask still has values < 0 after conversion: min={min_val}")
+    
     print(f"Saving augmented image {aug_idx}: shape={aug_image_np.shape}, min={aug_image_np.min()}, max={aug_image_np.max()}, mean={aug_image_np.mean():.4f}")
-    print(f"Saving augmented mask {aug_idx}: shape={aug_mask_np.shape}, unique values={np.unique(aug_mask_np)}")
+    print(f"Saving augmented mask {aug_idx}: shape={aug_mask_np.shape}, min={min_val}, unique values={np.unique(aug_mask_np[~np.isnan(aug_mask_np)])}")
     
     # Create filenames
     img_basename = os.path.basename(orig_img_path)
@@ -34,25 +54,7 @@ def save_augmented_pair(orig_img_path, orig_mask_path, aug_image_np, aug_mask_np
     aug_img_path = os.path.join(aug_img_dir, f"aug{aug_idx}_{img_basename}")
     aug_mask_path = os.path.join(aug_mask_dir, f"aug{aug_idx}_{mask_basename}")
     
-    # Check if augmentation created all zeros
-    if aug_image_np.min() == 0 and aug_image_np.max() == 0:
-        print(f"WARNING: All-zero image detected before saving. Using original image with flip instead.")
-        
-        # Get original image as fallback
-        with rasterio.open(orig_img_path) as src:
-            orig_data = src.read()
-            
-        # Create a simple flip of the original data as fallback
-        if np.random.rand() > 0.5:
-            # Horizontal flip
-            aug_image_np = np.flip(orig_data, axis=2)
-        else:
-            # Vertical flip
-            aug_image_np = np.flip(orig_data, axis=1)
-            
-        print(f"Fallback image: min={aug_image_np.min()}, max={aug_image_np.max()}, mean={aug_image_np.mean():.4f}")
-    
-    # Save image and mask
+    # Save image with original metadata
     with rasterio.open(orig_img_path) as src:
         meta = src.profile.copy()
     meta.update({"count": aug_image_np.shape[0], "dtype": aug_image_np.dtype.name})
@@ -60,10 +62,19 @@ def save_augmented_pair(orig_img_path, orig_mask_path, aug_image_np, aug_mask_np
         for i in range(aug_image_np.shape[0]):
             dst.write(aug_image_np[i], i + 1)
     
-    mask_meta = meta.copy()
-    mask_meta.update({"count": 1, "dtype": aug_mask_np.dtype.name})
+    # Save mask with original metadata but float32 type for NaN support
+    with rasterio.open(orig_mask_path) as src:
+        mask_meta = src.profile.copy()
+        
+    # Update mask metadata for saving
+    mask_meta.update({
+        "count": 1, 
+        "dtype": aug_mask_np.dtype.name,
+        "nodata": np.nan  # Explicitly set nodata to NaN
+    })
+    
     with rasterio.open(aug_mask_path, 'w', **mask_meta) as dst:
-        dst.write(aug_mask_np, 1)
+        dst.write(aug_mask_np.astype(aug_mask_np.dtype), 1)
 
     return aug_img_path, aug_mask_path
 
@@ -108,16 +119,16 @@ def get_train_augmentation():
             shift_limit=0.15,      # ±15% shifting
             scale_limit=0.0,       # No scaling
             rotate_limit=0,        # No rotation
-            border_mode=cv2.BORDER_REFLECT_101,
-            # value=np.nan,          # 🔧 FIX: Use NaN for image fill (no-data)
-            # mask_value=-1,         # 🔧 FIX: Use -1 for mask fill (no-data)
+            border_mode=cv2.BORDER_CONSTANT,
+            value=-1,              # 🔧 Use -1 for image fill (no-data)
+            mask_value=np.nan,     # 🔧 Use NaN for mask fill (no-data)
             p=0.9
         ),
         A.Affine(
             shear=(-11.46, 11.46),  # 0-0.2 radians = ±11.46 degrees
-            mode=cv2.BORDER_REFLECT_101,
-            # cval=np.nan,           # 🔧 FIX: Use NaN for image fill (no-data)
-            # cval_mask=-1,          # 🔧 FIX: Use -1 for mask fill (no-data)
+            mode=cv2.BORDER_CONSTANT,
+            cval=-1,               # 🔧 Use -1 for image fill (no-data)
+            cval_mask=np.nan,      # 🔧 Use NaN for mask fill (no-data)
             p=0.5
         ),
     ], p=1.0)
