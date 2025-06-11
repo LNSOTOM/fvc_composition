@@ -67,6 +67,29 @@ def save_augmented_pair(orig_img_path, orig_mask_path, aug_image_np, aug_mask_np
 
     return aug_img_path, aug_mask_path
 
+#simple augmentation function
+# def get_train_augmentation():
+#     """
+#     Return Albumentations transform pipeline for training data with:
+#     - Random horizontal flips (50% probability)
+#     - Random vertical flips (50% probability)
+#     - Random brightness adjustment (90-110%)
+#     - Random contrast adjustment (80-120%)
+#     - Random 90-degree rotations (50% probability)
+#     """
+#     return A.Compose([
+#         A.HorizontalFlip(p=0.5),
+#         A.VerticalFlip(p=0.5),
+#         A.RandomRotate90(p=0.5),  
+#         A.RandomBrightnessContrast(
+#             brightness_limit=0.1,  # ±10% brightness
+#             contrast_limit=0.1,    # ±10% contrast
+#             p=0.5,
+#             always_apply=False
+#         ),
+#     ], p=1.0)  # Ensure at least one transform is always applied
+
+#complex augmentation function
 def get_train_augmentation():
     """
     Return Albumentations transform pipeline for training data with:
@@ -88,7 +111,25 @@ def get_train_augmentation():
             p=0.5,
             always_apply=False
         ),
-    ], p=1.0)  # Ensure at least one transform is always applied
+        A.ShiftScaleRotate(
+            shift_limit=0.15,      # ±15% shifting (matching your docstring)
+            scale_limit=0.0,       # No scaling
+            rotate_limit=0,        # No rotation (handled by RandomRotate90)
+            border_mode=cv2.BORDER_CONSTANT,
+            value=0,
+            mask_value=0,
+            p=0.9
+        ),
+        # Add separate shearing transformation
+        A.Affine(
+            shear=(-11.46, 11.46),  # 0-0.2 radians = ±11.46 degrees
+            mode=cv2.BORDER_CONSTANT,
+            cval=0,
+            cval_mask=0,
+            p=0.5  # 50% probability for shearing
+        ),
+    ], p=1.0)
+
 
 def get_val_augmentation():
     return A.Compose([
