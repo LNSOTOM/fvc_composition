@@ -21,7 +21,8 @@ class AlbumentationsTorchWrapper:
             self.transform = transform
             
     def __call__(self, image_tensor, mask_tensor):
-        """Apply albumentations transforms to inputs (as numpy arrays) and preserve no‐data (NaN) pixels in the mask."""
+        """Apply albumentations transforms to inputs (as numpy arrays) and preserve no-data (NaN) pixels in the mask.
+        The augmented image is used as the reference for setting no-data pixels."""
         import numpy as np
         import torch
 
@@ -29,15 +30,12 @@ class AlbumentationsTorchWrapper:
         image_np = image_tensor if not isinstance(image_tensor, torch.Tensor) else image_tensor.numpy()
         mask_np  = mask_tensor  if not isinstance(mask_tensor, torch.Tensor) else mask_tensor.numpy()
 
-        # Ensure mask is float32 (so it can represent NaN)
+        # Ensure mask is float32 so it can represent NaN
         if not np.issubdtype(mask_np.dtype, np.floating):
             mask_np = mask_np.astype(np.float32)
 
-        # Create a binary nan-mask: 1 if NaN, 0 if valid
-        nan_mask = np.isnan(mask_np).astype(np.uint8)
-
         # Debug: Pre-transform info
-        num_nan_before = np.sum(nan_mask)
+        num_nan_before = np.sum(np.isnan(mask_np))
         print(f"📊 PRE-AUG: mask shape={mask_np.shape}, dtype={mask_np.dtype}")
         print(f"  - Original NaN count: {num_nan_before}")
         print(f"  - Unique valid values: {np.unique(mask_np[~np.isnan(mask_np)])}")
@@ -45,26 +43,25 @@ class AlbumentationsTorchWrapper:
         try:
             # Transform the image and mask as usual
             transformed = self.transform(
-                image = image_np.transpose(1, 2, 0),  # [C, H, W] -> [H, W, C]
-                mask  = mask_np                        # [H, W]
+                image=image_np.transpose(1, 2, 0),  # [C, H, W] -> [H, W, C]
+                mask=mask_np                        # [H, W]
             )
             aug_image_np = transformed['image'].transpose(2, 0, 1)  # Back to [C, H, W]
             aug_mask_np  = transformed['mask']
 
-            # Also transform the nan_mask (which marks original no-data regions)
-            transformed_nan = self.transform(
-                image = image_np.transpose(1, 2, 0),
-                mask  = nan_mask      # [H, W]
-            )
-            aug_nan_mask = transformed_nan['mask']
-            # Ideally, aug_nan_mask remains 1 where originally NaN (even after interpolation)
+            # --- Use augmented image as reference for no-data regions ---
+            # For example, if your augmentation fills no-data in the image as -1 across all channels,
+            # build a reference mask where all channels equal -1.
+            # Here we assume that a no-data pixel in the augmented image has -1 in every channel.
+            # Adjust the fill value as needed.
+            ref_nan_mask = np.all(aug_image_np == -1, axis=0).astype(np.uint8)
 
-            # Ensure aug_mask_np is float32 so it can carry NaN
+            # Set all pixels in the augmented mask corresponding to ref_nan_mask==1 to NaN.
+            aug_mask_np[ref_nan_mask == 1] = np.nan
+
+            # Ensure aug_mask_np is float32 so it can permanently carry NaN values.
             if not np.issubdtype(aug_mask_np.dtype, np.floating):
                 aug_mask_np = aug_mask_np.astype(np.float32)
-
-            # Now force all pixels that correspond to augmented nan regions to NaN.
-            aug_mask_np[aug_nan_mask == 1] = np.nan
 
             # Debug: Post-transform info
             num_nan_after = np.sum(np.isnan(aug_mask_np))
@@ -73,7 +70,7 @@ class AlbumentationsTorchWrapper:
             print(f"  - Min value (excl. NaN): {np.nanmin(aug_mask_np)}")
             print(f"  - Unique valid values: {np.unique(aug_mask_np[~np.isnan(aug_mask_np)])}")
 
-            # Return NumPy arrays for visualization/saving.
+            # Return both NumPy arrays and, if desired, tensor versions.
             if isinstance(image_tensor, torch.Tensor):
                 aug_image_tensor = torch.tensor(aug_image_np, dtype=torch.float32)
                 aug_mask_tensor  = torch.tensor(aug_mask_np, dtype=torch.float32)
