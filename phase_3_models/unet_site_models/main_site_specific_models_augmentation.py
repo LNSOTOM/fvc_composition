@@ -330,8 +330,7 @@ def main():
             block_idx, 
             output_dir, 
             config_param.DEVICE, 
-            logger,
-            accumulation_steps=config_param.ACCUMULATION_STEPS
+            logger
         )
         all_train_losses.append(train_losses)
         all_val_losses.append(val_losses)
