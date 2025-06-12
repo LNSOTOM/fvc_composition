@@ -96,6 +96,10 @@ class CalperumDataset(Dataset):
         # Clean up references to help with memory
         image = None
         mask = None
+        # Explicit memory cleanup
+        del image, mask
+        torch.cuda.empty_cache()
+        
         return image_tensor, mask_tensor
 
     def __len__(self):
