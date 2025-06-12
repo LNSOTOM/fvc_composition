@@ -407,7 +407,7 @@ def main():
         best_val_losses.append(best_epoch_val_loss)
         
         # Evaluate the final model after the training loop (last epoch model) on the test set
-        evaluator = ModelEvaluator(model, test_loader, device=config_param.DEVICE, exclude_water=config_param.EXCLUDE_WATER)
+        evaluator = ModelEvaluator(model, test_loader, device=config_param.DEVICE)
         final_metrics = evaluator.run_evaluation(block_idx, all_metrics, conf_matrices)
         all_final_model_metrics.append(final_metrics)
         # Save metrics for the final model on the test set
@@ -422,7 +422,7 @@ def main():
         
         # **Evaluate the final model (last epoch model) on the validation set**
         print(f"Evaluating the final model (last epoch) for Block {block_idx + 1} on the validation set")
-        val_evaluator = ModelEvaluator(model, val_loader, device=config_param.DEVICE, exclude_water=config_param.EXCLUDE_WATER)    
+        val_evaluator = ModelEvaluator(model, val_loader, device=config_param.DEVICE)    
         # Evaluate the final model on the validation set
         val_final_metrics = val_evaluator.run_evaluation(block_idx, all_metrics, conf_matrices)
         all_val_metrics.append(val_final_metrics)

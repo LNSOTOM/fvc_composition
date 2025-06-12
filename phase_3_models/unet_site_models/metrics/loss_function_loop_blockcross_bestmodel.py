@@ -31,18 +31,18 @@ from torch.optim.lr_scheduler import OneCycleLR
 
 
 # Utility function to print GPU memory usage - original version
-# def print_gpu_memory_usage(stage=""):
-#     allocated = torch.cuda.memory_allocated() / (1024 ** 3)  # Convert bytes to GB
-#     cached = torch.cuda.memory_reserved() / (1024 ** 3)  # Convert bytes to GB
-#     print(f"{stage} - Allocated memory: {allocated:.2f} GB, Cached memory: {cached:.2f} GB")
+def print_gpu_memory_usage(stage=""):
+    allocated = torch.cuda.memory_allocated() / (1024 ** 3)  # Convert bytes to GB
+    cached = torch.cuda.memory_reserved() / (1024 ** 3)  # Convert bytes to GB
+    print(f"{stage} - Allocated memory: {allocated:.2f} GB, Cached memory: {cached:.2f} GB")
     
 # Utility function to print GPU memory usage
-def print_gpu_memory_usage(stage=""):
-    allocated = torch.cuda.memory_allocated() / (1024 ** 3)
-    reserved = torch.cuda.memory_reserved() / (1024 ** 3)
-    max_allocated = torch.cuda.max_memory_allocated() / (1024 ** 3)
-    print(f"{stage} - Allocated: {allocated:.2f} GB, Reserved: {reserved:.2f} GB, Peak: {max_allocated:.2f} GB")
-    torch.cuda.reset_peak_memory_stats()
+# def print_gpu_memory_usage(stage=""):
+#     allocated = torch.cuda.memory_allocated() / (1024 ** 3)
+#     reserved = torch.cuda.memory_reserved() / (1024 ** 3)
+#     max_allocated = torch.cuda.max_memory_allocated() / (1024 ** 3)
+#     print(f"{stage} - Allocated: {allocated:.2f} GB, Reserved: {reserved:.2f} GB, Peak: {max_allocated:.2f} GB")
+#     torch.cuda.reset_peak_memory_stats()
     
 
 def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max_epochs, block_idx, output_dir, device='cpu', logger=None, accumulation_steps=2):
@@ -96,9 +96,9 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
                 print(f'Epoch {epoch+1}, Iteration {batch_idx+1} - Loss: {loss.item():.4f}')
                 print_gpu_memory_usage(f"Training - Epoch {epoch+1}, Step {batch_idx+1}")
             
-            # torch.cuda.empty_cache()
-            # del images, masks, outputs, loss
-            # gc.collect()
+            torch.cuda.empty_cache()
+            del images, masks, outputs, loss
+            gc.collect()
 
         avg_train_loss = train_loss_sum / num_batches
         train_losses_per_epoch.append(avg_train_loss)
@@ -119,9 +119,9 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
                 val_loss_sum += loss.item()
                 num_val_batches += 1
                 
-                # torch.cuda.empty_cache()
-                # del images, masks, outputs, loss
-                # gc.collect()
+                torch.cuda.empty_cache()
+                del images, masks, outputs, loss
+                gc.collect()
 
         avg_val_loss = val_loss_sum / num_val_batches
         val_losses_per_epoch.append(avg_val_loss)

@@ -98,8 +98,7 @@ class CalperumDataset(Dataset):
 
     @staticmethod
     def load_mask(mask_path):
-        mask_data, profile  = prep_mask(mask_path)  # Unpack the tuple and only return the mask data
-        return mask_data, profile   # Return just the mask, not the tuple
+        return prep_mask(mask_path)
 
     @staticmethod
     def load_subsampled_data(image_subsample_dir, mask_subsample_dir, transform=None):

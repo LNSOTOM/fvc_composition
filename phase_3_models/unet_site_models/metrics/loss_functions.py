@@ -72,6 +72,8 @@ class FocalLoss(nn.Module):
 
         return focal_loss.mean()
 
+
+
 '''
 The alpha parameter controls the weighting between Focal Loss and Dice Loss in the combined loss function.
 alpha=0.8: This gives 80% of the total loss weight to Focal Loss and 20% to Dice Loss. 
