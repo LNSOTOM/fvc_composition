@@ -83,7 +83,7 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
 
             scaler.scale(loss).backward()
 
-            if (batch_idx + 1) % accumulation_steps == 0:
+            if (batch_idx + 1) % accumulation_steps == 0 or (batch_idx + 1 == len(train_loader)):
                 scaler.step(optimizer)
                 scaler.update()
                 optimizer.zero_grad()

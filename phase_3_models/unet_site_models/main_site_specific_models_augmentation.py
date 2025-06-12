@@ -321,8 +321,17 @@ def main():
         
         # Run training loop
         train_losses, val_losses, best_epoch_model_path, best_epoch_val_loss = run_training_loop(
-            model, train_loader, val_loader, optimizer, criterion, 
-            config_param.NUM_EPOCHS, block_idx, output_dir, config_param.DEVICE, logger
+            model, 
+            train_loader, 
+            val_loader, 
+            optimizer, 
+            criterion, 
+            config_param.NUM_EPOCHS, 
+            block_idx, 
+            output_dir, 
+            config_param.DEVICE, 
+            logger,
+            accumulation_steps=config_param.ACCUMULATION_STEPS
         )
         all_train_losses.append(train_losses)
         all_val_losses.append(val_losses)
