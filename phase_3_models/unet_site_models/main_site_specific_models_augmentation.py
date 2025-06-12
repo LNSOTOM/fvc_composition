@@ -264,7 +264,7 @@ def main():
     # --- ADD FLAG FOR WATER EXCLUSION HERE ---
     EXCLUDE_WATER = config_param.EXCLUDE_WATER
     print(f"\n==== Water Exclusion ENABLED? {EXCLUDE_WATER} ====\n")
-    check_water_presence()
+    # check_water_presence()
     # -----------------------------------------
     
     logger, checkpoint_callback = setup_logging_and_checkpoints()
