@@ -77,9 +77,11 @@ class CalperumDataset(Dataset):
         # float for NaN-compatible transforms
         # image_tensor = convertImg_to_tensor(image, dtype=torch.float32)
         # mask_tensor = convertMask_to_tensor(mask, dtype=torch.long)      
-        mask_tensor = convertMask_to_tensor(mask, dtype=torch.float32) 
+        # mask_tensor = convertMask_to_tensor(mask, dtype=torch.float32) 
       
+        
         image_tensor = torch.from_numpy(image).float()
+        mask_tensor = torch.from_numpy(mask).float()  # 
         # mask_tensor = torch.from_numpy(mask).long()
         
         if self.transform is not None:
@@ -90,7 +92,10 @@ class CalperumDataset(Dataset):
         # Final print
         # print(f"🖼️ image_tensor shape: {image_tensor.shape}, dtype: {image_tensor.dtype}, min: {torch.nan_to_num(image_tensor).min().item():.2f}, max: {torch.nan_to_num(image_tensor).max().item():.2f}")
         # print(f"🗺️ mask_tensor shape: {mask_tensor.shape}, dtype: {mask_tensor.dtype}, unique values: {torch.unique(mask_tensor)}")
-
+        
+        # Clean up references to help with memory
+        image = None
+        mask = None
         return image_tensor, mask_tensor
 
     def __len__(self):

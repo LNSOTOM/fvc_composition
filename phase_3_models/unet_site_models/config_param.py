@@ -147,8 +147,8 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # ======================
 # Training Hyperparameters
 # ======================
-NUM_EPOCHS    = 10
-BATCH_SIZE    = 4  ## 4: mini-batch size per GPU step /  #16 --> original models
+NUM_EPOCHS    = 120
+BATCH_SIZE    = 16  ## 4: mini-batch size per GPU step /  #16 --> original models
 NUM_WORKERS   = 1   # 2: safe for I/O and CPU usage / #4 or #1 --> original models
 OPTIMIZER     = Adam
 LEARNING_RATE = 1e-4
@@ -180,7 +180,7 @@ DATA_TRANSFORM = transforms.Compose([
 NUM_BLOCKS = 3
 # ENABLE_WATER_REDISTRIBUTION = False
 
-USE_AUGMENTED_DATA = True #False  True
+USE_AUGMENTED_DATA = False #False  True
 
 def combine_and_process_paths(image_dirs, mask_dirs):
     combined_data = []

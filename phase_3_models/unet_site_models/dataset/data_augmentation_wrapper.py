@@ -48,21 +48,31 @@ class AlbumentationsTorchWrapper:
         Returns:
             Tuple of transformed (image_tensor, mask_tensor)
         """
-        # Unpack inputs
-        if len(args) == 1 and isinstance(args[0], tuple):
-            image_tensor, mask_tensor = args[0]
-        elif len(args) == 2:
+         # Unpack inputs - standardize to handle both cases
+        if isinstance(args, tuple) and len(args) == 2:
             image_tensor, mask_tensor = args
         else:
-            raise ValueError("Expected (image_tensor, mask_tensor) or a tuple containing both.")
-
+            image_tensor, mask_tensor = args, None
+            
+        # Skip processing for very large tensors to avoid OOM
+        if image_tensor.numel() > 5e7:  # Skip for tensors larger than ~50M elements
+            return image_tensor, mask_tensor
+            
         # Save original dtypes
         orig_img_dtype = image_tensor.dtype
-        orig_mask_dtype = mask_tensor.dtype
+        orig_mask_dtype = mask_tensor.dtype if mask_tensor is not None else None
 
-        # Move to CPU and convert to numpy
-        image_np = image_tensor.detach().cpu().numpy()
-        mask_np = mask_tensor.detach().cpu().numpy()
+        # Move to CPU and convert to numpy efficiently
+        if torch.is_tensor(image_tensor):
+            image_np = image_tensor.cpu().numpy() if image_tensor.is_cuda else image_tensor.numpy()
+        else:
+            image_np = np.array(image_tensor)
+            
+        if mask_tensor is not None:
+            if torch.is_tensor(mask_tensor):
+                mask_np = mask_tensor.cpu().numpy() if mask_tensor.is_cuda else mask_tensor.numpy()
+            else:
+                mask_np = np.array(mask_tensor)
 
         # Convert image to [H, W, C] for Albumentations
         if image_np.ndim == 3 and image_np.shape[0] > 1:
@@ -85,14 +95,17 @@ class AlbumentationsTorchWrapper:
                 image_np = np.transpose(image_np, (2, 0, 1))
             return image_tensor, mask_tensor
 
-        # Convert image back to [C, H, W] format if needed
+        # Convert image back to [C, H, W] format
         if image_np.ndim == 3 and image_np.shape[2] > 1:
             image_np = np.transpose(image_np, (2, 0, 1))
 
-        # Convert back to torch tensors
+        # Convert back to torch tensors with contiguous memory layout
         image_tensor = torch.from_numpy(np.ascontiguousarray(image_np)).to(dtype=orig_img_dtype)
         mask_tensor = torch.from_numpy(np.ascontiguousarray(mask_np.astype(int))).to(dtype=orig_mask_dtype)
 
+        # Clean up to help garbage collection
+        del image_np, mask_np
+        
         return image_tensor, mask_tensor
 
 # class AlbumentationsTorchWrapper:
@@ -262,23 +275,14 @@ class SubsetWithTransform(Dataset):
     def __getitem__(self, index):
         sample = self.subset[index]
         if self.transform:
-            # Ensure proper unpacking
+            # Always pass as a tuple to ensure consistency
             if isinstance(sample, tuple) and len(sample) == 2:
                 image, mask = sample
-                print(f"🔄 SubsetWithTransform applying transform to item {index}")
-                image, mask = self.transform(image, mask)  # Call with separate arguments
-                return image, mask
+                # Pass as a single tuple argument
+                return self.transform((image, mask))
             else:
                 return self.transform(sample)
         return sample
 
     def __len__(self):
         return len(self.subset)
-    
-    @property
-    def transform(self):
-        return getattr(self, '_transform', None)
-    
-    @transform.setter
-    def transform(self, value):
-        self._transform = value
