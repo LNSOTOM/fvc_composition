@@ -31,6 +31,9 @@ class ModelEvaluator:
         self.data_loader = data_loader
         self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')
         self.model.to(self.device)
+        self.exclude_water = config_param.EXCLUDE_WATER  # Flag to exclude water class (class 4)
+        self.water_class_index = 4  # Index of water class (WI)
+        
         self.accuracy_metric = torchmetrics.Accuracy(task="multiclass", num_classes=config_param.OUT_CHANNELS, ignore_index=-1).to(self.device)
         self.precision_metric = torchmetrics.Precision(task="multiclass", num_classes=config_param.OUT_CHANNELS, average='none', ignore_index=-1).to(self.device)
         self.recall_metric = torchmetrics.Recall(task="multiclass", num_classes=config_param.OUT_CHANNELS, average='none', ignore_index=-1).to(self.device)
@@ -59,7 +62,12 @@ class ModelEvaluator:
                 if target_mask.ndim == 4:  # In case target_mask has an extra channel dimension
                     target_mask = target_mask.squeeze(1)
 
+                # Create mask for valid pixels (excluding -1 and optionally water)
                 valid_mask = target_mask != -1
+                if self.exclude_water:
+                    # Also exclude pixels where either target or prediction is water
+                    water_mask = (target_mask != self.water_class_index) & (predicted_mask != self.water_class_index)
+                    valid_mask = valid_mask & water_mask
                 
                 self.accuracy_metric(predicted_mask[valid_mask], target_mask[valid_mask])
                 self.precision_metric(predicted_mask[valid_mask], target_mask[valid_mask])
@@ -88,7 +96,8 @@ class ModelEvaluator:
             'counts_per_class_percentage': (np.bincount(all_trues, minlength=len(unique_classes)) / len(all_trues)) * 100,
             'confusion_matrix': conf_matrix.cpu().numpy(),
             'all_preds': all_preds,
-            'all_trues': all_trues
+            'all_trues': all_trues,
+            'excluded_water': self.exclude_water
         }
 
     def pad_confusion_matrix(self, conf_matrix, target_shape):
@@ -173,6 +182,16 @@ class ModelEvaluator:
 
 
     def calculate_and_save_average_confusion_matrix(self, conf_matrices, all_preds, all_trues, class_labels, output_dir):
+        # Filter out water class if exclude_water is True
+        if self.exclude_water:
+            mask = np.array([p != self.water_class_index and t != self.water_class_index 
+                            for p, t in zip(all_preds, all_trues)])
+            all_preds = np.array(all_preds)[mask]
+            all_trues = np.array(all_trues)[mask]
+            water_note = " (Water Excluded)"
+        else:
+            water_note = ""
+        
         unique_classes = sorted(set(all_preds) | set(all_trues))
         relevant_class_labels = [class_labels[i] for i in unique_classes]
 
@@ -225,7 +244,7 @@ class ModelEvaluator:
 
         plt.xlabel('True Labels', fontsize=20)
         plt.ylabel('Predicted Labels', fontsize=20)
-        plt.title('Average Confusion Matrix Across All Blocks', fontsize=20)
+        plt.title(f'Average Confusion Matrix Across All Blocks{water_note}', fontsize=20)
         
         avg_cm_filename = os.path.join(output_dir, 'average_confusion_matrix_across_blocks.png')
         plt.savefig(avg_cm_filename, bbox_inches='tight')
@@ -237,6 +256,18 @@ class ModelEvaluator:
     def plot_confusion_matrix(self, all_preds, all_trues, class_labels, output_dir, block_idx):
         # Ensure block_idx is treated as a string for concatenation
         block_idx_str = str(block_idx)
+        
+        # Filter out water class if exclude_water is True
+        if self.exclude_water:
+            mask = np.array([p != self.water_class_index and t != self.water_class_index 
+                            for p, t in zip(all_preds, all_trues)])
+            all_preds = np.array(all_preds)[mask]
+            all_trues = np.array(all_trues)[mask]
+            
+            # Add note about water exclusion to plot title
+            water_note = " (Water Excluded)"
+        else:
+            water_note = ""
 
         unique_classes = sorted(set(all_preds) | set(all_trues))
         relevant_class_labels = [class_labels[i] for i in unique_classes]
@@ -270,7 +301,7 @@ class ModelEvaluator:
         plt.ylabel('Predicted Labels', fontsize=20)
         # plt.title(f'Confusion Matrix {block_idx + 1}', fontsize=20)
         # plot_file = os.path.join(output_dir, f'block_{block_idx + 1}_confusion_matrix.png')
-        plt.title(f'Confusion Matrix {block_idx_str}', fontsize=20)  # Use block_idx_str here
+        plt.title(f'Confusion Matrix {block_idx_str}{water_note}', fontsize=20)  # Use block_idx_str here
         plot_file = os.path.join(output_dir, f'block_{block_idx_str}_confusion_matrix.png')  # Use block_idx_str here as well
 
       
@@ -281,6 +312,9 @@ class ModelEvaluator:
         print(f"Confusion matrix plot saved as {plot_file}")
 
     def save_block_metrics(self, metrics, block, output_dir):
+        # Add a note about water exclusion to the metrics output
+        water_note = "Water class (WI) was excluded from evaluation." if metrics.get('excluded_water', False) else ""
+    
         block_metrics = (
             f"Block {block + 1} Metrics:\n"
             f"Accuracy: {metrics.get('accuracy', 0):.4f}\n"
@@ -291,6 +325,7 @@ class ModelEvaluator:
             f"MIoU: {metrics.get('miou', 0):.4f}\n"
             f"Unique classes: " + ", ".join(map(str, metrics.get('unique_classes', []))) + "\n"
             f"Counts per class (%): " + ", ".join([f"{p:.2f}%" for p in metrics.get('counts_per_class_percentage', [])]) + "\n\n"
+            f"{water_note}\n\n"
         )
 
         with open(os.path.join(output_dir, 'evaluation_metrics.txt'), 'a') as f:

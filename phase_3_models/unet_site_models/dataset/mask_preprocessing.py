@@ -47,7 +47,9 @@ def prep_mask(mask_name, replace_value=-1):
                 mask = cv2.resize(mask, (target_width, target_height), interpolation=cv2.INTER_NEAREST)
 
     except Exception as e:
-        raise IOError(f"Error reading mask file {mask_name}: {e}")
+        print(f"Error reading mask file {mask_name}: {e}")
+        # Return a very explicit error instead of raising
+        return None, None
 
     # Replace NaNs and nodata values with the specified replace_value (e.g., -1)
     if nodata_val is not None and not np.isnan(nodata_val):

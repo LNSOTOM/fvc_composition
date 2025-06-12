@@ -29,7 +29,7 @@ from sklearn.cluster import KMeans
 import json
 from torchmetrics.classification import ConfusionMatrix
 import pandas as pd
-
+from collections import Counter
 
 def print_gpu_memory_usage(stage=""):
     allocated = torch.cuda.memory_allocated() / (1024 ** 3)
@@ -190,6 +190,67 @@ def save_best_validation_metrics(metrics, block_idx, output_dir):
         json.dump(metrics, f, indent=4)
     print(f"Best validation metrics for Block {block_idx + 1} saved to {best_val_metrics_path}")
 
+def check_water_presence():
+    class_counts = Counter()
+    total_pixels = 0
+    files_with_water = 0
+    total_files = 0
+    
+    print("Analyzing mask files for water presence...")
+    
+    for folder in config_param.SUBSAMPLE_MASK_DIR:
+        for f in os.listdir(folder):
+            if f.endswith('.tif'):
+                total_files += 1
+                mask_path = os.path.join(folder, f)
+                
+                try:
+                    # Load the mask
+                    mask_tuple = CalperumDataset.load_mask(mask_path)
+                    mask = mask_tuple[0] if isinstance(mask_tuple, tuple) else mask_tuple
+                    
+                    # Count classes
+                    valid_mask = mask[mask != -1]
+                    if valid_mask.size == 0:
+                        continue
+                        
+                    unique, counts = np.unique(valid_mask, return_counts=True)
+                    class_dict = dict(zip(unique, counts))
+                    
+                    # Update the counter
+                    class_counts.update(class_dict)
+                    total_pixels += valid_mask.size
+                    
+                    # Check if water (class 4) is present
+                    if 4 in class_dict:
+                        files_with_water += 1
+                    
+                except Exception as e:
+                    print(f"Error processing {f}: {e}")
+    
+    # Calculate percentages
+    class_percentages = {cls: (count / total_pixels) * 100 for cls, count in class_counts.items()}
+    
+    class_labels = {0: 'BE', 1: 'NPV', 2: 'PV', 3: 'SI', 4: 'WI'}
+    
+    print("\n=== Class Distribution ===")
+    print(f"Total valid pixels: {total_pixels}")
+    print(f"Files containing water (class 4): {files_with_water}/{total_files} ({files_with_water/total_files*100:.2f}%)")
+    
+    for cls in sorted(class_counts.keys()):
+        label = class_labels.get(cls, f"Unknown-{cls}")
+        count = class_counts[cls]
+        percentage = class_percentages[cls]
+        print(f"Class {cls} ({label}): {count:,} pixels ({percentage:.2f}%)")
+    
+    if 4 not in class_counts:
+        print("\n⚠️ WATER CLASS (WI, class 4) IS NOT PRESENT IN THIS DATASET")
+        print("Water exclusion is mandatory since this class doesn't exist in your data.")
+    else:
+        water_percentage = class_percentages[4]
+        if water_percentage < 1.0:
+            print(f"\n⚠️ WATER CLASS (WI) IS RARE: only {water_percentage:.2f}% of pixels")
+            print("Water exclusion is recommended to avoid skewed metrics.")
 
 
 def main():
@@ -199,6 +260,12 @@ def main():
     USE_AUGMENTED_DATA = config_param.USE_AUGMENTED_DATA
     print(f"\n==== Data Augmentation ENABLED? {USE_AUGMENTED_DATA} ====\n")
     # ---------------------------------------------
+    
+    # --- ADD FLAG FOR WATER EXCLUSION HERE ---
+    EXCLUDE_WATER = config_param.EXCLUDE_WATER
+    print(f"\n==== Water Exclusion ENABLED? {EXCLUDE_WATER} ====\n")
+    check_water_presence()
+    # -----------------------------------------
     
     logger, checkpoint_callback = setup_logging_and_checkpoints()
     
@@ -340,7 +407,7 @@ def main():
         best_val_losses.append(best_epoch_val_loss)
         
         # Evaluate the final model after the training loop (last epoch model) on the test set
-        evaluator = ModelEvaluator(model, test_loader, device=config_param.DEVICE)
+        evaluator = ModelEvaluator(model, test_loader, device=config_param.DEVICE, exclude_water=config_param.EXCLUDE_WATER)
         final_metrics = evaluator.run_evaluation(block_idx, all_metrics, conf_matrices)
         all_final_model_metrics.append(final_metrics)
         # Save metrics for the final model on the test set
@@ -355,7 +422,7 @@ def main():
         
         # **Evaluate the final model (last epoch model) on the validation set**
         print(f"Evaluating the final model (last epoch) for Block {block_idx + 1} on the validation set")
-        val_evaluator = ModelEvaluator(model, val_loader, device=config_param.DEVICE)      
+        val_evaluator = ModelEvaluator(model, val_loader, device=config_param.DEVICE, exclude_water=config_param.EXCLUDE_WATER)    
         # Evaluate the final model on the validation set
         val_final_metrics = val_evaluator.run_evaluation(block_idx, all_metrics, conf_matrices)
         all_val_metrics.append(val_final_metrics)
