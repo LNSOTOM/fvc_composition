@@ -30,11 +30,20 @@ from torch.optim.lr_scheduler import OneCycleLR
 #     print(f"{stage} - RAM Usage: {ram_usage:.2f}GB")
 
 
+# Utility function to print GPU memory usage - original version
+# def print_gpu_memory_usage(stage=""):
+#     allocated = torch.cuda.memory_allocated() / (1024 ** 3)  # Convert bytes to GB
+#     cached = torch.cuda.memory_reserved() / (1024 ** 3)  # Convert bytes to GB
+#     print(f"{stage} - Allocated memory: {allocated:.2f} GB, Cached memory: {cached:.2f} GB")
+    
 # Utility function to print GPU memory usage
 def print_gpu_memory_usage(stage=""):
-    allocated = torch.cuda.memory_allocated() / (1024 ** 3)  # Convert bytes to GB
-    cached = torch.cuda.memory_reserved() / (1024 ** 3)  # Convert bytes to GB
-    print(f"{stage} - Allocated memory: {allocated:.2f} GB, Cached memory: {cached:.2f} GB")
+    allocated = torch.cuda.memory_allocated() / (1024 ** 3)
+    reserved = torch.cuda.memory_reserved() / (1024 ** 3)
+    max_allocated = torch.cuda.max_memory_allocated() / (1024 ** 3)
+    print(f"{stage} - Allocated: {allocated:.2f} GB, Reserved: {reserved:.2f} GB, Peak: {max_allocated:.2f} GB")
+    torch.cuda.reset_peak_memory_stats()
+    
 
 def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max_epochs, block_idx, output_dir, device='cpu', logger=None, accumulation_steps=2):
     train_losses_per_epoch = []
@@ -62,7 +71,6 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
         num_batches = 0
 
         optimizer.zero_grad()
-
         print_gpu_memory_usage(f"Start of Epoch {epoch+1}")
         
         for batch_idx, batch in enumerate(train_loader):
@@ -88,9 +96,9 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
                 print(f'Epoch {epoch+1}, Iteration {batch_idx+1} - Loss: {loss.item():.4f}')
                 print_gpu_memory_usage(f"Training - Epoch {epoch+1}, Step {batch_idx+1}")
             
-            torch.cuda.empty_cache()
-            del images, masks, outputs, loss
-            gc.collect()
+            # torch.cuda.empty_cache()
+            # del images, masks, outputs, loss
+            # gc.collect()
 
         avg_train_loss = train_loss_sum / num_batches
         train_losses_per_epoch.append(avg_train_loss)
@@ -111,9 +119,9 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
                 val_loss_sum += loss.item()
                 num_val_batches += 1
                 
-                torch.cuda.empty_cache()
-                del images, masks, outputs, loss
-                gc.collect()
+                # torch.cuda.empty_cache()
+                # del images, masks, outputs, loss
+                # gc.collect()
 
         avg_val_loss = val_loss_sum / num_val_batches
         val_losses_per_epoch.append(avg_val_loss)
@@ -127,8 +135,10 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
         writer.add_scalar('Loss/Val', avg_val_loss, epoch)
         
         print_gpu_memory_usage(f"End of Epoch {epoch+1}")
+        gc.collect()
+        torch.cuda.empty_cache()
 
-        # Save model checkpoint after each epoch
+        # Optional: save model every epoch - Save model checkpoint after each epoch
         epoch_model_path = os.path.join(output_dir, f'block_{block_idx + 1}_epoch_{epoch + 1}.pth')
         torch.save(model.state_dict(), epoch_model_path)
         print(f"Model saved at {epoch_model_path}")

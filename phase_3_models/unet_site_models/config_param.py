@@ -117,9 +117,8 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Training Hyperparameters
 # ======================
 NUM_EPOCHS    = 120
-BATCH_SIZE    = 16
-NUM_WORKERS   = 4
-
+BATCH_SIZE    = 4  #16
+NUM_WORKERS   = 2  #4
 OPTIMIZER     = Adam
 LEARNING_RATE = 1e-4
 WEIGHT_DECAY  = 1e-4
