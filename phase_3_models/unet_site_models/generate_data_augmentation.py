@@ -378,10 +378,12 @@ def main():
     os.makedirs(output_dir_img, exist_ok=True)
     os.makedirs(output_dir_mask, exist_ok=True)
 
-    image_dirs = config_param.IMAGE_FOLDER
-    mask_dirs = config_param.MASK_FOLDER
+    # image_dirs = config_param.IMAGE_FOLDER
+    # mask_dirs = config_param.MASK_FOLDER
+    image_dirs = config_param.SUBSAMPLE_IMAGE_DIR
+    mask_dirs = config_param.SUBSAMPLE_MASK_DIR
 
-    # 1. Create dataset for originals (no transforms)
+    # 1. Create dataset for originals (no transforms)/ susample dataset
     dataset = CalperumDataset(
         image_folders=image_dirs,
         mask_folders=mask_dirs,
