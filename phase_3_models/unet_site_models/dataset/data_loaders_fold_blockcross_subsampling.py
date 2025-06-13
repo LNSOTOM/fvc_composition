@@ -334,6 +334,7 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
             log_message(f"Skipping block {block} due to insufficient data.", log_file)
             continue
         train_indices, val_indices = train_test_split(train_val_indices, test_size=0.2, random_state=42)
+        # train_indices, val_indices = train_test_split(train_val_indices, test_size=0.333, random_state=42)
         
         # Create datasets for this block
         train_original = Subset(original_dataset, train_indices)
