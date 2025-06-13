@@ -359,19 +359,23 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
             train_dataset, 
             batch_size=config_param.BATCH_SIZE, 
             shuffle=True, 
-            num_workers=config_param.NUM_WORKERS
+            num_workers=config_param.NUM_WORKERS,
+            pin_memory=True,  # Enable pinned memory for faster GPU transf    
+            persistent_workers=True if config_param.NUM_WORKERS > 0 else False      
         )
         val_loader = DataLoader(
             val_dataset, 
             batch_size=config_param.BATCH_SIZE, 
             shuffle=False, 
-            num_workers=config_param.NUM_WORKERS
+            num_workers=config_param.NUM_WORKERS,
+            pin_memory=True  # Enable pinned memory for faster GPU transfer
         )
         test_loader = DataLoader(
             test_dataset, 
             batch_size=config_param.BATCH_SIZE, 
             shuffle=False, 
-            num_workers=config_param.NUM_WORKERS
+            num_workers=config_param.NUM_WORKERS,
+            pin_memory=True  # Enable pinned memory for faster GPU transfer
         )
 
         fold_assignments[block] = {

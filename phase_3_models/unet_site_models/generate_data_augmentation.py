@@ -392,8 +392,12 @@ def main():
 
     # 2. Create Albumentations transform and wrapper
     albumentations_transform = get_train_augmentation() 
-    albumentations_wrapper = AlbumentationsTorchWrapper(albumentations_transform)
+    # Without debug output (for production)
+    # albumentations_wrapper = AlbumentationsTorchWrapper(albumentations_transform, debug=False)
+    # With debug output (for development/testing)
+    albumentations_wrapper = AlbumentationsTorchWrapper(albumentations_transform, debug=True)
 
+    
     # 3. Decide how many augmentations per sample
     NUM_AUG_PER_IMAGE = 2
 

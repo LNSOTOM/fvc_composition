@@ -15,7 +15,11 @@ def print_gpu_memory_usage(stage=""):
     cached = torch.cuda.memory_reserved() / (1024 ** 3)  # Convert bytes to GB
     print(f"{stage} - Allocated memory: {allocated:.2f} GB, Cached memory: {cached:.2f} GB")
 
-def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max_epochs, block_idx, output_dir, device='cpu', logger=None, accumulation_steps=2):
+def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max_epochs, block_idx, output_dir, device=None, logger=None, accumulation_steps=2):
+    # Auto-select device if none provided
+    if device is None:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        print(f"Using device: {device}")
     train_losses_per_epoch = []
     val_losses_per_epoch = []
     best_val_loss = float('inf')
@@ -46,7 +50,7 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
         
         for batch_idx, batch in enumerate(train_loader):
             images, masks = batch
-            images, masks = images.to(device), masks.to(device)
+            images, masks = images.to(device, non_blocking=True), masks.to(device, non_blocking=True)
 
             with autocast():
                 outputs = model(images)

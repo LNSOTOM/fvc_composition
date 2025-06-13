@@ -1,6 +1,8 @@
 
+#%%
 # Release Cache
 import gc
+import torch
 
 def report_gpu():
     print(torch.cuda.list_gpu_processes())
@@ -96,3 +98,5 @@ def reset_torch_environment(verbose=True):
 #%%
 reset_torch_environment()
 
+
+# %%

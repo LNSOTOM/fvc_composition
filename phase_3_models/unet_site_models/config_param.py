@@ -98,7 +98,7 @@ for directory in SUBSAMPLE_MASK_DIR:
     os.makedirs(directory, exist_ok=True)
 
 AUG_IMAGE_DIR = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/predictor_5b'
-AUG_MASK_DIR = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/mask_fvc_nowater'
+AUG_MASK_DIR = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/mask_fvc'
 # AUG_MASK_DIR = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/mask_fvc'
 os.makedirs(AUG_IMAGE_DIR, exist_ok=True)
 os.makedirs(AUG_MASK_DIR, exist_ok=True)
@@ -180,7 +180,7 @@ DATA_TRANSFORM = transforms.Compose([
 NUM_BLOCKS = 3
 # ENABLE_WATER_REDISTRIBUTION = False
 
-USE_AUGMENTED_DATA = False #False  True
+USE_AUGMENTED_DATA = True #False  True
 
 def combine_and_process_paths(image_dirs, mask_dirs):
     combined_data = []

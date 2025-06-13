@@ -32,8 +32,9 @@ class AlbumentationsTorchWrapper:
     Wrapper to apply Albumentations transforms to PyTorch tensors or NumPy arrays.
     Carefully handles NaN values in masks and preserves no-data regions.
     """
-    def __init__(self, transform=None):
+    def __init__(self, transform=None, debug=False):
         self.transform = transform if transform else get_train_augmentation()
+        self.debug = debug  # Control debug output
 
     def __call__(self, *args):
         """
@@ -85,7 +86,7 @@ class AlbumentationsTorchWrapper:
             
         # Debug: Pre-transform info about NaNs
         num_nan_before = np.sum(np.isnan(mask_np))
-        if num_nan_before > 0:
+        if self.debug and num_nan_before > 0:  # Only print if debug is enabled
             print(f"📊 PRE-AUG: mask shape={mask_np.shape}, dtype={mask_np.dtype}")
             print(f"  - Original NaN count: {num_nan_before}")
             print(f"  - Unique valid values: {np.unique(mask_np[~np.isnan(mask_np)])}")
@@ -120,14 +121,15 @@ class AlbumentationsTorchWrapper:
             
             # Debug: Post-transform info about NaNs
             num_nan_after = np.sum(np.isnan(aug_mask_np))
-            if num_nan_before > 0 or num_nan_after > 0:
+            if self.debug and (num_nan_before > 0 or num_nan_after > 0):  # Only print if debug is enabled
                 print(f"📊 POST-AUG: mask shape={aug_mask_np.shape}, dtype={aug_mask_np.dtype}")
                 print(f"  - NaN count after aug: {num_nan_after}")
                 print(f"  - Unique valid values: {np.unique(aug_mask_np[~np.isnan(aug_mask_np)])}")
 
         except Exception as e:
-            print(f"❌ Augmentation failed: {e}")
-            print("➡️ Using original data instead.")
+            if self.debug:  # Only print if debug is enabled
+                print(f"❌ Augmentation failed: {e}")
+                print("➡️ Using original data instead.")
             
             # Fallback to original data
             if image_np.ndim == 3 and image_np.shape[2] > 1:

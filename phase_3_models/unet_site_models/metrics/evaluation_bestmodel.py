@@ -231,7 +231,7 @@ class ModelEvaluator:
         avg_cm_filename = os.path.join(output_dir, 'average_confusion_matrix_across_blocks.png')
         plt.savefig(avg_cm_filename, bbox_inches='tight')
         # plt.show()
-        # plt.close()
+        plt.close()
 
         print(f"Average confusion matrix across all blocks saved at {avg_cm_filename}")
 
@@ -277,7 +277,7 @@ class ModelEvaluator:
       
         plt.savefig(plot_file, bbox_inches='tight')
         # plt.show()
-        # plt.close()
+        plt.close()
 
         print(f"Confusion matrix plot saved as {plot_file}")
 
