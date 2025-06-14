@@ -106,7 +106,8 @@ os.makedirs(AUG_MASK_DIR, exist_ok=True)
 # ======================
 # Other paths/configs
 # ======================
-CHECKPOINT_DIR = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense'
+# CHECKPOINT_DIR = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense'
+CHECKPOINT_DIR = '/home/laura/dense_aug'
 INDICES_SAVE_PATHS = [
     '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/subsampled_indices.json'
 ]

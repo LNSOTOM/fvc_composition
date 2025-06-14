@@ -52,7 +52,8 @@ def setup_logging_and_checkpoints():
     # tb_logs_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low' #low
     # tb_logs_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
     # tb_logs_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense    
-    tb_logs_path = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense' #dense
+    # tb_logs_path = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense' #dense
+    tb_logs_path = '/home/laura/dense_aug' #dense_aug'
     os.makedirs(tb_logs_path, exist_ok=True)
     logger = TensorBoardLogger(save_dir=tb_logs_path, name="UNetModel_5b_v100")
     
@@ -273,7 +274,8 @@ def main():
     # output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low' #low
     # output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
     # output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense
-    output_dir = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense' #dense
+    # output_dir = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense' #dense
+    output_dir = '/home/laura/dense_aug'
     os.makedirs(output_dir, exist_ok=True)
 
     image_dirs = config_param.IMAGE_FOLDER
@@ -407,7 +409,7 @@ def main():
         best_val_losses.append(best_epoch_val_loss)
         
         # Evaluate the final model after the training loop (last epoch model) on the test set
-        evaluator = ModelEvaluator(model, test_loader, device=config_param.DEVICE)
+        evaluator = ModelEvaluator(model, test_loader, device=config_param.DEVICE, exclude_water=config_param.EXCLUDE_WATER)
         final_metrics = evaluator.run_evaluation(block_idx, all_metrics, conf_matrices)
         all_final_model_metrics.append(final_metrics)
         # Save metrics for the final model on the test set
@@ -422,7 +424,7 @@ def main():
         
         # **Evaluate the final model (last epoch model) on the validation set**
         print(f"Evaluating the final model (last epoch) for Block {block_idx + 1} on the validation set")
-        val_evaluator = ModelEvaluator(model, val_loader, device=config_param.DEVICE)    
+        val_evaluator = ModelEvaluator(model, val_loader, device=config_param.DEVICE, exclude_water=config_param.EXCLUDE_WATER)    
         # Evaluate the final model on the validation set
         val_final_metrics = val_evaluator.run_evaluation(block_idx, all_metrics, conf_matrices)
         all_val_metrics.append(val_final_metrics)

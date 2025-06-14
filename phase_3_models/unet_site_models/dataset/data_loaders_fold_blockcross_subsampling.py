@@ -207,7 +207,8 @@ def get_dataset_splits(image_folder, mask_folder, combined_data, transform, soil
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/logfile.txt' #low
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/logfile.txt' #medium
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/logfile.txt' #dense
-    log_file = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/logfile.txt' #dense
+    # log_file = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/logfile.txt' #dense
+    log_file = '/home/laura/dense_aug/logfile.txt' #dense_aug
     start_time = time.time()
 
     dataset = CalperumDataset(image_folder, mask_folder, transform=None, save_augmented=False, augmented_save_dir=None)
@@ -252,7 +253,8 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/logfile.txt' #low
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/logfile.txt' #medium
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/logfile.txt' #dense
-    log_file = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/logfile.txt' #dense
+    log_file = '/home/laura/dense_aug/logfile.txt' #dense_aug
+    # log_file = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/logfile.txt' #dense
     # Determine whether to use augmentation
     use_aug = config_param.USE_AUGMENTED_DATA if use_augmented_data is None else use_augmented_data
     

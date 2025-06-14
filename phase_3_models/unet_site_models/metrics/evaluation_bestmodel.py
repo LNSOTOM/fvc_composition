@@ -342,7 +342,8 @@ class ModelEvaluator:
             all_trues_across_blocks = all_metrics[0].get('all_trues_across_blocks', [])
 
         metrics = self.evaluate()
-        block_output_dir = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense' #across sites
+        block_output_dir = '/home/laura/dense_aug'
+        # block_output_dir = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense' #across sites
         os.makedirs(block_output_dir, exist_ok=True)
         
         # Save metrics for the current block
