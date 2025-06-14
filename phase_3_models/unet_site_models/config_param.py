@@ -148,7 +148,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # ======================
 # Training Hyperparameters
 # ======================
-NUM_EPOCHS    = 2
+NUM_EPOCHS    = 120
 BATCH_SIZE    = 16  ## 4: mini-batch size per GPU step /  #16 --> original models
 NUM_WORKERS   = 2   # 2: safe for I/O and CPU usage / #4 or #1 --> original models
 OPTIMIZER     = Adam
