@@ -36,8 +36,7 @@ def print_gpu_memory_usage(stage=""):
     allocated = torch.cuda.memory_allocated() / (1024 ** 3)
     cached = torch.cuda.memory_reserved() / (1024 ** 3)
     print(f"{stage} - Allocated memory: {allocated:.2f} GB, Cached memory: {cached:.2f}")
-    
-    
+     
 def log_message(message, log_file):
     log_directory = os.path.dirname(log_file)
     if not os.path.exists(log_directory):
@@ -46,7 +45,6 @@ def log_message(message, log_file):
     print(message)
     with open(log_file, 'a') as f:
         f.write(message + '\n')
-
 
 def setup_logging_and_checkpoints():
     ## logs outputs site-specific-models:
@@ -68,7 +66,6 @@ def setup_logging_and_checkpoints():
     )
     return logger, checkpoint_callback
 
-
 def setup_model_and_optimizer():
     model = UNetModule().to(config_param.DEVICE)
     optimizer = config_param.OPTIMIZER(
@@ -80,11 +77,9 @@ def setup_model_and_optimizer():
     criterion = config_param.CRITERION
     return model, optimizer, criterion
 
-
 def save_model(model, model_checkpoint_path):
     torch.save(model.state_dict(), model_checkpoint_path)
     print(f"Model saved to {model_checkpoint_path}")
-
 
 def save_loss_metrics(train_losses, val_losses, output_dir):
     metrics_file_path = os.path.join(output_dir, 'loss_metrics.txt')
@@ -108,7 +103,6 @@ def save_loss_metrics(train_losses, val_losses, output_dir):
 
     print(f"Loss metrics saved at {metrics_file_path}")
 
-
 def save_average_loss_plot(train_losses, val_losses, max_epochs, output_dir):
     avg_train_loss_per_epoch = np.mean(train_losses, axis=0)
     avg_val_loss_per_epoch = np.mean(val_losses, axis=0)
@@ -123,7 +117,8 @@ def save_average_loss_plot(train_losses, val_losses, max_epochs, output_dir):
     plt.grid(True)
     plot_file = os.path.join(output_dir, 'average_training_validation_loss_plot_across_blocks.png')
     plt.savefig(plot_file)
-    plt.show()
+    # plt.show()
+    plt.close()
     print(f"Average loss plot across all blocks saved as {plot_file}")
 
 def save_final_model_metrics(metrics, block_idx, output_dir):
@@ -140,7 +135,6 @@ def save_final_model_metrics(metrics, block_idx, output_dir):
         f.write(f"Counts per class (%): {', '.join([f'{p:.2f}%' for p in metrics.get('counts_per_class_percentage', [])])}\n")
     print(f"Final model metrics for Block {block_idx + 1} saved at: {final_metrics_file_path}")
 
-
 def save_best_model_metrics(metrics, block_idx, output_dir):
     best_metrics_file_path = os.path.join(output_dir, f'best_model_metrics_block_{block_idx + 1}.txt')
     
@@ -156,7 +150,6 @@ def save_best_model_metrics(metrics, block_idx, output_dir):
         f.write(f"Counts per Class (%): {', '.join([f'{count:.2f}%' for count in metrics.get('counts_per_class_percentage', [])])}\n")
     
     print(f"Best model metrics for Block {block_idx + 1} saved at: {best_metrics_file_path}")
-
 
 def convert_ndarray_to_list(obj):
     """Recursively convert NumPy arrays and scalars in the object to lists or native Python types."""
@@ -181,7 +174,6 @@ def save_validation_metrics(metrics, block_idx, output_dir):
     with open(val_metrics_path, 'w') as f:
         json.dump(metrics, f, indent=4)
     print(f"Validation metrics for Block {block_idx + 1} saved to {val_metrics_path}")
-
 
 def save_best_validation_metrics(metrics, block_idx, output_dir):
     # Convert any NumPy arrays and scalars to native Python types
