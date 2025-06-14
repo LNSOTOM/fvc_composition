@@ -14,6 +14,8 @@ from dataset.mask_preprocessing import prep_mask_preserve_nan
 import config_param
 import shutil
 
+
+##option a): slower
 # def generate_filtered_augmentations_from_train_only(train_indices, block_idx):
 #     """
 #     Generate augmentations only for training indices and save them to disk.
@@ -84,7 +86,7 @@ import shutil
 #     print(f"   - Total augmented images created: {len(train_indices) * NUM_AUG_PER_IMAGE}")
 
 ################
-
+## option b): faster with Dask parallel processing
 def process_augmentation_task(task_data):
     """Process a single augmentation task"""
     img_path, mask_path, aug_idx, output_dir_img, output_dir_mask = task_data
