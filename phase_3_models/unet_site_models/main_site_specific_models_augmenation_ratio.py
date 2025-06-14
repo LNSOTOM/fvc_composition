@@ -1,16 +1,4 @@
-# --- REBUILD FOLDS TO INCLUDE AUGMENTED DATA ---
-block_cv_splits = block_cross_validation(
-    dataset=dataset,
-    combined_data=[combined_data[i % len(combined_data)] for i in range(len(dataset))],
-    num_blocks=config_param.NUM_BLOCKS,
-    kmeans_centroids=centroids
-)# --- REBUILD FOLDS TO INCLUDE AUGMENTED DATA ---
-block_cv_splits = block_cross_validation(
-    dataset=dataset,
-    combined_data=[combined_data[i % len(combined_data)] for i in range(len(dataset))],
-    num_blocks=config_param.NUM_BLOCKS,
-    kmeans_centroids=centroids
-)import os
+import os
 import torch
 import numpy as np
 import rasterio
@@ -44,7 +32,7 @@ import json
 from torchmetrics.classification import ConfusionMatrix
 import pandas as pd
 from collections import Counter
-from dataset.data_augmentation import augment_minority_classes_pixel_level, apply_combined_augmentations, augment_minority_classes
+from dataset.data_augmentation import augment_minority_classes_pixel_level, apply_combined_augmentations, augment_minority_classes, generate_random_affine_params, apply_affine_to_image,apply_affine_to_mask
 from balance_mask_water import integrate_water_distribution
 import random
 
@@ -380,6 +368,57 @@ def reduce_dominant_class_pixels(masks, class_labels_dict, reduce_fraction=0.5, 
         new_masks.append(mask_arr)
     return new_masks, dominant_class_name
 
+
+def initialize_fold_assignments(block_cv_splits):
+    """Assign fold labels for training, validation, and testing."""
+    assignments = {}
+    for block_id, (train_loader, val_loader, test_loader) in enumerate(block_cv_splits):
+        for loader, split in zip([train_loader, val_loader, test_loader], ['train', 'val', 'test']):
+            indices = getattr(loader.sampler, 'indices', None)
+            if indices is None:
+                indices = list(range(len(loader.dataset)))
+            for idx in indices:
+                assignments[idx] = f'{split}_{block_id}'
+    return assignments
+
+def assign_augmented_samples(dataset, fold_assignments, original_count):
+    """Assign fold labels to newly augmented samples."""
+    for idx in range(original_count, len(dataset.images)):
+        original_idx = dataset.augmented_from_idx[idx]
+        original_fold = fold_assignments.get(original_idx)
+        if original_fold and original_fold.startswith('train'):
+            fold_assignments[idx] = original_fold
+        elif original_fold:
+            block_id = int(original_fold.split('_')[-1])
+            fold_assignments[idx] = f'train_{block_id}'
+
+def build_final_folds(dataset, fold_assignments, num_blocks, batch_size):
+    """Construct DataLoaders for each fold."""
+    final_folds = []
+    for block_id in range(num_blocks):
+        train_indices = [i for i, f in fold_assignments.items() if f == f'train_{block_id}']
+        val_indices = [i for i, f in fold_assignments.items() if f == f'val_{block_id}']
+        test_indices = [i for i, f in fold_assignments.items() if f == f'test_{block_id}']
+
+        print(f"📦 Block {block_id+1} — Train: {len(train_indices)}, Val: {len(val_indices)}, Test: {len(test_indices)}")
+
+        if not train_indices or not val_indices or not test_indices:
+            print(f"⚠️ Skipping block {block_id+1} due to missing splits.")
+            continue
+
+        train_loader = DataLoader(dataset, batch_size=batch_size, sampler=SubsetRandomSampler(train_indices))
+        val_loader = DataLoader(dataset, batch_size=batch_size, sampler=SubsetRandomSampler(val_indices))
+        test_loader = DataLoader(dataset, batch_size=batch_size, sampler=SubsetRandomSampler(test_indices))
+        final_folds.append((train_loader, val_loader, test_loader))
+    return final_folds
+
+
+
+def gaussian_target(freq, mean, std, min_target, max_target):
+    z = (freq - mean) / (std + 1e-8)
+    score = 1 / (1 + np.exp(z))  # Lower freq -> higher target
+    return min_target + (max_target - min_target) * score
+
 def main():
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     # After importing config_param
@@ -396,6 +435,7 @@ def main():
     output_dir = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense' #dense
     os.makedirs(output_dir, exist_ok=True)
 
+    # === Load and Prepare Data ===
     image_dirs = config_param.IMAGE_FOLDER
     mask_dirs = config_param.MASK_FOLDER
     
@@ -454,6 +494,7 @@ def main():
         images, masks = CalperumDataset.load_subsampled_data(config_param.SUBSAMPLE_IMAGE_DIR, config_param.SUBSAMPLE_MASK_DIR)
         dataset = CalperumDataset(transform=config_param.DATA_TRANSFORM, in_memory_data=(images, masks))
 
+    # === Spatial Fold Assignment ===
     # Perform KMeans on original data and save centroids
     coordinates = extract_coordinates(combined_data)  # Assume extract_coordinates is a function to get coordinates
     kmeans = KMeans(n_clusters=config_param.NUM_BLOCKS, init='k-means++', random_state=42).fit(coordinates)
@@ -469,6 +510,7 @@ def main():
     print(f"Number of Blocks: {config_param.NUM_BLOCKS}")
     print_overall_class_distribution(masks, class_labels_dict, "BEFORE Augmentation")
     
+    # === Class Balancing (Augmentation) ===
     # --- CONDITIONAL DATA AUGMENTATION BLOCK ---
     # Get water class index from config
     water_class_name = 'WI'
@@ -501,14 +543,7 @@ def main():
     )
 
     # Assign each sample to its fold
-    fold_assignments = {}
-    for fold_idx, (train_loader, val_loader, test_loader) in enumerate(block_cv_splits):
-        for idx in train_loader.dataset.indices:
-            fold_assignments[idx] = 'train'
-        for idx in val_loader.dataset.indices:
-            fold_assignments[idx] = 'val'
-        for idx in test_loader.dataset.indices:
-            fold_assignments[idx] = 'test'
+    fold_assignments = initialize_fold_assignments(block_cv_splits)
 
     # Print class distribution per fold BEFORE augmentation
     print_class_distribution_per_fold(block_cv_splits, class_labels_dict, "BEFORE Augmentation")
@@ -516,14 +551,27 @@ def main():
 
     # --- DATA AUGMENTATION ---
     if config_param.ENABLE_DATA_AUGMENTATION:
-        print("Data augmentation is ENABLED.")
+        print("✨ Performing data augmentation on training samples...")
+        class_counts = Counter()
+        for idx, m in enumerate(masks):
+            if fold_assignments.get(idx, '').startswith("train"):
+                flat = np.array(m).flatten()
+                flat = flat[flat != -1]
+                class_counts.update(flat)
+
+        total_pixels = sum(class_counts.values())
+        class_distribution = {k: v / total_pixels for k, v in class_counts.items()}
+
         print(f"Dataset size before augmentation: {len(dataset.images)}")
-        MIN_CLASS_RATIO = 0.20  # 20% minimum for any class
 
+        # Print class distribution before augmentation in a table
+        print("📊 Class distribution before augmentation:")
+        print("  {:<8} {:>8}".format("Class", "Ratio"))
+        for k, v in class_distribution.items():
+            print(f"  {k:<8} {v:>8.4f}")
+
+        # Compute robust min/max targets based on percentiles, but clamp to reasonable values
         percentages = list(overall_class_distribution.values())
-        max_percent = max(percentages)
-        max_class = max(overall_class_distribution, key=overall_class_distribution.get)
-
         frequencies = np.array([overall_class_distribution[c] for c in class_labels_dict.values()]) / 100.0
 
         min_target = np.percentile(frequencies, 10)
@@ -531,8 +579,8 @@ def main():
         min_target = max(0.10, min_target * 0.8)
         max_target = min(0.40, max_target * 1.2)
 
-        mean = np.mean(frequencies)      # <-- Add this
-        std = np.std(frequencies)        # <-- And this
+        mean = np.mean(frequencies)
+        std = np.std(frequencies)
 
         def gaussian_target(freq, mean, std, min_target, max_target):
             z = (freq - mean) / (std + 1e-8)
@@ -546,339 +594,248 @@ def main():
 
         # Find the class with the highest original frequency
         majority_class = max(overall_class_distribution, key=overall_class_distribution.get)
-        # Robust adaptive penalty for the majority class
         majority_ratio = overall_class_distribution[majority_class] / 100.0
         mean_ratio = np.mean(list(overall_class_distribution.values())) / 100.0
         penalty_factor = max(0.5, 1.0 - (majority_ratio - mean_ratio) * 2)
         penalty_factor = min(penalty_factor, 0.8)
-        print(f"Adaptive penalty_factor for majority class '{majority_class}': {penalty_factor:.2f}")
         target_ratios[majority_class] *= penalty_factor
-        
-        # Explicitly penalize BE, regardless of whether it's the majority class
-        # be_class_name = "BE"
-        # if be_class_name in target_ratios:
-        #     be_ratio = overall_class_distribution[be_class_name] / 100.0
-        #     mean_ratio = np.mean(list(overall_class_distribution.values())) / 100.0
-        #     penalty_factor = max(0.3, 1.0 - (be_ratio - mean_ratio) * 2.5)  # Stronger penalty, min 0.3
-        #     penalty_factor = min(penalty_factor, 0.8)
-        #     print(f"Adaptive penalty_factor for BE: {penalty_factor:.2f}")
-        #     target_ratios[be_class_name] *= penalty_factor
-        # --- Automatically detect rare classes and set their target ratio ---
-        RARE_CLASS_THRESHOLD = 0.15  # Any class with <15% frequency is considered rare
-        RARE_CLASS_RATIO = 0.18      # Target ratio for rare classes
 
-        # Find rare classes based on original distribution
-        rare_classes = [cls for cls, freq in overall_class_distribution.items() if freq / 100.0 < RARE_CLASS_THRESHOLD]
-
-        for cls in rare_classes:
-            if cls in target_ratios:
-                target_ratios[cls] = RARE_CLASS_RATIO
-
-        print(f"Set rare class ratios for: {', '.join(rare_classes)} to {RARE_CLASS_RATIO:.2f}")
-        # Optional: Renormalize so all ratios sum to 1
-        total = sum(target_ratios.values())
-        for k in target_ratios:
-            target_ratios[k] /= total
-
-        print("Target ratios (Gaussian-based, penalized majority):")
+        print(f"\nAdaptive penalty_factor for majority class '{majority_class}': {penalty_factor:.2f}")
+        print("🎯 Gaussian-based target ratios (after penalty):")
+        print("  {:<8} {:>8}".format("Class", "Target"))
         for k, v in target_ratios.items():
-            print(f"  {k}: {v:.3f}")
+            print(f"  {k:<8} {v*100:>7.2f}%")
 
-        # Use apply_combined_augmentations for all classes
-        augmented_counts = augment_minority_classes(
+        print("\nAugmentation plan:")
+        for k, v in target_ratios.items():
+            print(f"  Will augment class '{k}' to target ratio: {v*100:.2f}%")
+
+        # Now call your augmentation function as before
+        augment_minority_classes(
             dataset=dataset,
-            class_distributions=overall_class_distribution,  
+            class_distributions=class_distribution,
             class_labels=class_labels_dict,
             target_ratios=target_ratios,
             fold_assignments=fold_assignments,
             augmentation_functions=[lambda pair: apply_combined_augmentations(pair[0], pair[1])]
         )
 
-        print(f"Dataset size after augmentation: {len(dataset.images)}")
-        print(f"Augmented counts: {augmented_counts}")
-        masks = dataset.masks  # Update masks after augmentation
+        # Optionally print class distribution after augmentation
+        print_overall_class_distribution(dataset.masks, class_labels_dict, "AFTER Augmentation (before pixel reduction)")
 
         # --- MASK BE PIXELS IN ALL PATCHES ---
         # ... after augmentation, before fold assignment ...
         dataset.masks, reduced_class_name = reduce_dominant_class_pixels(dataset.masks, class_labels_dict, reduce_fraction=0.5)
         print(f"Reduced pixels of dominant class: {reduced_class_name}")
         masks = dataset.masks  # Update for downstream reporting
-    else:
-        print("Data augmentation is DISABLED.")
 
-    # --- REBUILD FOLDS TO INCLUDE AUGMENTED DATA ---
-    # block_cv_splits = block_cross_validation(
-    #     dataset=dataset,
-    #     combined_data=[combined_data[i % len(combined_data)] for i in range(len(dataset))],
-    #     num_blocks=config_param.NUM_BLOCKS,
-    #     kmeans_centroids=centroids
-    # )
+        # Assign fold labels to newly augmented samples (after augmentation, before pixel reduction)
+        assign_augmented_samples(dataset, fold_assignments, len(subsampled_indices))
+        print(f"✅ Dataset size after augmentation: {len(dataset.images)}")
 
-    # Re-assign fold assignments for all samples (including augmented)
-    fold_assignments = {}
-    for fold_idx, (train_loader, val_loader, test_loader) in enumerate(block_cv_splits):
-        for idx in train_loader.dataset.indices:
-            fold_assignments[idx] = 'train'
-        for idx in val_loader.dataset.indices:
-            fold_assignments[idx] = 'val'
-        for idx in test_loader.dataset.indices:
-            fold_assignments[idx] = 'test'
+        # --- MASK BE PIXELS IN ALL PATCHES ---
+        dataset.masks        
+        print(f"Dataset size before augmentation: {len(dataset.images)}")
+        
+        # Print class distribution before augmentation in a table
+        print("📊 Class distribution before augmentation:")
+        print("  {:<8} {:>8}".format("Class", "Ratio"))
+        for k, v in class_distribution.items():
+            print(f"  {k:<8} {v:>8.4f}")
+        
+        # Compute robust min/max targets based on percentiles, but clamp to reasonable values
+        percentages = list(overall_class_distribution.values())
+        frequencies = np.array([overall_class_distribution[c] for c in class_labels_dict.values()]) / 100.0
+        
+        min_target = np.percentile(frequencies, 10)
+        max_target = np.percentile(frequencies, 90)
+        min_target = max(0.10, min_target * 0.8)
+        max_target = min(0.40, max_target * 1.2)
+        
+        mean = np.mean(frequencies)
+        std = np.std(frequencies)
+        
+        def gaussian_target(freq, mean, std, min_target, max_target):
+            z = (freq - mean) / (std + 1e-8)
+            score = 1 / (1 + np.exp(z))  # Lower freq -> higher target
+            return min_target + (max_target - min_target) * score
+        
+        target_ratios = {}
+        for i, class_name in enumerate(class_labels_dict.values()):
+            freq = frequencies[i]
+            target_ratios[class_name] = float(gaussian_target(freq, mean, std, min_target, max_target))
+        
+        # Find the class with the highest original frequency
+        majority_class = max(overall_class_distribution, key=overall_class_distribution.get)
+        majority_ratio = overall_class_distribution[majority_class] / 100.0
+        mean_ratio = np.mean(list(overall_class_distribution.values())) / 100.0
+        penalty_factor = max(0.5, 1.0 - (majority_ratio - mean_ratio) * 2)
+        penalty_factor = min(penalty_factor, 0.8)
+        target_ratios[majority_class] *= penalty_factor
+        
+        print(f"\nAdaptive penalty_factor for majority class '{majority_class}': {penalty_factor:.2f}")
+        print("🎯 Gaussian-based target ratios (after penalty):")
+        print("  {:<8} {:>8}".format("Class", "Target"))
+        for k, v in target_ratios.items():
+            print(f"  {k:<8} {v*100:>7.2f}%")
+        
+        print("\nAugmentation plan:")
+        for k, v in target_ratios.items():
+            print(f"  Will augment class '{k}' to target ratio: {v*100:.2f}%")
+        
+        # Now call your augmentation function as before
+        augment_minority_classes(
+            dataset=dataset,
+            class_distributions=class_distribution,
+            class_labels=class_labels_dict,
+            target_ratios=target_ratios,
+            fold_assignments=fold_assignments,
+            augmentation_functions=[lambda pair: apply_combined_augmentations(pair[0], pair[1])]
+        )        
+        print(f"Dataset size before augmentation: {len(dataset.images)}")
+        
+        # Print class distribution before augmentation in a table
+        print("📊 Class distribution before augmentation:")
+        print("  {:<8} {:>8}".format("Class", "Ratio"))
+        for k, v in class_distribution.items():
+            print(f"  {k:<8} {v:>8.4f}")
+        
+        # Compute robust min/max targets based on percentiles, but clamp to reasonable values
+        percentages = list(overall_class_distribution.values())
+        frequencies = np.array([overall_class_distribution[c] for c in class_labels_dict.values()]) / 100.0
+        
+        min_target = np.percentile(frequencies, 10)
+        max_target = np.percentile(frequencies, 90)
+        min_target = max(0.10, min_target * 0.8)
+        max_target = min(0.40, max_target * 1.2)
+        
+        mean = np.mean(frequencies)
+        std = np.std(frequencies)
+        
+        def gaussian_target(freq, mean, std, min_target, max_target):
+            z = (freq - mean) / (std + 1e-8)
+            score = 1 / (1 + np.exp(z))  # Lower freq -> higher target
+            return min_target + (max_target - min_target) * score
+        
+        target_ratios = {}
+        for i, class_name in enumerate(class_labels_dict.values()):
+            freq = frequencies[i]
+            target_ratios[class_name] = float(gaussian_target(freq, mean, std, min_target, max_target))
+        
+        # Find the class with the highest original frequency
+        majority_class = max(overall_class_distribution, key=overall_class_distribution.get)
+        majority_ratio = overall_class_distribution[majority_class] / 100.0
+        mean_ratio = np.mean(list(overall_class_distribution.values())) / 100.0
+        penalty_factor = max(0.5, 1.0 - (majority_ratio - mean_ratio) * 2)
+        penalty_factor = min(penalty_factor, 0.8)
+        target_ratios[majority_class] *= penalty_factor
+        
+        print(f"\nAdaptive penalty_factor for majority class '{majority_class}': {penalty_factor:.2f}")
+        print("🎯 Gaussian-based target ratios (after penalty):")
+        print("  {:<8} {:>8}".format("Class", "Target"))
+        for k, v in target_ratios.items():
+            print(f"  {k:<8} {v*100:>7.2f}%")
+        
+        print("\nAugmentation plan:")
+        for k, v in target_ratios.items():
+            print(f"  Will augment class '{k}' to target ratio: {v*100:.2f}%")
+        
+        # Now call your augmentation function as before
+        augment_minority_classes(
+            dataset=dataset,
+            class_distributions=class_distribution,
+            class_labels=class_labels_dict,
+            target_ratios=target_ratios,
+            fold_assignments=fold_assignments,
+            augmentation_functions=[lambda pair: apply_combined_augmentations(pair[0], pair[1])]
+        )        
+        print(f"Dataset size before augmentation: {len(dataset.images)}")
+        
+        # Print class distribution before augmentation in a table
+        print("📊 Class distribution before augmentation:")
+        print("  {:<8} {:>8}".format("Class", "Ratio"))
+        for k, v in class_distribution.items():
+            print(f"  {k:<8} {v:>8.4f}")
+        
+        # Compute robust min/max targets based on percentiles, but clamp to reasonable values
+        percentages = list(overall_class_distribution.values())
+        frequencies = np.array([overall_class_distribution[c] for c in class_labels_dict.values()]) / 100.0
+        
+        min_target = np.percentile(frequencies, 10)
+        max_target = np.percentile(frequencies, 90)
+        min_target = max(0.10, min_target * 0.8)
+        max_target = min(0.40, max_target * 1.2)
+        
+        mean = np.mean(frequencies)
+        std = np.std(frequencies)
+        
+        def gaussian_target(freq, mean, std, min_target, max_target):
+            z = (freq - mean) / (std + 1e-8)
+            score = 1 / (1 + np.exp(z))  # Lower freq -> higher target
+            return min_target + (max_target - min_target) * score
+        
+        target_ratios = {}
+        for i, class_name in enumerate(class_labels_dict.values()):
+            freq = frequencies[i]
+            target_ratios[class_name] = float(gaussian_target(freq, mean, std, min_target, max_target))
+        
+        # Find the class with the highest original frequency
+        majority_class = max(overall_class_distribution, key=overall_class_distribution.get)
+        majority_ratio = overall_class_distribution[majority_class] / 100.0
+        mean_ratio = np.mean(list(overall_class_distribution.values())) / 100.0
+        penalty_factor = max(0.5, 1.0 - (majority_ratio - mean_ratio) * 2)
+        penalty_factor = min(penalty_factor, 0.8)
+        target_ratios[majority_class] *= penalty_factor
+        
+        print(f"\nAdaptive penalty_factor for majority class '{majority_class}': {penalty_factor:.2f}")
+        print("🎯 Gaussian-based target ratios (after penalty):")
+        print("  {:<8} {:>8}".format("Class", "Target"))
+        for k, v in target_ratios.items():
+            print(f"  {k:<8} {v*100:>7.2f}%")
+        
+        print("\nAugmentation plan:")
+        for k, v in target_ratios.items():
+            print(f"  Will augment class '{k}' to target ratio: {v*100:.2f}%")
+        
+        # Now call your augmentation function as before
+        augment_minority_classes(
+            dataset=dataset,
+            class_distributions=class_distribution,
+            class_labels=class_labels_dict,
+            target_ratios=target_ratios,
+            fold_assignments=fold_assignments,
+            augmentation_functions=[lambda pair: apply_combined_augmentations(pair[0], pair[1])]
+        ) 
+        reduced_class_name = reduce_dominant_class_pixels(dataset.masks, class_labels_dict, reduce_fraction=0.5)
+        print(f"Reduced pixels of dominant class: {reduced_class_name}")
+        masks = dataset.masks  # Update for downstream reporting
 
-    # Print class distribution per fold AFTER augmentation (before water redistribution)
-    print_class_distribution_per_fold(block_cv_splits, class_labels_dict, "AFTER Augmentation (before water redistribution)")
-    print_overall_class_distribution(masks, class_labels_dict, "AFTER Augmentation (before water redistribution)")
-    print_sample_counts_per_fold(block_cv_splits, stage="AFTER Augmentation (before water redistribution)")
+    # === Final Fold and Training ===
+    final_folds = build_final_folds(dataset, fold_assignments, config_param.NUM_BLOCKS, config_param.BATCH_SIZE)
 
-    # --- CONDITIONAL WATER REDISTRIBUTION ---
     if water_present and config_param.ENABLE_WATER_REDISTRIBUTION:
-        print("Water class detected and water redistribution is ENABLED.")
+        print("💧 Water class detected. Redistributing across folds...")
         final_folds, _ = integrate_water_distribution(
-            dataset, masks, block_cv_splits, config_param.NUM_BLOCKS, config_param.BATCH_SIZE, config_param.NUM_WORKERS
+            dataset, masks, final_folds, config_param.NUM_BLOCKS, config_param.BATCH_SIZE, config_param.NUM_WORKERS
         )
-    else:   
-        print("Water redistribution is DISABLED or no water class present.")
+    else:
+        print("ℹ️  Water redistribution skipped.")
 
-    # After augmentation, assign all new samples to 'train'
-    num_original = len(fold_assignments)
-    num_total = len(dataset.images)
-    for idx in range(num_original, num_total):
-        fold_assignments[idx] = 'train'
-
-    train_indices = [idx for idx, fold in fold_assignments.items() if fold == 'train']
-    val_indices = [idx for idx, fold in fold_assignments.items() if fold == 'val']
-    test_indices = [idx for idx, fold in fold_assignments.items() if fold == 'test']
-
-    train_loader = DataLoader(dataset, batch_size=config_param.BATCH_SIZE, sampler=SubsetRandomSampler(train_indices))
-    val_loader = DataLoader(dataset, batch_size=config_param.BATCH_SIZE, sampler=SubsetRandomSampler(val_indices))
-    test_loader = DataLoader(dataset, batch_size=config_param.BATCH_SIZE, sampler=SubsetRandomSampler(test_indices))
-
-    final_folds = [(train_loader, val_loader, test_loader)]
-    print("Water redistribution is DISABLED or no water class present.")
-    final_folds = block_cv_splits
-
-    # Print coordinates shape after water redistribution (FIXED)
-    coordinates_water = extract_coordinates([combined_data[i % len(combined_data)] for i in range(len(dataset))])
-    print(f"Coordinates shape after reshaping (after water redistribution): {np.array(coordinates_water).shape}")
-
-    # alpha = compute_class_weights_from_masks(masks, num_classes=len(class_labels_dict))
-    # print("Alpha for FocalLoss (after water redistribution):", alpha)
-    # CRITERION = FocalLoss(alpha=alpha, gamma=2, ignore_index=-1)
-    # model, optimizer, criterion = setup_model_and_optimizer(CRITERION)
-   
-    # Print class distribution AFTER water redistribution
-    print_class_distribution_per_fold(final_folds, class_labels_dict, "AFTER Water Redistribution")
-    print_overall_class_distribution(masks, class_labels_dict, "AFTER Water Redistribution")
-    print_sample_counts_per_fold(final_folds, stage="AFTER Water Redistribution")
-
-    # Initialize all required data structures
-    all_metrics = initialize_all_metrics(num_blocks=config_param.NUM_BLOCKS)
-    conf_matrices = []  # List to store confusion matrices for each block
-    all_train_losses = []  # List to store training losses for each block
-    all_val_losses = []  # List to store validation losses for each block
-
-    best_model_paths = []  # List to store best model paths for each block
-    best_val_losses = []   # List to store best validation losses for each block
-
-    all_preds_across_blocks = []  # To collect predictions across all blocks
-    all_trues_across_blocks = []  # To collect ground truth labels across all blocks
-
-    # Initialize lists to collect best model metrics and final model metrics across all blocks
-    all_best_model_metrics = []
-    all_final_model_metrics = []
-    
-    # **Initialize structures for validation metrics**
-    all_val_metrics = []
-    all_best_val_metrics = []
-
-    # Train, validate, and test using cross-validation splits
+    print("🚀 Starting training across folds...")
+     
     for block_idx, (train_loader, val_loader, test_loader) in enumerate(final_folds):
-        if train_loader is None or val_loader is None or test_loader is None:
-            print(f"Skipping block {block_idx + 1} due to missing data")
-            continue
+        print(f"\n🔁 Training Block {block_idx}")
         model, optimizer, criterion = setup_model_and_optimizer()
-           
-        # Run training loop
-        train_losses, val_losses, best_epoch_model_path, best_epoch_val_loss = run_training_loop(
-            model, train_loader, val_loader, optimizer, criterion, 
+        train_losses, val_losses, best_model_path, _ = run_training_loop(
+            model, train_loader, val_loader, optimizer, criterion,
             config_param.NUM_EPOCHS, block_idx, output_dir, config_param.DEVICE, logger
         )
-        all_train_losses.append(train_losses)
-        all_val_losses.append(val_losses)
-        
-        # Store the best model path and validation loss for the current block
-        best_model_paths.append(best_epoch_model_path)
-        best_val_losses.append(best_epoch_val_loss)
-        
-        # Evaluate the final model after the training loop (last epoch model) on the test set
+        print(f"✅ Block {block_idx} complete. Best model: {best_model_path}")
+
+        model.load_state_dict(torch.load(best_model_path))
         evaluator = ModelEvaluator(model, test_loader, device=config_param.DEVICE)
-        final_metrics = evaluator.run_evaluation(block_idx, all_metrics, conf_matrices)
-        all_final_model_metrics.append(final_metrics)
-        # Save metrics for the final model on the test set
-        save_final_model_metrics(final_metrics, block_idx, output_dir)
-        
-        # **Confusion Matrix Plotting for Final Model (Test Set)**
-        evaluator.plot_confusion_matrix(
-            final_metrics['all_preds'], final_metrics['all_trues'],
-            class_labels=['BE', 'NPV', 'PV', 'SI', 'WI'], 
-            output_dir=output_dir, block_idx=f"{block_idx}_final_test"
-        )
-        
-        # **Evaluate the final model (last epoch model) on the validation set**
-        print(f"Evaluating the final model (last epoch) for Block {block_idx + 1} on the validation set")
-        val_evaluator = ModelEvaluator(model, val_loader, device=config_param.DEVICE)      
-        # Evaluate the final model on the validation set
-        val_final_metrics = val_evaluator.run_evaluation(block_idx, all_metrics, conf_matrices)
-        all_val_metrics.append(val_final_metrics)
-        # Save metrics for the final model's validation evaluation
-        save_validation_metrics(val_final_metrics, block_idx, output_dir)
-        
-        # **Confusion Matrix Plotting for Final Model (Validation Set)**
-        evaluator.plot_confusion_matrix(
-            val_final_metrics['all_preds'], val_final_metrics['all_trues'],
-            class_labels=['BE', 'NPV', 'PV', 'SI', 'WI'], 
-            output_dir=output_dir, block_idx=f"{block_idx}_final_val"
-        )
-        
-        # **Reload the best model for evaluation on both the test and validation sets**
-        print(f"Loading the best model for Block {block_idx + 1} from {best_epoch_model_path}")
-        model.load_state_dict(torch.load(best_epoch_model_path))
+        evaluator.run_evaluation(block_idx, initialize_all_metrics(config_param.NUM_BLOCKS), [])
 
-        # Run evaluation for the best model (test set)
-        best_metrics = evaluator.run_evaluation(block_idx, all_metrics, conf_matrices)
-        all_best_model_metrics.append(best_metrics)
-        # Save metrics for the best model on the test set
-        save_best_model_metrics(best_metrics, block_idx, output_dir)
-        
-        # **Confusion Matrix Plotting for Best Model (Test Set)**
-        evaluator.plot_confusion_matrix(
-            best_metrics['all_preds'], best_metrics['all_trues'],
-            class_labels=['BE', 'NPV', 'PV', 'SI', 'WI'], 
-            output_dir=output_dir, block_idx=f"{block_idx}_best_test"
-        )
-        
-        # ** Run evaluation for the best model (validation set)**
-        print(f"Evaluating the best model for Block {block_idx + 1} on the validation set")
-        best_val_metrics = val_evaluator.run_evaluation(block_idx, all_metrics, conf_matrices)
-        all_best_val_metrics.append(best_val_metrics)      
-        # Save metrics for the best model's validation evaluation
-        save_best_validation_metrics(best_val_metrics, block_idx, output_dir)
-        
-        # **Confusion Matrix Plotting for Best Model (Validation Set)**
-        evaluator.plot_confusion_matrix(
-            best_val_metrics['all_preds'], best_val_metrics['all_trues'],
-            class_labels=['BE', 'NPV', 'PV', 'SI', 'WI'], 
-            output_dir=output_dir, block_idx=f"{block_idx}_best_val"
-        )
-            # **End: Evaluation on Validation Set**
-        
-        # Extend predictions and ground truths for overall evaluation
-        all_preds_across_blocks.extend(best_metrics['all_preds'])
-        all_trues_across_blocks.extend(best_metrics['all_trues'])
-
-    # Save average loss plot across all blocks
-    save_average_loss_plot(all_train_losses, all_val_losses, config_param.NUM_EPOCHS, output_dir)
-
-    # Save metrics for each epoch
-    save_loss_metrics(all_train_losses, all_val_losses, output_dir)
-
-    # **Calculate and Plot Average Metrics and Confusion Matrices**
-    # **For Final Models on Test Set**
-    avg_metrics_across_final_models_test = evaluator.calculate_average_metrics(all_final_model_metrics)
-    if avg_metrics_across_final_models_test:
-        print("\nAverage Metrics Across All Final Models (Test Set):")
-        print(f"Accuracy: {avg_metrics_across_final_models_test['accuracy']:.4f}")
-        print(f"Precision: {', '.join([f'{p:.4f}' for p in avg_metrics_across_final_models_test['precision']])}")
-        print(f"Recall: {', '.join([f'{r:.4f}' for r in avg_metrics_across_final_models_test['recall']])}")
-        print(f"F1 Score: {', '.join([f'{f1:.4f}' for f1 in avg_metrics_across_final_models_test['f1']])}")
-        print(f"IoU: {', '.join([f'{iou:.4f}' for iou in avg_metrics_across_final_models_test['iou']])}")
-        print(f"MIoU: {avg_metrics_across_final_models_test['miou']:.4f}")
-
-        evaluator.save_average_metrics(avg_metrics_across_final_models_test, block_idx, output_dir)
-
-        # **Plot Average Confusion Matrix for Final Models on Test Set**
-        evaluator.calculate_and_save_average_confusion_matrix(
-            conf_matrices,
-            all_preds_across_blocks,
-            all_trues_across_blocks,
-            class_labels=['BE', 'NPV', 'PV', 'SI', 'WI'],
-            output_dir=os.path.join(output_dir, 'final_test_avg')
-        )
-
-    # **For Final Models on Validation Set**
-    avg_metrics_across_final_models_val = evaluator.calculate_average_metrics(all_val_metrics)
-    if avg_metrics_across_final_models_val:
-        print("\nAverage Metrics Across All Final Models (Validation Set):")
-        print(f"Accuracy: {avg_metrics_across_final_models_val['accuracy']:.4f}")
-        print(f"Precision: {', '.join([f'{p:.4f}' for p in avg_metrics_across_final_models_val['precision']])}")
-        print(f"Recall: {', '.join([f'{r:.4f}' for r in avg_metrics_across_final_models_val['recall']])}")
-        print(f"F1 Score: {', '.join([f'{f1:.4f}' for f1 in avg_metrics_across_final_models_val['f1']])}")
-        print(f"IoU: {', '.join([f'{iou:.4f}' for iou in avg_metrics_across_final_models_val['iou']])}")
-        print(f"MIoU: {avg_metrics_across_final_models_val['miou']:.4f}")
-
-        evaluator.save_average_metrics(avg_metrics_across_final_models_val, block_idx, output_dir)
-
-        # **Plot Average Confusion Matrix for Final Models on Validation Set**
-        evaluator.calculate_and_save_average_confusion_matrix(
-            conf_matrices,
-            all_preds_across_blocks,
-            all_trues_across_blocks,
-            class_labels=['BE', 'NPV', 'PV', 'SI', 'WI'],
-            output_dir=os.path.join(output_dir, 'final_val_avg')
-        )
-
-    # **For Best Models on Test Set**
-    avg_metrics_across_best_models_test = evaluator.calculate_average_metrics(all_best_model_metrics)
-    if avg_metrics_across_best_models_test:
-        print("\nAverage Metrics Across All Best Models (Test Set):")
-        print(f"Accuracy: {avg_metrics_across_best_models_test['accuracy']:.4f}")
-        print(f"Precision: {', '.join([f'{p:.4f}' for p in avg_metrics_across_best_models_test['precision']])}")
-        print(f"Recall: {', '.join([f'{r:.4f}' for r in avg_metrics_across_best_models_test['recall']])}")
-        print(f"F1 Score: {', '.join([f'{f1:.4f}' for f1 in avg_metrics_across_best_models_test['f1']])}")
-        print(f"IoU: {', '.join([f'{iou:.4f}' for iou in avg_metrics_across_best_models_test['iou']])}")
-        print(f"MIoU: {avg_metrics_across_best_models_test['miou']:.4f}")
-
-        evaluator.save_average_metrics(avg_metrics_across_best_models_test, block_idx, output_dir)
-
-        # **Plot Average Confusion Matrix for Best Models on Test Set**
-        evaluator.calculate_and_save_average_confusion_matrix(
-            conf_matrices,
-            all_preds_across_blocks,
-            all_trues_across_blocks,
-            class_labels=['BE', 'NPV', 'PV', 'SI', 'WI'],
-            output_dir=os.path.join(output_dir, 'best_test_avg')
-        )
-
-    # **For Best Models on Validation Set**
-    avg_metrics_across_best_models_val = evaluator.calculate_average_metrics(all_best_val_metrics)
-    if avg_metrics_across_best_models_val:
-        print("\nAverage Metrics Across All Best Models (Validation Set):")
-        print(f"Accuracy: {avg_metrics_across_best_models_val['accuracy']:.4f}")
-        print(f"Precision: {', '.join([f'{p:.4f}' for p in avg_metrics_across_best_models_val['precision']])}")
-        print(f"Recall: {', '.join([f'{r:.4f}' for r in avg_metrics_across_best_models_val['recall']])}")
-        print(f"F1 Score: {', '.join([f'{f1:.4f}' for f1 in avg_metrics_across_best_models_val['f1']])}")
-        print(f"IoU: {', '.join([f'{iou:.4f}' for iou in avg_metrics_across_best_models_val['iou']])}")
-        print(f"MIoU: {avg_metrics_across_best_models_val['miou']:.4f}")
-
-        evaluator.save_average_metrics(avg_metrics_across_best_models_val, block_idx, output_dir)
-
-        # **Plot Average Confusion Matrix for Best Models on Validation Set**
-        evaluator.calculate_and_save_average_confusion_matrix(
-            conf_matrices,
-            all_preds_across_blocks,
-            all_trues_across_blocks,
-            class_labels=['BE', 'NPV', 'PV', 'SI', 'WI'],
-            output_dir=os.path.join(output_dir, 'best_val_avg')
-        )
-
-    output_log_file = os.path.join(output_dir, "best_model_paths_and_validation_losses.txt")
-
-    # Open the file in append mode
-    with open(output_log_file, 'a') as log_file:
-        # Print the best model paths and validation losses for all blocks to both console and file
-        for block_idx, (best_model_path, best_val_loss) in enumerate(zip(best_model_paths, best_val_losses)):
-            output_line = f"Best model for Block {block_idx + 1} saved at: {best_model_path} with validation loss: {best_val_loss:.4f}\n"
-            print(output_line)  # Print to console
-            log_file.write(output_line)  # Write to file
 
 
 
