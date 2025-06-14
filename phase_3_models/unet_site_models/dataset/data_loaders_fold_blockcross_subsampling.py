@@ -20,7 +20,7 @@ from dataset.image_preprocessing import prep_normalise_image, load_raw_multispec
 from map.plot_blocks_folds import plot_blocks_folds
 import json
 
-from dataset.data_augmentation_wrapper import AlbumentationsTorchWrapper, DataTypeConsistencyWrapper
+from dataset.data_augmentation_wrapper import AlbumentationsTorchWrapper
 from dataset.data_augmentation import get_train_augmentation, get_val_augmentation
 from dataset.generate_data_augmentation_train import generate_filtered_augmentations_from_train_only
 
