@@ -20,8 +20,9 @@ from dataset.image_preprocessing import prep_normalise_image, load_raw_multispec
 from map.plot_blocks_folds import plot_blocks_folds
 import json
 
-from dataset.data_augmentation_wrapper import AlbumentationsTorchWrapper
+from dataset.data_augmentation_wrapper import AlbumentationsTorchWrapper, DataTypeConsistencyWrapper
 from dataset.data_augmentation import get_train_augmentation, get_val_augmentation
+from dataset.generate_data_augmentation_train import generate_filtered_augmentations_from_train_only
 
 
 def log_message(message, log_file):
@@ -247,33 +248,43 @@ def get_dataset_splits(image_folder, mask_folder, combined_data, transform, soil
     return dataset, subsampled_indices, subsampled_images, subsampled_masks 
 
 
-def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=None, use_augmented_data=None):
+def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=None, use_augmented_data=None, block_augmented_dataset=None):
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low/logfile.txt' #low
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium/logfile.txt' #medium
     # log_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense/logfile.txt' #dense
     log_file = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/logfile.txt' #dense
+    # Determine whether to use augmentation
     use_aug = config_param.USE_AUGMENTED_DATA if use_augmented_data is None else use_augmented_data
-
+    
     # Load datasets only once
     alb_train_transform = AlbumentationsTorchWrapper(get_train_augmentation())
     alb_val_transform = AlbumentationsTorchWrapper(get_val_augmentation())
     
     # Original dataset (subsampled data)
-    original_dataset = CalperumDataset(
-        image_folders=config_param.SUBSAMPLE_IMAGE_DIR,
-        mask_folders=config_param.SUBSAMPLE_MASK_DIR,
-        transform=alb_val_transform  # Use validation transform for original data
-    )
+    # original_dataset = CalperumDataset(
+    #     image_folders=config_param.SUBSAMPLE_IMAGE_DIR,
+    #     mask_folders=config_param.SUBSAMPLE_MASK_DIR,
+    #     transform=alb_val_transform  # Use validation transform for original data
+    # )
+    # Use the pre-loaded dataset instead of creating a new one
+    original_dataset = dataset
+    
+    # Apply validation transform to the original dataset
+    original_dataset.transform = alb_val_transform
+    
+    print(f"Using pre-loaded dataset with {len(original_dataset)} samples")
+    print(f"Data augmentation: {'ENABLED' if use_aug else 'DISABLED'}")
     
     # Augmented dataset (if needed)
-    augmented_dataset = None
-    if use_aug:
-        augmented_dataset = CalperumDataset(
-            image_folders=[config_param.AUG_IMAGE_DIR],
-            mask_folders=[config_param.AUG_MASK_DIR],
-            transform=alb_train_transform
-        )
-        print(f"Loaded augmented dataset with {len(augmented_dataset)} samples")
+    # augmented_dataset = None
+    # if use_aug:
+        
+    #     augmented_dataset = CalperumDataset(
+    #         image_folders=[config_param.AUG_IMAGE_DIR],
+    #         mask_folders=[config_param.AUG_MASK_DIR],
+    #         transform=alb_train_transform
+    #     )
+    #     print(f"Loaded augmented dataset with {len(augmented_dataset)} samples")
         
     coordinates = []
     
@@ -333,8 +344,8 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
         if len(train_val_indices) == 0 or len(test_indices) == 0:
             log_message(f"Skipping block {block} due to insufficient data.", log_file)
             continue
-        train_indices, val_indices = train_test_split(train_val_indices, test_size=0.2, random_state=42)
-        # train_indices, val_indices = train_test_split(train_val_indices, test_size=0.333, random_state=42)
+        # train_indices, val_indices = train_test_split(train_val_indices, test_size=0.2, random_state=42) #original split
+        train_indices, val_indices = train_test_split(train_val_indices, test_size=0.333, random_state=42) #for augmentation
         
         # Create datasets for this block
         train_original = Subset(original_dataset, train_indices)
@@ -346,14 +357,34 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
         print(f"  Validation dataset: {len(val_dataset)} samples")
         print(f"  Test dataset: {len(test_dataset)} samples")
     
-        
-        # Create combined dataset if using augmentation
-        if use_aug and augmented_dataset is not None:
-            train_dataset = ConcatDataset([train_original, augmented_dataset])
-            print(f"Combined training dataset: {len(train_original)} original + {len(augmented_dataset)} augmented = {len(train_dataset)} total")
+        train_dataset = train_original  # Default: no augmentation
+        # Apply augmentation only to training subset for this block
+        block_augmented_dataset = None
+        if use_aug:
+            # Directory paths for this block's augmentations
+            aug_img_dir = f'/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/block{block}/predictor_5b'
+            aug_mask_dir = f'/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/aug/block{block}/mask_fvc'
+            
+            # Check if block-specific augmentations already exist
+            if os.path.exists(aug_img_dir) and os.path.exists(aug_mask_dir) and len(os.listdir(aug_img_dir)) > 0:
+                print(f"  ✓ Using existing augmentations for Block {block}")
+            else:
+                print(f"  ⚙ Generating new augmentations for Block {block}...")
+                # Generate augmentations for this block's training data
+                generate_filtered_augmentations_from_train_only(train_indices, block)
+                
+            block_augmented_dataset = CalperumDataset(
+                image_folders=[aug_img_dir],
+                mask_folders=[aug_mask_dir],
+                transform=alb_train_transform
+            )
+            
+            # Combine original + augmented training set 
+            train_dataset = ConcatDataset([train_original, block_augmented_dataset])
+            print(f"Combined training dataset: {len(train_original)} original + {len(block_augmented_dataset)} augmented = {len(train_dataset)} total")
         else:
             train_dataset = train_original
-            print(f"  Training dataset: {len(train_dataset)} samples")
+            print(f"Training dataset: {len(train_dataset)} samples")
         
         # Create loaders with the combined dataset
         train_loader = DataLoader(

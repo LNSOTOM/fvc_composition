@@ -74,15 +74,16 @@ class CalperumDataset(Dataset):
             else:
                 raise ValueError(f"Expected mask shape [H, W], got {mask.shape}")
 
-        # float for NaN-compatible transforms
-        # image_tensor = convertImg_to_tensor(image, dtype=torch.float32)
-        # mask_tensor = convertMask_to_tensor(mask, dtype=torch.long)      
-        # mask_tensor = convertMask_to_tensor(mask, dtype=torch.float32) 
-      
-        
-        image_tensor = torch.from_numpy(image).float()
-        mask_tensor = torch.from_numpy(mask).float()  # 
-        # mask_tensor = torch.from_numpy(mask).long()
+        # Check if inputs are already tensors
+        if torch.is_tensor(image):
+            image_tensor = image.float()
+        else:
+            image_tensor = torch.from_numpy(image).float()
+            
+        if torch.is_tensor(mask):
+            mask_tensor = mask.float()
+        else:
+            mask_tensor = torch.from_numpy(mask).float()
         
         if self.transform is not None:
             image_tensor, mask_tensor = self.transform(image_tensor, mask_tensor)
@@ -96,9 +97,9 @@ class CalperumDataset(Dataset):
         # Clean up references to help with memory
         image = None
         mask = None
-        # Explicit memory cleanup
-        del image, mask
-        torch.cuda.empty_cache()
+        # # Explicit memory cleanup
+        # del image, mask
+        # torch.cuda.empty_cache()
         
         return image_tensor, mask_tensor
 

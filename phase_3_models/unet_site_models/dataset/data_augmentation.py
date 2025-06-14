@@ -45,8 +45,8 @@ def save_augmented_pair(orig_img_path, orig_mask_path, aug_image_np, aug_mask_np
     if min_val < 0:
         print(f"❌ WARNING: Mask still has values < 0 after conversion: min={min_val}")
     
-    print(f"Saving augmented image {aug_idx}: shape={aug_image_np.shape}, min={aug_image_np.min()}, max={aug_image_np.max()}, mean={aug_image_np.mean():.4f}")
-    print(f"Saving augmented mask {aug_idx}: shape={aug_mask_np.shape}, min={min_val}, unique values={np.unique(aug_mask_np[~np.isnan(aug_mask_np)])}")
+    # print(f"Saving augmented image {aug_idx}: shape={aug_image_np.shape}, min={aug_image_np.min()}, max={aug_image_np.max()}, mean={aug_image_np.mean():.4f}")
+    # print(f"Saving augmented mask {aug_idx}: shape={aug_mask_np.shape}, min={min_val}, unique values={np.unique(aug_mask_np[~np.isnan(aug_mask_np)])}")
     
     # Create filenames
     img_basename = os.path.basename(orig_img_path)
