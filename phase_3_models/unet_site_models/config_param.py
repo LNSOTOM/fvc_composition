@@ -109,10 +109,10 @@ os.makedirs(AUG_MASK_DIR, exist_ok=True)
 # CHECKPOINT_DIR = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense'
 CHECKPOINT_DIR = '/home/laura/dense_aug'
 INDICES_SAVE_PATHS = [
-    '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/subsampled_indices.json'
+    '/home/laura/dense_aug/subsampled_indices.json'
 ]
 COMBINED_INDICES_SAVE_PATHS = [
-    '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense/combined_indices.json'
+    '/home/laura/dense_aug/combined_indices.json'
 ]
 
 # Initialize a set to track all unique classes found across masks
