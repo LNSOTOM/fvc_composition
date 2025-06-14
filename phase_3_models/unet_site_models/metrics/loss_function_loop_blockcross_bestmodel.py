@@ -141,6 +141,7 @@ def run_training_loop(model, train_loader, val_loader, optimizer, criterion, max
         # Optional: save model every epoch - Save model checkpoint after each epoch
         epoch_model_path = os.path.join(output_dir, f'block_{block_idx + 1}_epoch_{epoch + 1}.pth')
         torch.save(model.state_dict(), epoch_model_path)
+        # torch.save(model.state_dict(), epoch_model_path, _use_new_zipfile_serialization=False)
         print(f"Model saved at {epoch_model_path}")
 
         # Update the best model if current validation loss is the lowest
