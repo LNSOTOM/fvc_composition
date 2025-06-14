@@ -1,15 +1,14 @@
 import os
 import torch
 from torch.utils.data import Dataset
-from torchvision.utils import save_image
 import numpy as np
-import rasterio
 
 from dataset.image_preprocessing import load_raw_multispectral_image, convertImg_to_tensor
-from dataset.mask_preprocessing import prep_mask, convertMask_to_tensor
+from dataset.mask_preprocessing import prep_mask, convertMask_to_tensor, prep_mask_preserve_nan
 
 class CalperumDataset(Dataset):
-    def __init__(self, image_folders=None, mask_folders=None, transform=None, in_memory_data=None, save_augmented=False, augmented_save_dir=None):
+    def __init__(self, image_folders=None, mask_folders=None, transform=None, in_memory_data=None,
+                 save_augmented=False, augmented_save_dir=None):
         self.save_augmented = save_augmented
         self.augmented_save_dir = augmented_save_dir
         self.transform = transform
@@ -29,11 +28,9 @@ class CalperumDataset(Dataset):
             raise TypeError("image_folders and mask_folders should be lists of strings or single string paths.")
 
         self.image_filenames = []
-
         for image_folder, mask_folder in zip(image_folders, mask_folders):
             image_files = sorted([f for f in os.listdir(image_folder) if f.endswith('.tif')])
             mask_files = sorted([f for f in os.listdir(mask_folder) if f.endswith('.tif')])
-
             mask_dict = {os.path.basename(f): f for f in mask_files}
 
             for image_file in image_files:
@@ -63,44 +60,38 @@ class CalperumDataset(Dataset):
 
             img_filename, mask_filename = self.image_filenames[idx]
             image, _ = load_raw_multispectral_image(img_filename)
-            mask, _ = prep_mask(mask_filename)
+
+            is_augmented = 'aug' in os.path.basename(img_filename).lower()
+            if is_augmented:
+                mask, _ = prep_mask_preserve_nan(mask_filename)
+                if isinstance(mask, np.ndarray) and np.issubdtype(mask.dtype, np.floating):
+                    mask = np.where(np.isnan(mask), -1, mask)
+            else:
+                mask, _ = prep_mask(mask_filename)
 
         if len(image.shape) != 3:
             raise ValueError(f"Expected image shape [C, H, W], got {image.shape}")
-
         if len(mask.shape) != 2:
             if len(mask.shape) == 3:
                 mask = mask[0]
             else:
                 raise ValueError(f"Expected mask shape [H, W], got {mask.shape}")
 
-        # Check if inputs are already tensors
-        if torch.is_tensor(image):
-            image_tensor = image.float()
-        else:
-            image_tensor = torch.from_numpy(image).float()
-            
-        if torch.is_tensor(mask):
-            mask_tensor = mask.float()
-        else:
-            mask_tensor = torch.from_numpy(mask).float()
-        
+        image_tensor = image if isinstance(image, torch.Tensor) else torch.from_numpy(image).float()
+        if isinstance(mask, np.ndarray) and np.issubdtype(mask.dtype, np.floating):
+            mask = np.where(np.isnan(mask), -1, mask)
+        mask_tensor = mask if isinstance(mask, torch.Tensor) else torch.from_numpy(mask).float()
+
         if self.transform is not None:
             image_tensor, mask_tensor = self.transform(image_tensor, mask_tensor)
 
-        mask_tensor = mask_tensor.long()  # safe to convert after transform
+        image_tensor = torch.nan_to_num(image_tensor, nan=0.0)
+        mask_tensor = torch.nan_to_num(mask_tensor, nan=-1)
 
-        # Final print
-        # print(f"🖼️ image_tensor shape: {image_tensor.shape}, dtype: {image_tensor.dtype}, min: {torch.nan_to_num(image_tensor).min().item():.2f}, max: {torch.nan_to_num(image_tensor).max().item():.2f}")
-        # print(f"🗺️ mask_tensor shape: {mask_tensor.shape}, dtype: {mask_tensor.dtype}, unique values: {torch.unique(mask_tensor)}")
-        
-        # Clean up references to help with memory
-        image = None
-        mask = None
-        # # Explicit memory cleanup
-        # del image, mask
-        # torch.cuda.empty_cache()
-        
+        mask_tensor = mask_tensor.long()
+
+        # Clean up
+        del image, mask
         return image_tensor, mask_tensor
 
     def __len__(self):
@@ -130,15 +121,24 @@ class CalperumDataset(Dataset):
             for img_file, mask_file in zip(image_files, mask_files):
                 img_path = os.path.join(img_dir, img_file)
                 mask_path = os.path.join(mask_dir, mask_file)
+                is_augmented = 'aug' in os.path.basename(img_file).lower()
 
                 image, _ = load_raw_multispectral_image(img_path)
-                mask, _ = prep_mask(mask_path)
+                if is_augmented:
+                    mask, _ = prep_mask_preserve_nan(mask_path)
+                    if isinstance(mask, np.ndarray) and np.issubdtype(mask.dtype, np.floating):
+                        mask = np.where(np.isnan(mask), -1, mask)
+                else:
+                    mask, _ = prep_mask(mask_path)
 
-                image_tensor = convertImg_to_tensor(image, dtype=torch.float32)
-                mask_tensor = convertMask_to_tensor(mask, dtype=torch.long)
+                image_tensor = image if isinstance(image, torch.Tensor) else torch.from_numpy(image).float()
+                mask_tensor = mask if isinstance(mask, torch.Tensor) else torch.from_numpy(mask).float()
 
                 if transform is not None:
                     image_tensor, mask_tensor = transform((image_tensor, mask_tensor))
+
+                image_tensor = torch.nan_to_num(image_tensor, nan=0.0)
+                mask_tensor = torch.nan_to_num(mask_tensor, nan=-1).long()
 
                 images.append(image_tensor)
                 masks.append(mask_tensor)
