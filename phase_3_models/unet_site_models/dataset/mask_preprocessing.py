@@ -52,17 +52,18 @@ def prep_mask(mask_name, replace_value=-1):
         return None, None
 
     # Replace NaNs and nodata values with the specified replace_value (e.g., -1)
+    # Handle all possible variations of no-data indicators
     if nodata_val is not None and not np.isnan(nodata_val):
         mask = np.where((mask == nodata_val) | np.isnan(mask), replace_value, mask)
     else:
         mask = np.where(np.isnan(mask), replace_value, mask)
-
+        
     return mask, profile
-
 
 def prep_mask_preserve_nan(mask_name):
     """
     Read the mask and return it as a numpy array along with its profile, preserving NaN values.
+    This is used for augmentation where you want to preserve NoData for writing back to files.
     
     Args:
         mask_name (str): The file path to the mask.
@@ -73,24 +74,32 @@ def prep_mask_preserve_nan(mask_name):
     """
     try:
         with rasterio.open(mask_name) as src:
-            mask = src.read(1)  # Reading the first band
-            profile = src.profile  # Get the profile containing metadata like CRS and affine transform
+            mask = src.read(1).astype(np.float32)  # Ensure float32 to support NaNs
+            profile = src.profile  
+            nodata_val = src.nodata  # Get the no-data value
+            
+            # If no-data value exists but isn't NaN, convert it to NaN for consistency
+            if nodata_val is not None and not np.isnan(nodata_val):
+                mask = np.where(mask == nodata_val, np.nan, mask)
     except Exception as e:
         raise IOError(f"Error reading mask file {mask_name}: {e}")
 
-    # Directly return the mask without modifying NaN values
     return mask, profile
 
-
-# def convertMask_to_tensor(data, dtype=torch.long):
-#     """ Convert numpy array to a PyTorch tensor of specified type. """
-#     return torch.from_numpy(data).type(dtype)
-
 def convertMask_to_tensor(data, dtype=torch.long):
-    """ Convert numpy array to a PyTorch tensor of specified type. """
+    """ 
+    Convert mask to tensor ensuring no NaN values present (replacing them with -1).
+    This function ensures that all masks passed to the model have consistent handling.
+    """
     if isinstance(data, np.ndarray):
+        # Replace NaNs with -1 before tensor conversion
+        if np.issubdtype(data.dtype, np.floating) or data.dtype == np.object_:
+            data = np.where(np.isnan(data), -1, data)
         return torch.from_numpy(data).type(dtype)
     elif isinstance(data, torch.Tensor):
+        # Handle NaNs in tensor
+        if data.dtype.is_floating_point:
+            data = torch.where(torch.isnan(data), torch.tensor(-1, dtype=data.dtype), data)
         return data.type(dtype)
     else:
         raise TypeError(f"Expected np.ndarray or torch.Tensor, but got {type(data)}")
