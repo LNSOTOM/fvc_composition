@@ -139,73 +139,73 @@ def get_val_augmentation():
         # Only normalization or resizing if needed
     ])
 
-class RandomAffineTransform:
-    def __init__(self, degrees=20, translate=(0.15, 0.15), shear=11.5, p=0.8):
-        self.degrees = degrees
-        self.translate = translate
-        self.shear = shear
-        self.p = p
+# class RandomAffineTransform:
+#     def __init__(self, degrees=20, translate=(0.15, 0.15), shear=11.5, p=0.8):
+#         self.degrees = degrees
+#         self.translate = translate
+#         self.shear = shear
+#         self.p = p
 
-    def __call__(self, sample):
-        image, mask = sample
-        if random.random() < self.p:
-            print("Applied Affine Transform")  # Debugging message
-            angle = random.choice(range(-self.degrees, self.degrees + 1, 20))
-            translate_pix = [int(t * s) for t, s in zip(self.translate, image.shape[1:])]
-            shear_val = random.uniform(-self.shear, self.shear)
+#     def __call__(self, sample):
+#         image, mask = sample
+#         if random.random() < self.p:
+#             print("Applied Affine Transform")  # Debugging message
+#             angle = random.choice(range(-self.degrees, self.degrees + 1, 20))
+#             translate_pix = [int(t * s) for t, s in zip(self.translate, image.shape[1:])]
+#             shear_val = random.uniform(-self.shear, self.shear)
             
-            # Apply affine transform to image
-            image = F.affine(image, angle=angle, translate=translate_pix, scale=1.0, shear=[shear_val], interpolation=InterpolationMode.BILINEAR)
+#             # Apply affine transform to image
+#             image = F.affine(image, angle=angle, translate=translate_pix, scale=1.0, shear=[shear_val], interpolation=InterpolationMode.BILINEAR)
             
-            # Add channel dimension to mask, apply transform, then remove channel dimension
-            mask = mask.unsqueeze(0)  # Add channel dimension [H,W] -> [1,H,W]
-            mask = F.affine(mask, angle=angle, translate=translate_pix, scale=1.0, shear=[shear_val], interpolation=InterpolationMode.NEAREST)
-            mask = mask.squeeze(0)  # Remove channel dimension [1,H,W] -> [H,W]
+#             # Add channel dimension to mask, apply transform, then remove channel dimension
+#             mask = mask.unsqueeze(0)  # Add channel dimension [H,W] -> [1,H,W]
+#             mask = F.affine(mask, angle=angle, translate=translate_pix, scale=1.0, shear=[shear_val], interpolation=InterpolationMode.NEAREST)
+#             mask = mask.squeeze(0)  # Remove channel dimension [1,H,W] -> [H,W]
             
-        return image, mask
+#         return image, mask
 
-class RandomBrightnessContrast:
-    def __init__(self, brightness_range=(0.9, 1.1), contrast_range=(0.8, 1.2), p=0.7):
-        self.brightness_range = brightness_range
-        self.contrast_range = contrast_range
-        self.p = p
+# class RandomBrightnessContrast:
+#     def __init__(self, brightness_range=(0.9, 1.1), contrast_range=(0.8, 1.2), p=0.7):
+#         self.brightness_range = brightness_range
+#         self.contrast_range = contrast_range
+#         self.p = p
 
-    def __call__(self, sample):
-        image, mask = sample
-        if random.random() < self.p:
-            brightness_factor = random.uniform(*self.brightness_range)
-            contrast_factor = random.uniform(*self.contrast_range)
-            for c in range(image.shape[0]):
-                channel = image[c]
-                channel = channel * brightness_factor
-                mean = channel.mean()
-                channel = (channel - mean) * contrast_factor + mean
-                image[c] = torch.clamp(channel, 0, 1)
-        return image, mask
+#     def __call__(self, sample):
+#         image, mask = sample
+#         if random.random() < self.p:
+#             brightness_factor = random.uniform(*self.brightness_range)
+#             contrast_factor = random.uniform(*self.contrast_range)
+#             for c in range(image.shape[0]):
+#                 channel = image[c]
+#                 channel = channel * brightness_factor
+#                 mean = channel.mean()
+#                 channel = (channel - mean) * contrast_factor + mean
+#                 image[c] = torch.clamp(channel, 0, 1)
+#         return image, mask
 
-class RandomVerticalFlip:
-    def __init__(self, p=0.5):
-        self.p = p
+# class RandomVerticalFlip:
+#     def __init__(self, p=0.5):
+#         self.p = p
 
-    def __call__(self, sample):
-        image, mask = sample
-        if random.random() < self.p:
-            print("Applied Vertical Flip")  # Debugging message
-            image = F.vflip(image)
-            mask = F.vflip(mask)
-        return image, mask
+#     def __call__(self, sample):
+#         image, mask = sample
+#         if random.random() < self.p:
+#             print("Applied Vertical Flip")  # Debugging message
+#             image = F.vflip(image)
+#             mask = F.vflip(mask)
+#         return image, mask
 
-class RandomHorizontalFlip:
-    def __init__(self, p=0.5):
-        self.p = p
+# class RandomHorizontalFlip:
+#     def __init__(self, p=0.5):
+#         self.p = p
 
-    def __call__(self, sample):
-        image, mask = sample
-        if random.random() < self.p:
-            print("Applied Horizontal Flip")  # Debugging message
-            image = F.hflip(image)
-            mask = F.hflip(mask)
-        return image, mask
+#     def __call__(self, sample):
+#         image, mask = sample
+#         if random.random() < self.p:
+#             print("Applied Horizontal Flip")  # Debugging message
+#             image = F.hflip(image)
+#             mask = F.hflip(mask)
+#         return image, mask
 
 # def get_transform(train: bool = False, enable_augmentation: bool = False):
 #     """
