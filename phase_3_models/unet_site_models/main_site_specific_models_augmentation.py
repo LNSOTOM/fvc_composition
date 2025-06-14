@@ -31,6 +31,7 @@ from torchmetrics.classification import ConfusionMatrix
 import pandas as pd
 from collections import Counter
 
+
 def print_gpu_memory_usage(stage=""):
     allocated = torch.cuda.memory_allocated() / (1024 ** 3)
     cached = torch.cuda.memory_reserved() / (1024 ** 3)
