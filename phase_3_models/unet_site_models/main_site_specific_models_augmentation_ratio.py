@@ -36,12 +36,12 @@ from dataset.data_augmentation import augment_minority_classes_pixel_level, appl
 from balance_mask_water import integrate_water_distribution
 import random
 
+
 def print_gpu_memory_usage(stage=""):
     allocated = torch.cuda.memory_allocated() / (1024 ** 3)
     cached = torch.cuda.memory_reserved() / (1024 ** 3)
     print(f"{stage} - Allocated memory: {allocated:.2f} GB, Cached memory: {cached:.2f}")
-    
-    
+       
 def log_message(message, log_file):
     log_directory = os.path.dirname(log_file)
     if not os.path.exists(log_directory):
@@ -50,7 +50,6 @@ def log_message(message, log_file):
     print(message)
     with open(log_file, 'a') as f:
         f.write(message + '\n')
-
 
 def setup_logging_and_checkpoints():
     ## logs outputs site-specific-models:
