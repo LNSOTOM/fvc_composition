@@ -394,7 +394,7 @@ def block_cross_validation(dataset, combined_data, num_blocks, kmeans_centroids=
             num_workers=config_param.NUM_WORKERS,
             pin_memory=False,  # Enable pinned memory for faster GPU transf    
             # persistent_workers=True if config_param.NUM_WORKERS > 0 else False  
-            persistent_workers=False     
+            persistent_workers=True     
         )
         val_loader = DataLoader(
             val_dataset, 
