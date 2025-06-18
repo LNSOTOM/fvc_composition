@@ -1,4 +1,5 @@
 
+
 #%%
 #### Uncertainty map with Monte Carlo dropout
 #Imports
@@ -139,13 +140,18 @@ def run_large_area_inference(model, img_path, save_dir, tile_size=256, device='c
 #%%
 def main():
 
-    img_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/predictors/tiles_3072/stacked/tiles_multispectral.33.tif' #low  (30, '33')'
-    model_ckpt = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_site_models/outputs_ecosystems/low/original/block_2_epoch_96.pth'
-    save_dir = 'wombat_predictions_stitch_low_1024_120ep_raw_bestmodel_96'  # Directory to save the predictions low
+    # img_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/predictors/tiles_3072/stacked/tiles_multispectral.33.tif' #low  (30, '33')'
+    # model_ckpt = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_site_models/outputs_ecosystems/low/original/block_2_epoch_96.pth'
+    # model_ckpt = 'wombat_predictions_stitch_low_1024_120ep_raw_bestmodel_96'  # Directory to save the predictions low
     
-    # img_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/inputs/predictors/tiles_3072/stacked/tiles_multispectral.101.tif'
-    # save_dir = 'wombat_predictions_stitch_dense_1024_120ep_raw_bestmodel_105_tile101'
-    # # model_ckpt = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_site_models/outputs_ecosystems/dense/original/block_3_epoch_105.pth'
+    img_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/stacked/tiles_multispectral.22.tif'
+    save_dir = 'wombat_predictions_stitch_medium_1024_120ep_raw_bestmodel_55_tile22'
+    model_ckpt = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth'
+
+    
+    # img_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/inputs/predictors/tiles_3072/stacked/tiles_multispectral.118.tif'
+    # save_dir = 'wombat_predictions_stitch_dense_1024_120ep_raw_bestmodel_42_tile118'
+    # model_ckpt = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense_original_with_water/block_2_epoch_42.pth'
 
     model = UNetModule().to(config_param.DEVICE)
     model.load_state_dict(torch.load(model_ckpt, map_location=config_param.DEVICE))
@@ -187,13 +193,26 @@ import os
 import matplotlib.colors as mcolors
 import seaborn as sns
 
+from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.cm as cm
+
 # === Class label definitions ===
 class_labels = {'BE': 0, 'NPV': 1, 'PV': 2, 'SI': 3, 'WI': 4}
 inv_class_labels = {v: k for k, v in class_labels.items()}
 
 # === File paths ===
-unc_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_site_models/wombat_predictions_stitch_low_1024_120ep_raw_bestmodel_96/stitched_uncertainty.tif'
-gt_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/masks/tiles_3072/raw/fvc_class/annotation_raster/mask_fvc_3072.33.tif'
+# #low
+# unc_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_site_models/wombat_predictions_stitch_low_1024_120ep_raw_bestmodel_96/stitched_uncertainty.tif'
+# gt_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/masks/tiles_3072/raw/fvc_class/annotation_raster/mask_fvc_3072.33.tif'
+
+# #medium
+# unc_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_site_models/wombat_predictions_stitch_medium_1024_120ep_raw_bestmodel_55_tile22/stitched_uncertainty.tif'
+# gt_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/raw/fvc_class/annotation_raster/mask_fvc_3072.22.tif'
+
+#dense
+unc_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_site_models/wombat_predictions_stitch_dense_1024_120ep_raw_bestmodel_42_tile118/stitched_uncertainty.tif'
+gt_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/inputs/masks/tiles_3072/raw/fvc_class/annotation_raster/mask_fvc_3072.118.tif'
+
 
 # === Load data ===
 with rasterio.open(unc_path) as src:
@@ -240,22 +259,32 @@ print(f"✅ Std. dev. uncertainty GeoTIFF saved: {std_tif}")
 # === Plot raw model uncertainty map ===
 plt.figure(figsize=(10, 8))
 
-# Choose a good sequential colormap for uncertainty
-cmap_raw = plt.cm.coolwarm
-# cmap_raw = plt.cm.inferno  # Or 'magma', 'viridis'
+# Choose a good sequential colormap
+cmap_raw = plt.cm.coolwarm  # Alternatives: 'inferno', 'magma', 'viridis'
+# cmap_raw = plt.cm.coolwarm_r  # ✅ Reverse colormap
 
 # Clip to reduce outlier influence
 vmin_raw = np.nanpercentile(uncertainty_map, 1)
 vmax_raw = np.nanpercentile(uncertainty_map, 99)
+vmid_raw = (vmin_raw + vmax_raw) / 2  # ✅ Midpoint
 
+# Plot the uncertainty map
 im = plt.imshow(uncertainty_map, cmap=cmap_raw, vmin=vmin_raw, vmax=vmax_raw)
-plt.colorbar(im, label='Pixel-wise Model Uncertainty (MC Dropout Std. Dev)')
-plt.title("Raw Epistemic Uncertainty Map (Model-Level)")
 plt.axis('off')
 plt.tight_layout()
 
-# Save
-raw_unc_png = 'raw_model_uncertainty_map.png'
+# Add colorbar with min, mid, max
+cbar = plt.colorbar(im)
+cbar.ax.tick_params(labelsize=20)
+cbar.set_ticks([vmin_raw, vmid_raw, vmax_raw])
+cbar.set_ticklabels([
+    f'{vmin_raw:.3f}', 
+    f'{vmid_raw:.3f}', 
+    f'{vmax_raw:.3f}'
+])
+
+# Save the figure
+raw_unc_png = 'raw_model_uncertainty_map_dense.png'
 plt.savefig(raw_unc_png, dpi=300)
 plt.show()
 
@@ -281,33 +310,71 @@ print(f"  Number of valid pixels:                      {len(unc_values)}")
 # === Plot styled mean map ===
 plt.figure(figsize=(10, 8))
 cmap_mean = plt.cm.coolwarm
+# cmap_mean = plt.cm.coolwarm_r  # ✅ Reverse colormap
 vmin_mean = np.nanpercentile(mean_unc_map, 1)
 vmax_mean = np.nanpercentile(mean_unc_map, 99)
+vmed_mean = (vmin_mean + vmax_mean) / 2  # ✅ Midpoint between min and max
+
 im = plt.imshow(mean_unc_map, cmap=cmap_mean, vmin=vmin_mean, vmax=vmax_mean)
-plt.colorbar(im, label='Mean Uncertainty (per class)')
-plt.title("Per-Class Mean Uncertainty Map")
+# plt.colorbar(im, label='Mean Uncertainty (per class)')
+# plt.title("Per-Class Mean Uncertainty Map")
+cbar = plt.colorbar(im)
+cbar.ax.tick_params(labelsize=20)  # ✅ Set fontsize for colorbar tick labels
+
+# ✅ Show only min and max values
+cbar.set_ticks([vmin_mean, vmax_mean])
+cbar.set_ticklabels([f'{vmin_mean:.3f}', f'{vmax_mean:.3f}'])  # Format as needed
+# ✅ Set ticks: min, mid, max
+cbar.set_ticks([vmin_mean, vmed_mean, vmax_mean])
+cbar.set_ticklabels([
+    f'{vmin_mean:.3f}',
+    f'{vmed_mean:.3f}',
+    f'{vmax_mean:.3f}'
+])
 plt.axis('off')
 plt.tight_layout()
-mean_png = 'mean_uncertainty_per_class_map_styled.png'
+mean_png = 'mean_uncertainty_per_class_map_dense.png'
 plt.savefig(mean_png, dpi=300)
 plt.show()
 print(f"✅ Mean map PNG saved: {mean_png}")
 
 # === Plot styled std dev map ===
 plt.figure(figsize=(10, 8))
-cmap_std = plt.cm.coolwarm
-# cmap_std = plt.cm.BuPu  # Or use 'Blues'
-vmin_std = np.nanpercentile(std_unc_map, 1)
+
+# ✅ Start from white and blend into ColorBrewer's Blues
+blues = cm.get_cmap('Blues', 256)
+white_to_blue = LinearSegmentedColormap.from_list('white_to_blue', 
+    [(0, 'white')] + [(i/255, blues(i)) for i in range(1, 256)], N=256)
+
+# ✅ Set range
+vmin_std = 0
 vmax_std = np.nanpercentile(std_unc_map, 99)
-im = plt.imshow(std_unc_map, cmap=cmap_std, vmin=vmin_std, vmax=vmax_std)
-plt.colorbar(im, label='Uncertainty Std. Dev (per class)')
-plt.title("Per-Class Standard Deviation of Uncertainty")
+vmid_std = (vmin_std + vmax_std) / 2
+
+# Plot image
+im = plt.imshow(std_unc_map, cmap=white_to_blue, vmin=vmin_std, vmax=vmax_std)
+
+# Add colorbar
+cbar = plt.colorbar(im)
+cbar.ax.tick_params(labelsize=20)
+
+# ✅ Show only min, mid, max ticks
+cbar.set_ticks([vmin_std, vmid_std, vmax_std])
+cbar.set_ticklabels([
+    f'{vmin_std:.3f}', 
+    f'{vmid_std:.3f}', 
+    f'{vmax_std:.3f}'
+])
+
 plt.axis('off')
 plt.tight_layout()
-std_png = 'std_uncertainty_per_class_map_styled.png'
+
+std_png = 'std_uncertainty_per_class_map_dense.png'
 plt.savefig(std_png, dpi=300)
 plt.show()
+
 print(f"✅ Std. dev. map PNG saved: {std_png}")
+
 
 
 # plot distribution
@@ -317,7 +384,9 @@ plt.xlabel("Uncertainty (MC Dropout Std. Dev)")
 plt.ylabel("Pixel Count")
 plt.title("Distribution of Model Uncertainty")
 plt.tight_layout()
-plt.savefig("uncertainty_distribution_histogram.png", dpi=300)
+
+# plt.savefig("uncertainty_distribution_histogram_medium.png", dpi=300)
+plt.savefig("uncertainty_distribution_histogram_dense.png", dpi=300)
 plt.show()
 
 
