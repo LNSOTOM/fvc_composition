@@ -565,9 +565,9 @@ def plot_raster(raster_path, rgb_path1, rgb_path2, save_path):
     rgb_image2 = imread(rgb_path2)
     
     # Define a discrete color palette for the raster classes
+    class_colors = ['#dae22f', '#6332ea', '#e346ee']  # Colors for Bare earth, NPV, PV, SI classes (low)
     # class_colors = ['#dae22f', '#6332ea', '#e346ee', '#6da4d4']  # Colors for Bare earth, NPV, PV, SI classes (medium)
-    # class_colors = ['#dae22f', '#6332ea', '#e346ee']  # Colors for Bare earth, NPV, PV, SI classes (low)
-    class_colors = ['#dae22f', '#6332ea', '#e346ee', '#6da4d4', '#68e8d3']  # Colors for Bare earth, NPV, PV, WI classes (dense)
+    # class_colors = ['#dae22f', '#6332ea', '#e346ee', '#6da4d4', '#68e8d3']  # Colors for Bare earth, NPV, PV, WI classes (dense)
     cmap = ListedColormap(class_colors)
     
     # Plotting
@@ -590,13 +590,13 @@ def plot_raster(raster_path, rgb_path1, rgb_path2, save_path):
     
     # Create a color bar to match the image height
     colorbar = fig.colorbar(im, ax=axes[2], orientation='vertical', fraction=0.046, pad=0.04)
-    ##medium
-    colorbar.set_ticks([0, 1, 2, 3])  # Set ticks to match the number of classes #medium
-    colorbar.ax.set_yticklabels(['BE class', 'NPV class', 'PV class', 'SI class'], fontsize=24)  # medium
     ##low
-    # colorbar.set_ticks([0, 1, 2])  # Set ticks to match the number of classes #low
-    # colorbar.ax.set_yticklabels(['BE class', 'NPV class', 'PV class'], fontsize=24)  # low
-    ##dense
+    colorbar.set_ticks([0, 1, 2])  # Set ticks to match the number of classes #low
+    colorbar.ax.set_yticklabels(['BE', 'NPV', 'PV'], fontsize=24)  # low
+    ##medium
+    # colorbar.set_ticks([0, 1, 2, 3])  # Set ticks to match the number of classes #medium
+    # colorbar.ax.set_yticklabels(['BE class', 'NPV class', 'PV class', 'SI class'], fontsize=24)  # medium
+    # ##dense
     # colorbar.set_ticks([0, 1, 2, 3])  # Set ticks to match the number of classes #dense
     # colorbar.ax.set_yticklabels(['BE class', 'NPV class', 'PV class', 'SI class', 'WI class'], fontsize=24)  #dense
     
@@ -625,17 +625,18 @@ def plot_raster(raster_path, rgb_path1, rgb_path2, save_path):
     plt.show()
     print(f"Image saved as {save_path}")
 
-##medium
-rgb_file_path1 = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/raw/tiles_rgb/tiles_rgb.22.tif'
-rgb_file_path2 = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/raw/composite_colour_raster_3b/composite_percentile_tiles_multispectral.22.tif'
-raster_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/raw/fvc_class/annotation_raster/mask_fvc_3072.22.tif'
-output_image_path = '/home/laura/Documents/code/ecosystem_composition/phase_2_reference_data/3_pv_npv_be_classes/fvc_mask_medium.png'
-
 ##low
-# rgb_file_path1 = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/predictors/tiles_3072/raw/tiles_rgb/tiles_rgb.33.tif'
-# rgb_file_path2 = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/predictors/tiles_3072/raw/composite_colour_raster_3b/composite_percentile_tiles_multispectral.33.tif'
-# raster_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/masks/tiles_3072/raw/fvc_class/annotation_raster/mask_fvc_3072.33.tif'
-# output_image_path = '/home/laura/Documents/code/ecosystem_composition/phase_2_reference_data/3_pv_npv_be_classes/fvc_mask_low.png'
+rgb_file_path1 = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/predictors/tiles_3072/raw/tiles_rgb/tiles_rgb.33.tif'
+rgb_file_path2 = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/predictors/tiles_3072/raw/composite_colour_raster_3b/composite_percentile_tiles_multispectral.33.tif'
+raster_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/masks/tiles_3072/raw/fvc_class/annotation_raster/mask_fvc_3072.33.tif'
+output_image_path = '/home/laura/Documents/code/ecosystem_composition/phase_2_reference_data/3_pv_npv_be_classes/fvc_mask_low.png'
+
+
+##medium
+# rgb_file_path1 = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/raw/tiles_rgb/tiles_rgb.22.tif'
+# rgb_file_path2 = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/raw/composite_colour_raster_3b/composite_percentile_tiles_multispectral.22.tif'
+# raster_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/raw/fvc_class/annotation_raster/mask_fvc_3072.22.tif'
+# output_image_path = '/home/laura/Documents/code/ecosystem_composition/phase_2_reference_data/3_pv_npv_be_classes/fvc_mask_medium.png'
 
 ##dense
 # rgb_file_path1 = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/inputs/predictors/tiles_3072/raw/tiles_rgb/tiles_rgb.118.tif'
@@ -643,8 +644,96 @@ output_image_path = '/home/laura/Documents/code/ecosystem_composition/phase_2_re
 # raster_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/inputs/masks/tiles_3072/raw/fvc_class/annotation_raster/mask_fvc_3072.118.tif'
 # output_image_path = '/home/laura/Documents/code/ecosystem_composition/phase_2_reference_data/3_pv_npv_be_classes/fvc_mask_dense.png'
 
-
 plot_raster(raster_file_path, rgb_file_path1, rgb_file_path2, output_image_path)
+
+
+#%%
+# one image
+import os
+import warnings
+import rasterio
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+from rasterio.errors import NotGeoreferencedWarning
+
+def plot_mask_only(raster_path, save_path, mode='low'):
+    """
+    Plots a single classification mask raster with a color legend.
+    - Values: 0 = BE, 1 = NPV, 2 = PV, [3 = SI (if mode=medium or dense)], NaN = white.
+    - mode: 'low', 'medium', or 'dense' to control number of classes and colorbar.
+    """
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=NotGeoreferencedWarning)
+        with rasterio.open(raster_path) as src:
+            data = src.read(1).astype(float)
+            nodata_value = src.nodata
+            if nodata_value is not None:
+                data[data == nodata_value] = np.nan
+
+    masked_data = np.ma.masked_invalid(data)
+
+    # === Color setup by mode ===
+    if mode == 'low':
+        class_colors = ['#dae22f', '#6332ea', '#e346ee']  # BE, NPV, PV
+        ticks = [0, 1, 2]
+        labels = ['BE', 'NPV', 'PV']
+        vmax = 2
+    elif mode == 'medium':
+        class_colors = ['#dae22f', '#6332ea', '#e346ee', '#6da4d4']  # + SI
+        ticks = [0, 1, 2, 3]
+        labels = ['BE', 'NPV', 'PV', 'SI']
+        vmax = 3
+    elif mode == 'dense':
+        class_colors = ['#dae22f', '#6332ea', '#e346ee', '#6da4d4', '#68e8d3']  # + SI, WI
+        ticks = [0, 1, 2, 3, 4]
+        labels = ['BE', 'NPV', 'PV', 'SI', 'WI']
+        vmax = 5
+    else:
+        raise ValueError("mode must be 'low', 'medium', or 'dense'")
+
+    cmap = ListedColormap(class_colors)
+    cmap.set_bad('white')
+
+    # === Plot ===
+    fig, ax = plt.subplots(figsize=(20, 10))
+
+    im = ax.imshow(masked_data, interpolation='nearest', cmap=cmap, vmin=0, vmax=vmax)
+    ax.axis('off')
+
+    cbar = fig.colorbar(im, ax=ax, orientation='vertical', fraction=0.046, pad=0.04)
+    cbar.set_ticks(ticks)
+    cbar.ax.set_yticklabels(labels, fontsize=24)
+    cbar.ax.yaxis.set_ticks_position('right')
+    cbar.ax.yaxis.set_label_position('right')
+
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    plt.show()
+    plt.close(fig)
+
+    print(f"Mask image saved as {save_path}")
+
+
+#low
+raster_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/masks/tiles_3072/raw/fvc_class/annotation_raster/mask_fvc_3072.33.tif'
+output_image_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_2_reference_data/step_2_fvc_classes_combined/imgs/fvc_mask_low_3072_33.png'
+
+#medium
+raster_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/raw/fvc_class/annotation_raster/mask_fvc_3072.22.tif'
+output_image_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_2_reference_data/step_2_fvc_classes_combined/imgs/fvc_mask_medium_3072_22.png'
+
+#dense
+raster_file_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/inputs/masks/tiles_3072/raw/fvc_class/annotation_raster/mask_fvc_3072.118.tif'
+output_image_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_2_reference_data/step_2_fvc_classes_combined/imgs/fvc_mask_dense_3072_118.png'
+
+
+
+plot_mask_only(raster_file_path, output_image_path, mode='low')
+plot_mask_only(raster_file_path, output_image_path, mode='medium')
+plot_mask_only(raster_file_path, output_image_path, mode='dense')
 
 
 # %%
@@ -680,8 +769,8 @@ def plot_raster(raster_path, save_path):
         # ax.set_title('BE Class Mask')
         ax.axis('off')  # Turn off axis numbers and ticks
         
-        # Create a color bar to match the image height
-        colorbar = fig.colorbar(im, ax=ax, orientation='vertical', fraction=0.046, pad=0.04)
+         # Create a color bar to match the image height
+        colorbar = fig.colorbar(im, ax=ax[0], orientation='vertical', fraction=0.046, pad=0.04)
         colorbar.set_ticks([vmin, vmax])
         # colorbar.set_ticks([0, 1])  # Adjust ticks to match your data
         colorbar.ax.set_yticklabels(['Absence of BE Class', 'Presence of BE Class'], fontsize=14)  # Customize tick labels
