@@ -15,8 +15,8 @@
 ```diff
 #rebuild environment with dependencies 
 install miniconda (not anaconda)
-conda install -c conda-forge mamba 
-mamba env create --file environment.yml
+install micromamba as a standalone CLI tool to manage Conda-compatible environments and packages
+micromamba create -f environment.yml
 ```
 
 ## Dataset available
