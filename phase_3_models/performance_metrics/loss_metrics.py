@@ -44,6 +44,7 @@ df.to_csv('average_training_sites.csv', index=False)
 
 print("Average training loss saved to 'average_training_sites.csv'")
 df
+
 # %%
 import re
 import numpy as np
@@ -84,8 +85,13 @@ def calculate_and_save_averages(training_losses, validation_losses, output_csv):
     print(f"Averages saved to {output_csv}")
 
 # File paths
-input_file = "loss_metrics_sites.txt"  # Replace with your text file path
-output_csv = "loss_averages_sites.csv"
+# For the original dataset
+input_file = "/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense_original_with_water/loss_metrics.txt"  # Replace with your text file path
+output_csv = "/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense_original_with_water/loss_metrics.csv"
+
+## aug
+# input_file = "/home/laura/dense_aug/loss_metrics.txt"  # Replace with your text file path
+# output_csv = "/home/laura/dense_aug/loss_metrics.csv"
 
 # Process the file and save results
 training_losses, validation_losses = extract_losses(input_file)
@@ -152,8 +158,17 @@ def calculate_and_save_averages(training_losses, validation_losses, output_csv):
     print(f"Averages saved to {output_csv}")
 
 # File paths
-input_file = "loss_metrics_sites.txt"  # Replace with your text file path
-output_csv = "loss_averages_sites.csv"
+#original
+# input_file = "/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense_original_with_water/loss_metrics.txt"  # Replace with your text file path
+# output_csv = "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/new/loss_averages_dense_original_with_water.csv"
+
+#without water
+input_file = "/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense_nowater/loss_metrics.txt"  # Replace with your text file path
+output_csv = "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/new/loss_averages_dense_nowater.csv"
+
+#without water + augmented
+# input_file = "/home/laura/dense_aug/loss_metrics.txt"  # Replace with your text file path
+# output_csv = "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/new/loss_averages_dense_aug.csv"
 
 # Process the file and save results
 try:
@@ -172,8 +187,17 @@ import os
 import matplotlib.ticker as mticker
 
 # Define the input CSV file and output directory
-csv_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_low.csv'  # Replace with the actual file path
-output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/'  # Replace with the actual output directory
+#original
+# csv_file = "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/new/loss_averages_dense_original_with_water.csv"  # Replace with your text file path
+# output_dir = "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/new"
+
+#without water
+csv_file = "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/new/loss_averages_dense_nowater.csv"  # Replace with your text file path
+output_dir = "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/new"
+
+##without water + aug
+# csv_file = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/new/loss_averages_dense_aug.csv'  # Replace with the actual file path
+# output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/new'  # Replace with the actual output directory
 
 # Load the data from the CSV file
 loss_data = pd.read_csv(csv_file)
@@ -225,8 +249,8 @@ import matplotlib.ticker as mticker
 datasets = {
     "Low": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_low.csv",
     "Medium": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_medium.csv",
-    "Dense": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_dense.csv",
-    "Sites": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_sites.csv"
+    "Dense": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/new/loss_averages_dense_nowater.csv",
+    # "Sites": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_sites.csv"
 }
 
 # Initialize variables to store global min and max values
@@ -247,7 +271,7 @@ y_min = global_min - buffer
 y_max = global_max + buffer
 
 # Plot each dataset independently
-output_dir = "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/plots"
+output_dir = "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/new/plots"
 os.makedirs(output_dir, exist_ok=True)  # Ensure the output directory exists
 
 for label, file_path in datasets.items():
@@ -287,7 +311,7 @@ import matplotlib.ticker as mticker
 datasets = {
     "Low": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_low.csv",
     "Medium": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_medium.csv",
-    "Dense": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_dense.csv",
+    "Dense": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/new/loss_averages_dense_nowater.csv",
     "Sites": "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/loss_averages_sites.csv"
 }
 
@@ -309,7 +333,7 @@ y_min = global_min - buffer
 y_max = global_max + buffer
 
 # Plot each dataset independently
-output_dir = "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/plots"
+output_dir = "/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/performance_metrics/new/plots"
 os.makedirs(output_dir, exist_ok=True)  # Ensure the output directory exists
 
 for label, file_path in datasets.items():
@@ -336,3 +360,5 @@ for label, file_path in datasets.items():
     plt.show()
 
     print(f"Plot saved for {label} Site at: {output_path}")
+
+# %%
