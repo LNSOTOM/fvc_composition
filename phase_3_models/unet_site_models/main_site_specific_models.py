@@ -29,14 +29,14 @@ from sklearn.cluster import KMeans
 import json
 from torchmetrics.classification import ConfusionMatrix
 import pandas as pd
+from collections import Counter
 
 
 def print_gpu_memory_usage(stage=""):
     allocated = torch.cuda.memory_allocated() / (1024 ** 3)
     cached = torch.cuda.memory_reserved() / (1024 ** 3)
     print(f"{stage} - Allocated memory: {allocated:.2f} GB, Cached memory: {cached:.2f}")
-    
-    
+     
 def log_message(message, log_file):
     log_directory = os.path.dirname(log_file)
     if not os.path.exists(log_directory):
@@ -46,13 +46,13 @@ def log_message(message, log_file):
     with open(log_file, 'a') as f:
         f.write(message + '\n')
 
-
 def setup_logging_and_checkpoints():
     ## logs outputs site-specific-models:
     # tb_logs_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low' #low
     # tb_logs_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
     # tb_logs_path = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense    
-    tb_logs_path = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense' #dense
+    # tb_logs_path = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense' #dense
+    tb_logs_path = '/home/laura/dense_aug' #dense_aug'
     os.makedirs(tb_logs_path, exist_ok=True)
     logger = TensorBoardLogger(save_dir=tb_logs_path, name="UNetModel_5b_v100")
     
@@ -66,7 +66,6 @@ def setup_logging_and_checkpoints():
     )
     return logger, checkpoint_callback
 
-
 def setup_model_and_optimizer():
     model = UNetModule().to(config_param.DEVICE)
     optimizer = config_param.OPTIMIZER(
@@ -78,11 +77,9 @@ def setup_model_and_optimizer():
     criterion = config_param.CRITERION
     return model, optimizer, criterion
 
-
 def save_model(model, model_checkpoint_path):
     torch.save(model.state_dict(), model_checkpoint_path)
     print(f"Model saved to {model_checkpoint_path}")
-
 
 def save_loss_metrics(train_losses, val_losses, output_dir):
     metrics_file_path = os.path.join(output_dir, 'loss_metrics.txt')
@@ -106,7 +103,6 @@ def save_loss_metrics(train_losses, val_losses, output_dir):
 
     print(f"Loss metrics saved at {metrics_file_path}")
 
-
 def save_average_loss_plot(train_losses, val_losses, max_epochs, output_dir):
     avg_train_loss_per_epoch = np.mean(train_losses, axis=0)
     avg_val_loss_per_epoch = np.mean(val_losses, axis=0)
@@ -121,7 +117,8 @@ def save_average_loss_plot(train_losses, val_losses, max_epochs, output_dir):
     plt.grid(True)
     plot_file = os.path.join(output_dir, 'average_training_validation_loss_plot_across_blocks.png')
     plt.savefig(plot_file)
-    plt.show()
+    # plt.show()
+    plt.close()
     print(f"Average loss plot across all blocks saved as {plot_file}")
 
 def save_final_model_metrics(metrics, block_idx, output_dir):
@@ -138,7 +135,6 @@ def save_final_model_metrics(metrics, block_idx, output_dir):
         f.write(f"Counts per class (%): {', '.join([f'{p:.2f}%' for p in metrics.get('counts_per_class_percentage', [])])}\n")
     print(f"Final model metrics for Block {block_idx + 1} saved at: {final_metrics_file_path}")
 
-
 def save_best_model_metrics(metrics, block_idx, output_dir):
     best_metrics_file_path = os.path.join(output_dir, f'best_model_metrics_block_{block_idx + 1}.txt')
     
@@ -154,7 +150,6 @@ def save_best_model_metrics(metrics, block_idx, output_dir):
         f.write(f"Counts per Class (%): {', '.join([f'{count:.2f}%' for count in metrics.get('counts_per_class_percentage', [])])}\n")
     
     print(f"Best model metrics for Block {block_idx + 1} saved at: {best_metrics_file_path}")
-
 
 def convert_ndarray_to_list(obj):
     """Recursively convert NumPy arrays and scalars in the object to lists or native Python types."""
@@ -180,7 +175,6 @@ def save_validation_metrics(metrics, block_idx, output_dir):
         json.dump(metrics, f, indent=4)
     print(f"Validation metrics for Block {block_idx + 1} saved to {val_metrics_path}")
 
-
 def save_best_validation_metrics(metrics, block_idx, output_dir):
     # Convert any NumPy arrays and scalars to native Python types
     metrics = convert_ndarray_to_list(metrics)
@@ -190,10 +184,82 @@ def save_best_validation_metrics(metrics, block_idx, output_dir):
         json.dump(metrics, f, indent=4)
     print(f"Best validation metrics for Block {block_idx + 1} saved to {best_val_metrics_path}")
 
+def check_water_presence():
+    class_counts = Counter()
+    total_pixels = 0
+    files_with_water = 0
+    total_files = 0
+    
+    print("Analyzing mask files for water presence...")
+    
+    for folder in config_param.SUBSAMPLE_MASK_DIR:
+        for f in os.listdir(folder):
+            if f.endswith('.tif'):
+                total_files += 1
+                mask_path = os.path.join(folder, f)
+                
+                try:
+                    # Load the mask
+                    mask_tuple = CalperumDataset.load_mask(mask_path)
+                    mask = mask_tuple[0] if isinstance(mask_tuple, tuple) else mask_tuple
+                    
+                    # Count classes
+                    valid_mask = mask[mask != -1]
+                    if valid_mask.size == 0:
+                        continue
+                        
+                    unique, counts = np.unique(valid_mask, return_counts=True)
+                    class_dict = dict(zip(unique, counts))
+                    
+                    # Update the counter
+                    class_counts.update(class_dict)
+                    total_pixels += valid_mask.size
+                    
+                    # Check if water (class 4) is present
+                    if 4 in class_dict:
+                        files_with_water += 1
+                    
+                except Exception as e:
+                    print(f"Error processing {f}: {e}")
+    
+    # Calculate percentages
+    class_percentages = {cls: (count / total_pixels) * 100 for cls, count in class_counts.items()}
+    
+    class_labels = {0: 'BE', 1: 'NPV', 2: 'PV', 3: 'SI', 4: 'WI'}
+    
+    print("\n=== Class Distribution ===")
+    print(f"Total valid pixels: {total_pixels}")
+    print(f"Files containing water (class 4): {files_with_water}/{total_files} ({files_with_water/total_files*100:.2f}%)")
+    
+    for cls in sorted(class_counts.keys()):
+        label = class_labels.get(cls, f"Unknown-{cls}")
+        count = class_counts[cls]
+        percentage = class_percentages[cls]
+        print(f"Class {cls} ({label}): {count:,} pixels ({percentage:.2f}%)")
+    
+    if 4 not in class_counts:
+        print("\n⚠️ WATER CLASS (WI, class 4) IS NOT PRESENT IN THIS DATASET")
+        print("Water exclusion is mandatory since this class doesn't exist in your data.")
+    else:
+        water_percentage = class_percentages[4]
+        if water_percentage < 1.0:
+            print(f"\n⚠️ WATER CLASS (WI) IS RARE: only {water_percentage:.2f}% of pixels")
+            print("Water exclusion is recommended to avoid skewed metrics.")
 
 
 def main():
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+    
+    # --- ADD FLAG FOR AUGMENTATION CHOICE HERE ---
+    USE_AUGMENTED_DATA = config_param.USE_AUGMENTED_DATA
+    print(f"\n==== Data Augmentation ENABLED? {USE_AUGMENTED_DATA} ====\n")
+    # ---------------------------------------------
+    
+    # --- ADD FLAG FOR WATER EXCLUSION HERE ---
+    EXCLUDE_WATER = config_param.EXCLUDE_WATER
+    print(f"\n==== Water Exclusion ENABLED? {EXCLUDE_WATER} ====\n")
+    # check_water_presence()
+    # -----------------------------------------
     
     logger, checkpoint_callback = setup_logging_and_checkpoints()
     
@@ -201,7 +267,8 @@ def main():
     # output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/low' #low
     # output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/medium' #medium
     # output_dir = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_model/outputs_ecosystems/dense' #dense
-    output_dir = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense' #dense
+    # output_dir = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense' #dense
+    output_dir = '/home/laura/dense_aug'
     os.makedirs(output_dir, exist_ok=True)
 
     image_dirs = config_param.IMAGE_FOLDER
@@ -276,12 +343,14 @@ def main():
     print(f"Subsampled Indices Length: {len(subsampled_indices)}")
     print(f"Number of Blocks: {config_param.NUM_BLOCKS}")
 
+    # --- PASS THE AUGMENTATION FLAG TO block_cross_validation ---
     # Perform block cross-validation using the same centroids
     block_cv_splits = block_cross_validation(
         dataset=dataset,
         combined_data=[combined_data[i] for i in subsampled_indices],
         num_blocks=config_param.NUM_BLOCKS,
-        kmeans_centroids=centroids  # Pass the centroids to the function
+        kmeans_centroids=centroids,  # Pass the centroids to the function
+        use_augmented_data=USE_AUGMENTED_DATA  # <--- IF AUGMENTED OR NOT!
     )
 
     # Initialize all required data structures
@@ -314,8 +383,16 @@ def main():
         
         # Run training loop
         train_losses, val_losses, best_epoch_model_path, best_epoch_val_loss = run_training_loop(
-            model, train_loader, val_loader, optimizer, criterion, 
-            config_param.NUM_EPOCHS, block_idx, output_dir, config_param.DEVICE, logger
+            model, 
+            train_loader, 
+            val_loader, 
+            optimizer, 
+            criterion, 
+            config_param.NUM_EPOCHS, 
+            block_idx, 
+            output_dir, 
+            config_param.DEVICE, 
+            logger
         )
         all_train_losses.append(train_losses)
         all_val_losses.append(val_losses)
@@ -340,7 +417,7 @@ def main():
         
         # **Evaluate the final model (last epoch model) on the validation set**
         print(f"Evaluating the final model (last epoch) for Block {block_idx + 1} on the validation set")
-        val_evaluator = ModelEvaluator(model, val_loader, device=config_param.DEVICE)      
+        val_evaluator = ModelEvaluator(model, val_loader, device=config_param.DEVICE)    
         # Evaluate the final model on the validation set
         val_final_metrics = val_evaluator.run_evaluation(block_idx, all_metrics, conf_matrices)
         all_val_metrics.append(val_final_metrics)
