@@ -1,6 +1,12 @@
 # fvcCOVER 
 **_Code for image processing, build reference/annotation data and semantic segmentation modelling for mapping fractional vegetation cover in UAS RGB and multispectral imagery._**
 
+## Paper
+
+Sotomayor, L.N., Lucieer, A., Turner, D. *et al.* (2025).  
+**Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation**.  
+*Landscape Ecology*, 40, 169. https://doi.org/10.1007/s10980-025-02193-y
+
 <!-- ![fvcCover](https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/fvc_mapping_predictions.png) -->
 <img src="https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/fvc_mapping_predictions.png" width="500">
 
