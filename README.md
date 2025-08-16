@@ -53,7 +53,7 @@ Sotomayor, L. N. (2025). fvcCOVER: Code for image processing, build reference/an
 Coming Paper in Peer Review titled: 'Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation'.
 
 ## Acknowledgments
-- **Orthomosaics from drone imagery**: the RGB (1 cm) and multispectral (5 cm) orthomosaics at **phase A** in workflow can be found:
+- **Orthomosaics from drone imagery**: the raw RGB (1 cm) and multispectral (5 cm) orthomosaics at **phase A** in workflow can be found:
 TERN Landscapes, TERN Surveillance Monitoring, Stenson, M., Sparrow, B., & Lucieer, A. (2022).
 Drone RGB and Multispectral Imagery from TERN plots across Australia. Version 1. Terrestrial Ecosystem Research Network. Dataset. 
 [Access TERN drone RGB and Multispectral orthomosaics here](https://portal.tern.org.au/metadata/TERN/39de90f5-49e3-4567-917c-cf3e3bc93086).
@@ -62,7 +62,7 @@ Drone RGB and Multispectral Imagery from TERN plots across Australia. Version 1.
   <img src="https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/orthomosaic_sites.png" width="500">
   <figcaption>Figure. Multispectral orthomosaic resampled (1 cm) – phase A,  across different vegetation types</figcaption>
 </figure>
-
+<br><br>
 
 - **Contribution for reference/labelling dataset process**: we would like to acknowledge and thank all the individuals who contributed to the labelling process:
 
