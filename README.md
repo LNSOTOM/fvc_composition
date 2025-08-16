@@ -58,10 +58,11 @@ TERN Landscapes, TERN Surveillance Monitoring, Stenson, M., Sparrow, B., & Lucie
 Drone RGB and Multispectral Imagery from TERN plots across Australia. Version 1. Terrestrial Ecosystem Research Network. Dataset. 
 [Access TERN drone RGB and Multispectral orthomosaics here](https://portal.tern.org.au/metadata/TERN/39de90f5-49e3-4567-917c-cf3e3bc93086).
 <!-- <img src="https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/orthomosaic_sites.png" width="500"> -->
-<figure>
+<figure style="text-align:center;">
   <img src="https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/orthomosaic_sites.png" width="500">
-  <figcaption>Figure. Multispectral orthomosaic resampled (1 cm) – phase A,  across different vegetation types</figcaption>
+  <figcaption style="font-size:90%;">Multispectral orthomosaic (1 cm) – phase A across different vegetation types</figcaption>
 </figure>
+
 <br><br>
 
 - **Contribution for reference/labelling dataset process**: we would like to acknowledge and thank all the individuals who contributed to the labelling process:
