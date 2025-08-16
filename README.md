@@ -60,7 +60,7 @@ Drone RGB and Multispectral Imagery from TERN plots across Australia. Version 1.
 <!-- <img src="https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/orthomosaic_sites.png" width="500"> -->
 <figure style="text-align:center;">
   <img src="https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/orthomosaic_sites.png" width="500">
-  <figcaption style="font-size:90%;"><b>Figure.</b> Multispectral orthomosaics resampled to 1 cm (phase A), across different vegetation types</figcaption>
+  <figcaption style="font-size:90%;"><b>Figure.</b> Multispectral orthomosaics resampled to 1 cm (<b>phase A</b>), across different vegetation types</figcaption>
 </figure>
 <br><br>
 
