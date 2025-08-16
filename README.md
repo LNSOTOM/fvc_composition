@@ -57,7 +57,7 @@ Coming Paper in Peer Review titled: 'Mapping fractional vegetation cover in UAS 
 <!-- <img src="https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/orthomosaic_sites.png" width="500"> -->
 <figure>
   <img src="https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/orthomosaic_sites.png" width="500">
-  <figcaption>Multispectral orthomosaic resampled (1 cm) – phase A</figcaption>
+  <figcaption>Figure. Multispectral orthomosaic resampled (1 cm) – phase A,  across different vegetation types</figcaption>
 </figure>
 
 
