@@ -15,12 +15,37 @@ Sotomayor, L.N., *et al.* (2025). **Mapping fractional vegetation cover in UAS R
 
 ## Installation
 
+### Local Development Environment
+
 ```diff
 #rebuild environment with dependencies 
 install miniconda (not anaconda)
 install micromamba as a standalone CLI tool to manage Conda-compatible environments and packages
 micromamba create -f environment.yml
 ```
+
+### Jetson Edge Deployment
+
+For NVIDIA Jetson devices, use the containerized deployment:
+
+```bash
+# Quick start on Jetson
+./docker/deploy.sh build-inference
+./docker/deploy.sh run-inference
+
+# Access inference API at http://localhost:5000
+curl http://localhost:5000/health
+```
+
+**📋 See [JETSON_DEPLOYMENT.md](JETSON_DEPLOYMENT.md) for complete Jetson containerization guide**
+
+#### Jetson Features:
+- 🚀 **Optimized Docker containers** for ARM64 architecture
+- ⚡ **Edge inference API** with RESTful endpoints
+- 🔧 **Model optimization** with TorchScript and quantization
+- 📊 **Performance monitoring** and benchmarking tools
+- 🎯 **Multi-stage builds** for development and production
+- 💾 **Memory optimization** for resource-constrained devices
 
 ## Dataset available
 - **You can find the whole raw dataset used for phase B** in workflow: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036860.svg)](https://doi.org/10.5281/zenodo.15036860)

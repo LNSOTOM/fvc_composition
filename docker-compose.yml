@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  fvc-development:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: fvc-app
+    container_name: fvc-development
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    ports:
+      - "8888:8888"  # Jupyter
+      - "6006:6006"  # TensorBoard
+    stdin_open: true
+    tty: true
+    command: >
+      bash -c "
+        echo 'Starting fvcCOVER development environment...' &&
+        jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+      "
+
+  fvc-inference:
+    build:
+      context: .
+      dockerfile: Dockerfile.inference
+    container_name: fvc-inference
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ./data:/app/data:ro
+      - ./models:/app/models:ro
+      - ./outputs:/app/outputs
+    ports:
+      - "5000:5000"  # Flask API
+    restart: unless-stopped
+    command: python3 docker/inference_service.py
+
+  fvc-training:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: fvc-app
+    container_name: fvc-training
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./outputs:/app/outputs
+      - ./logs:/app/logs
+    command: >
+      bash -c "
+        echo 'Starting model training...' &&
+        python3 phase_3_models/unet_site_models/main_site_specific_models.py
+      "
+
+  fvc-batch-inference:
+    build:
+      context: .
+      dockerfile: Dockerfile.inference
+    container_name: fvc-batch-inference
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - ./data:/app/data:ro
+      - ./models:/app/models:ro
+      - ./outputs:/app/outputs
+    command: >
+      bash -c "
+        echo 'Running batch inference...' &&
+        python3 phase_3_models/unet_site_models/inference_FVCmapping.py
+      "
+
+networks:
+  default:
+    name: fvc-network

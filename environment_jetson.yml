@@ -1,0 +1,67 @@
+# Environment configuration for Jetson deployment
+name: fvc_jetson
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.8
+  - pip
+  # Core ML/DL packages (ARM64 optimized)
+  - pytorch=2.0.1
+  - torchvision=0.15.2
+  - pytorch-lightning=2.0.9
+  - torchmetrics=1.2.1
+  
+  # Scientific computing (minimal versions for ARM64)
+  - numpy=1.24.4
+  - scipy=1.10.1
+  - pandas=2.0.3
+  - scikit-learn=1.3.2
+  - matplotlib=3.7.5
+  - seaborn=0.12.2
+  
+  # Geospatial core packages
+  - gdal=3.6.4
+  - rasterio=1.3.9
+  - geopandas=0.14.4
+  - shapely=2.0.4
+  - pyproj=3.6.1
+  - fiona=1.9.6
+  
+  # Computer vision
+  - pillow=10.4.0
+  - scikit-image=0.21.0
+  
+  # Utilities
+  - tqdm=4.66.4
+  - pyyaml=6.0.1
+  - click=8.1.7
+  
+  # Development tools (optional)
+  - jupyterlab=4.0.12
+  - ipykernel=6.29.5
+  
+  - pip:
+      # Jetson-specific optimizations
+      - opencv-python-headless==4.8.1.78
+      - albumentations==1.3.1
+      - flask==2.3.3
+      - gunicorn==21.2.0
+      - requests==2.31.0
+      
+      # Point cloud processing (lightweight)
+      - laspy==2.5.4
+      
+      # Monitoring
+      - psutil==5.9.8
+      - nvidia-ml-py3==7.352.0
+
+# Jetson-specific environment variables
+variables:
+  CUDA_HOME: /usr/local/cuda
+  PYTHONPATH: /app
+  PROJ_LIB: /usr/share/proj
+  GDAL_DATA: /usr/share/gdal
+  OMP_NUM_THREADS: 4
+  TORCH_NUM_THREADS: 4

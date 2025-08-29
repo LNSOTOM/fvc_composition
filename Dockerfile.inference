@@ -1,0 +1,49 @@
+# Lightweight Dockerfile for inference-only deployment on Jetson
+FROM nvcr.io/nvidia/l4t-pytorch:r35.2.1-pth2.0-py3 AS jetson-inference
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+ENV CUDA_HOME=/usr/local/cuda
+
+# Install minimal system dependencies for inference
+RUN apt-get update && apt-get install -y \
+    libgdal-dev \
+    gdal-bin \
+    python3-gdal \
+    libgeos-dev \
+    libproj-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install minimal Python packages for inference
+RUN pip3 install --no-cache-dir \
+    numpy==1.24.4 \
+    rasterio==1.3.9 \
+    torch-summary==1.4.5 \
+    opencv-python-headless==4.8.1.78 \
+    pillow==10.4.0 \
+    tqdm==4.66.4 \
+    pyyaml==6.0.1
+
+# Set working directory
+WORKDIR /app
+
+# Copy only necessary files for inference
+COPY phase_3_models/ /app/phase_3_models/
+COPY requirements_inference.txt /app/
+COPY docker/ /app/docker/
+
+# Install inference-specific requirements
+RUN pip3 install --no-cache-dir -r requirements_inference.txt
+
+# Set environment variables
+ENV PYTHONPATH=/app:$PYTHONPATH
+ENV PROJ_LIB=/usr/share/proj
+
+# Create non-root user
+RUN useradd -m -u 1000 jetson && \
+    chown -R jetson:jetson /app
+USER jetson
+
+# Default command for inference
+CMD ["python3", "docker/inference_service.py"]

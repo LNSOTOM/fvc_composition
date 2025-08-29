@@ -162,3 +162,7 @@ dmypy.json
 *.json*
 *.csv*
 *.html*
+
+# Docker build artifacts  
+.dockerignore
+docker/logs/
