@@ -30,11 +30,13 @@ from torchmetrics import JaccardIndex
 '''
 # 4. PyTorch Lightning Module
 class UNetModule(pl.LightningModule):
-    def __init__(self):
+    def __init__(self, use_spectral_adapter=True, se_reduction_ratio=4):
         super(UNetModule, self).__init__()
         self.model = UNetModel(
             in_channels=config_param.IN_CHANNELS,
-            out_channels=config_param.OUT_CHANNELS
+            out_channels=config_param.OUT_CHANNELS,
+            use_spectral_adapter=use_spectral_adapter,
+            se_reduction_ratio=se_reduction_ratio
         )
         self.learning_rate = config_param.LEARNING_RATE
         self.criterion = config_param.CRITERION

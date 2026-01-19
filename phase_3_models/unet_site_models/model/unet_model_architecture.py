@@ -42,6 +42,100 @@ def report_gpu():
    torch.cuda.empty_cache()
 
 #%%
+######### SPECTRAL SQUEEZE-AND-EXCITATION MODULE #####################
+'''Squeeze-and-Excitation module for spectral channel attention.
+   Adaptively reweights spectral channels based on global spatial statistics.
+   Produces per-sample channel weights of shape (B, C).
+'''
+class SpectralSE(nn.Module):
+    def __init__(self, in_channels, reduction_ratio=4):
+        """
+        Args:
+            in_channels: Number of input spectral channels
+            reduction_ratio: Reduction factor for the bottleneck layer
+        """
+        super(SpectralSE, self).__init__()
+        reduced_channels = max(in_channels // reduction_ratio, 1)
+        
+        # Global average pooling (spatial dimensions)
+        self.gap = nn.AdaptiveAvgPool2d(1)
+        
+        # Spectral encoder: FC layers for channel recalibration
+        self.fc = nn.Sequential(
+            nn.Linear(in_channels, reduced_channels, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(reduced_channels, in_channels, bias=False),
+            nn.Sigmoid()
+        )
+    
+    def forward(self, x):
+        """
+        Args:
+            x: Input tensor of shape (B, C, H, W)
+        Returns:
+            Recalibrated tensor of shape (B, C, H, W)
+            Channel weights of shape (B, C) are computed internally
+        """
+        b, c, _, _ = x.size()
+        
+        # Squeeze: Global spatial pooling -> (B, C, 1, 1)
+        y = self.gap(x)
+        
+        # Flatten to (B, C)
+        y = y.view(b, c)
+        
+        # Excitation: Channel-wise weights -> (B, C)
+        weights = self.fc(y)
+        
+        # Reshape to (B, C, 1, 1) for broadcasting
+        weights = weights.view(b, c, 1, 1)
+        
+        # Scale input by learned weights
+        return x * weights.expand_as(x)
+
+
+#%%
+######### SPECTRAL ADAPTER MODULE #####################
+'''Spectral encoder/adapter for multispectral and hyperspectral inputs.
+   Combines 1x1 conv for spectral feature extraction with SE attention.
+'''
+class SpectralAdapter(nn.Module):
+    def __init__(self, in_channels, out_channels, reduction_ratio=4):
+        """
+        Args:
+            in_channels: Number of input spectral channels (e.g., 5 for multispectral, 100+ for hyperspectral)
+            out_channels: Number of output channels after adaptation
+            reduction_ratio: SE reduction ratio
+        """
+        super(SpectralAdapter, self).__init__()
+        
+        # SE attention on input spectral channels
+        self.se = SpectralSE(in_channels, reduction_ratio)
+        
+        # 1x1 convolution for spectral feature extraction
+        self.spectral_conv = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )
+    
+    def forward(self, x):
+        """
+        Args:
+            x: Input tensor (B, C_in, H, W)
+        Returns:
+            Adapted tensor (B, C_out, H, W)
+        """
+        # Apply SE attention to reweight spectral channels
+        x = self.se(x)
+        
+        # Extract spectral features with 1x1 conv
+        x = self.spectral_conv(x)
+        
+        return x
+
+
+#%%
 ######### 1_MODEL UNET ARCHITECTURE #####################
 '''Basic building block for the U-Net consisting of two consecutive Conv-BatchNorm-ReLU-Dropout layers'''
 # 2. Model Architecture
@@ -63,20 +157,48 @@ class DoubleConv(nn.Module):
         return self.conv(x)
 
 #%%
-'''' Main UNetModel class implementing the U-Net architecture'''
-## option a with device selection: UNetModel implements the U-Net architecture
+'''' Main UNetModel class implementing the U-Net architecture with Spectral Attention'''
+## UNetModel with Spectral SE attention for multispectral/hyperspectral data
 class UNetModel(nn.Module):
-    def __init__(self, in_channels=config_param.IN_CHANNELS, out_channels=config_param.OUT_CHANNELS, features=[64, 128, 256, 512, 1024], dropout_prob=0.3):
+    def __init__(self, in_channels=config_param.IN_CHANNELS, out_channels=config_param.OUT_CHANNELS, 
+                 features=[64, 128, 256, 512, 1024], dropout_prob=0.3, 
+                 use_spectral_adapter=True, se_reduction_ratio=4):
+        """
+        Args:
+            in_channels: Number of input spectral channels (5 for multispectral, 100+ for hyperspectral)
+            out_channels: Number of output classes
+            features: List of feature dimensions for each encoder/decoder level
+            dropout_prob: Dropout probability
+            use_spectral_adapter: Whether to use spectral adapter with SE attention
+            se_reduction_ratio: Reduction ratio for SE blocks
+        """
         super(UNetModel, self).__init__()
         self.ups = nn.ModuleList()
         self.downs = nn.ModuleList()
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.use_spectral_adapter = use_spectral_adapter
+        
+        # Spectral Adapter: Process multispectral/hyperspectral input
+        if use_spectral_adapter:
+            self.spectral_adapter = SpectralAdapter(
+                in_channels=in_channels, 
+                out_channels=features[0], 
+                reduction_ratio=se_reduction_ratio
+            )
+            # First encoder block takes adapted features
+            encoder_in_channels = features[0]
+        else:
+            encoder_in_channels = in_channels
 
         # Down part of UNET- Downsampling path (encoder)
-        for feature in features:
+        for idx, feature in enumerate(features):
             # Each DoubleConv block reduces the spatial dimensions and increases the number of channels
-            self.downs.append(DoubleConv(in_channels, feature, dropout_prob))
-            in_channels = feature
+            if idx == 0 and use_spectral_adapter:
+                # First block takes adapted features
+                self.downs.append(DoubleConv(encoder_in_channels, feature, dropout_prob))
+            else:
+                self.downs.append(DoubleConv(encoder_in_channels, feature, dropout_prob))
+            encoder_in_channels = feature
 
         # Up part of UNET - Upsampling path (decoder)
         for feature in reversed(features):
@@ -94,7 +216,17 @@ class UNetModel(nn.Module):
         self.final_conv = nn.Conv2d(features[0], out_channels, kernel_size=1)
 
     def forward(self, x):
+        """
+        Args:
+            x: Input tensor (B, C_spectral, H, W)
+        Returns:
+            Output probability maps (B, num_classes, H, W)
+        """
         skip_connections = []
+        
+        # Apply spectral adapter if enabled
+        if self.use_spectral_adapter:
+            x = self.spectral_adapter(x)
 
         # Downsample path - Forward pass through downsampling path
         for down in self.downs:
@@ -124,11 +256,23 @@ def unet_model_print():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # moves the model to the selected device.
-    model = UNetModel(in_channels=config_param.IN_CHANNELS, out_channels=config_param.OUT_CHANNELS).to(config_param.DEVICE)  # Move model to the appropriate device
+    model = UNetModel(
+        in_channels=config_param.IN_CHANNELS, 
+        out_channels=config_param.OUT_CHANNELS,
+        use_spectral_adapter=True,
+        se_reduction_ratio=4
+    ).to(config_param.DEVICE)  # Move model to the appropriate device
     print(model)
+    print(f"\n{'='*60}")
+    print(f"Model Configuration:")
+    print(f"  Input Channels (Spectral): {config_param.IN_CHANNELS}")
+    print(f"  Output Channels (Classes): {config_param.OUT_CHANNELS}")
+    print(f"  Spectral Adapter: Enabled with SE attention")
+    print(f"  SE Reduction Ratio: 4")
+    print(f"{'='*60}\n")
 
     # Print a summary with an example input
-    summary(model, (config_param.IN_CHANNELS, 256, 256))  # Assuming an input image size of 256x256 with 5 channels
+    summary(model, (config_param.IN_CHANNELS, 256, 256))  # Input: spectral channels x 256 x 256
 
 # To run and print the model summary
 if __name__ == "__main__":
@@ -137,8 +281,10 @@ if __name__ == "__main__":
     #   - Number of Layers: 5 down-sampling and 5 up-sampling layers (excluding the bottleneck)
     #   - Learning Rate: 0.001
     #   - Optimizer: Adam
-    #   - Loss Function: CrossEntropyLoss
-    #   - Number of Channels: Input: 5, Output: 4, Features: [64, 128, 256, 512, 1024]
+    #   - Loss Function: CrossEntropyLoss / FocalLoss
+    #   - Number of Channels: Input: 5 (multispectral) or 100+ (hyperspectral), Output: 4, Features: [64, 128, 256, 512, 1024]
+    #   - Spectral Adapter: SE attention for adaptive spectral channel weighting
+    #   - SE Reduction Ratio: 4 (reduces channels by 4x in SE bottleneck)
     #   - Kernel Size: 3x3
     #   - Pooling Size: 2x2
     #   - Batch Size: Not specified here, typically chosen based on hardware and memory constraints
