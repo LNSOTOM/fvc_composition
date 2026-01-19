@@ -100,39 +100,36 @@ class SpectralSE(nn.Module):
    Combines 1x1 conv for spectral feature extraction with SE attention.
 '''
 class SpectralAdapter(nn.Module):
-    def __init__(self, in_channels, out_channels, reduction_ratio=4):
-        """
-        Args:
-            in_channels: Number of input spectral channels (e.g., 5 for multispectral, 100+ for hyperspectral)
-            out_channels: Number of output channels after adaptation
-            reduction_ratio: SE reduction ratio
-        """
-        super(SpectralAdapter, self).__init__()
-        
-        # SE attention on input spectral channels
+    def __init__(self, in_channels, out_channels, reduction_ratio=8, adapter_type="mlp"):
+        super().__init__()
         self.se = SpectralSE(in_channels, reduction_ratio)
-        
-        # 1x1 convolution for spectral feature extraction
-        self.spectral_conv = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True)
-        )
-    
+        self.last_band_weights = None
+
+        if adapter_type == "1x1":
+            self.spectral_conv = nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False),
+                nn.BatchNorm2d(out_channels),
+                nn.GELU(),
+            )
+        elif adapter_type == "mlp":
+            hidden = max(out_channels * 2, out_channels)
+            self.spectral_conv = nn.Sequential(
+                nn.Conv2d(in_channels, hidden, kernel_size=1, bias=False),
+                nn.BatchNorm2d(hidden),
+                nn.GELU(),
+                nn.Conv2d(hidden, out_channels, kernel_size=1, bias=False),
+                nn.BatchNorm2d(out_channels),
+                nn.GELU(),
+            )
+        else:
+            raise ValueError(f"adapter_type must be '1x1' or 'mlp', got {adapter_type}")
+
     def forward(self, x):
-        """
-        Args:
-            x: Input tensor (B, C_in, H, W)
-        Returns:
-            Adapted tensor (B, C_out, H, W)
-        """
-        # Apply SE attention to reweight spectral channels
-        x = self.se(x)
+        x, w = self.se(x)           # return weights
+        self.last_band_weights = w  # [B, Cin]
         
-        # Extract spectral features with 1x1 conv
-        x = self.spectral_conv(x)
-        
-        return x
+        return self.spectral_conv(x)
+
 
 
 #%%
@@ -160,9 +157,12 @@ class DoubleConv(nn.Module):
 '''' Main UNetModel class implementing the U-Net architecture with Spectral Attention'''
 ## UNetModel with Spectral SE attention for multispectral/hyperspectral data
 class UNetModel(nn.Module):
-    def __init__(self, in_channels=config_param.IN_CHANNELS, out_channels=config_param.OUT_CHANNELS, 
+    def __init__(self, in_channels=config_param.IN_CHANNELS, out_channels=config_param.OUT_CHANNELS,               
                  features=[64, 128, 256, 512, 1024], dropout_prob=0.3, 
-                 use_spectral_adapter=True, se_reduction_ratio=4):
+                 use_spectral_adapter=True, 
+                 se_reduction_ratio=8,
+                 adapter_out_channels=32,
+                 adapter_type="mlp"):
         """
         Args:
             in_channels: Number of input spectral channels (5 for multispectral, 100+ for hyperspectral)
@@ -182,11 +182,12 @@ class UNetModel(nn.Module):
         if use_spectral_adapter:
             self.spectral_adapter = SpectralAdapter(
                 in_channels=in_channels, 
-                out_channels=features[0], 
-                reduction_ratio=se_reduction_ratio
+                out_channels=adapter_out_channels,
+                reduction_ratio=se_reduction_ratio,
+                adapter_type=adapter_type
             )
             # First encoder block takes adapted features
-            encoder_in_channels = features[0]
+            encoder_in_channels = adapter_out_channels
         else:
             encoder_in_channels = in_channels
 
@@ -250,7 +251,7 @@ class UNetModel(nn.Module):
             x = self.ups[idx + 1](concat_skip)
 
         x = self.final_conv(x) # 1x1 convolution to reduce channels to the number of classes
-        return F.softmax(x, dim=1)   # Apply softmax along the channel dimension to get probabilities
+        return x #logits
 
 def unet_model_print():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

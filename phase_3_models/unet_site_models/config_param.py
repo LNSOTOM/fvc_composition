@@ -144,7 +144,12 @@ IN_CHANNELS = 5  # Change to 100+ for hyperspectral data
 
 # Spectral Adapter settings
 USE_SPECTRAL_ADAPTER = True  # Enable SE attention on spectral channels
-SE_REDUCTION_RATIO = 4       # Reduction ratio for SE blocks (higher = more compression)
+# For hyperspectral, prefer higher reduction (8–16) to keep the SE bottleneck small
+SE_REDUCTION_RATIO = 8 if IN_CHANNELS > 10 else 4# Learned spectral encoder output channels (K): this is your "replacement for PCA"
+SPECTRAL_EMBED_DIM = 32 if IN_CHANNELS > 10 else 64   # try 16 or 32 for hyper
+
+# Optional: choose encoder expressivity
+SPECTRAL_ENCODER_TYPE = "mlp"  # "1x1" or "mlp"
 
 # Call this in your main script if you want dynamic OUT_CHANNELS:
 # For consistency, set OUT_CHANNELS to match the number of classes

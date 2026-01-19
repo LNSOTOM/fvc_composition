@@ -35,8 +35,10 @@ class UNetModule(pl.LightningModule):
         self.model = UNetModel(
             in_channels=config_param.IN_CHANNELS,
             out_channels=config_param.OUT_CHANNELS,
-            use_spectral_adapter=use_spectral_adapter,
-            se_reduction_ratio=se_reduction_ratio
+            use_spectral_adapter=config_param.USE_SPECTRAL_ADAPTER,
+            se_reduction_ratio=config_param.SE_REDUCTION_RATIO,
+            adapter_out_channels=config_param.SPECTRAL_EMBED_DIM,
+            adapter_type=config_param.SPECTRAL_ENCODER_TYPE,
         )
         self.learning_rate = config_param.LEARNING_RATE
         self.criterion = config_param.CRITERION
