@@ -139,24 +139,12 @@ all_unique_classes = {int(cls) for cls in all_unique_classes if not np.isnan(cls
 # ======================
 # Network parameters
 # ======================
-# Spectral channels: 5 for multispectral, 100+ for hyperspectral
-IN_CHANNELS = 5  # Change to 100+ for hyperspectral data
-
-# Spectral Adapter settings
-USE_SPECTRAL_ADAPTER = True  # Enable SE attention on spectral channels
-# For hyperspectral, prefer higher reduction (8–16) to keep the SE bottleneck small
-SE_REDUCTION_RATIO = 8 if IN_CHANNELS > 10 else 4# Learned spectral encoder output channels (K): this is your "replacement for PCA"
-SPECTRAL_EMBED_DIM = 32 if IN_CHANNELS > 10 else 64   # try 16 or 32 for hyper
-
-# Optional: choose encoder expressivity
-SPECTRAL_ENCODER_TYPE = "mlp"  # "1x1" or "mlp"
+IN_CHANNELS = 5
 
 # Call this in your main script if you want dynamic OUT_CHANNELS:
 # For consistency, set OUT_CHANNELS to match the number of classes
 OUT_CHANNELS = len(all_unique_classes)
 print(f"OUT_CHANNELS determined based on unique classes in masks: {OUT_CHANNELS}")
-print(f"IN_CHANNELS (Spectral): {IN_CHANNELS} ({'Multispectral' if IN_CHANNELS <= 10 else 'Hyperspectral'})")
-print(f"Spectral Adapter: {'Enabled' if USE_SPECTRAL_ADAPTER else 'Disabled'} (SE Reduction: {SE_REDUCTION_RATIO})")
 
 # If you want a fixed OUT_CHANNELS, set manually:
 # OUT_CHANNELS = 5
