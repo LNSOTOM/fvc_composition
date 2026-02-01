@@ -51,8 +51,8 @@ def get_num_classes_from_mask(mask_path):
 # Define the class labels
 # ======================
 # class_labels = {'BE': 0, 'NPV': 1, 'PV': 2} #low
-class_labels = {'BE': 0, 'NPV': 1, 'PV': 2, 'SI': 3} #medium
-# class_labels = {'BE': 0, 'NPV': 1, 'PV': 2, 'SI': 3, 'WI': 4} #dense  
+# class_labels = {'BE': 0, 'NPV': 1, 'PV': 2, 'SI': 3} #medium
+class_labels = {'BE': 0, 'NPV': 1, 'PV': 2, 'SI': 3, 'WI': 4} #dense  
 
 
 
@@ -61,14 +61,14 @@ class_labels = {'BE': 0, 'NPV': 1, 'PV': 2, 'SI': 3} #medium
 # ======================
 MASK_FOLDER = [
     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/mask_fvc' #low
-    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/mask_fvc' #medium
-    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/mask_fvc' #dense
+    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/mask_fvc' #medium
+    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/mask_fvc' #dense
 ]
 
 IMAGE_FOLDER = [
     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/predictors_5b'  #low
-    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/predictors_5b'  #medium
-    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/predictors_5b'  #dense
+    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/predictors_5b'  #medium
+    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/predictors_5b'  #dense
 ]
 
 # ======================
@@ -78,20 +78,20 @@ SUBSAMPLE_IMAGE_DIR = [
     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/predictors_5b_subsample'  #low
     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites_freq/low/predictor_5b_subsample'  #sites_low
     
-    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/predictors_5b_subsample'  #medium
+    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/predictors_5b_subsample'  #medium
     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites_freq/medium/predictors_5b_subsample'  #sites_medium
     
-    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/predictors_5b_subsample'  #dense
+    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/predictors_5b_subsample'  #dense
     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites_freq/dense/predictor_5b_subsample'  #sites_dense
 ]
 SUBSAMPLE_MASK_DIR = [
     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/low/mask_fvc_subsample'  #low
     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites_freq/low/mask_fvc_subsample' #sites_low
     
-    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/mask_fvc_subsample'  #medium
+    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/medium/mask_fvc_subsample'  #medium
     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites_freq/medium/mask_fvc_subsample' #sites_medium
     
-    # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/mask_fvc_subsample_nowater'
+    '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/mask_fvc_subsample_nowater'
     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_model_5b/dense/mask_fvc_subsample' #dense with water
     # '/media/laura/Extreme SSD/qgis/calperumResearch/unet_single_model_5b/sites_freq/dense/mask_fvc_subsample' #sites_dense
 ]

@@ -5,6 +5,7 @@ Created on Fri Aug  4 16:58:56 2023
 
 @author: lauransotomayor
 """
+#%%
 # 1. Imports
 import os
 import torch
@@ -31,6 +32,14 @@ import matplotlib.pyplot as plt
 import rasterio
 
 import config_param
+
+#### testing parameters
+# import sys
+# import os
+# # Add the project root directory to Python path
+# sys.path.append('/media/laura/Extreme SSD/code/fvc_composition')
+# from phase_3_models.unet_site_models import config_param
+####
 
 # Clear cache
 torch.cuda.empty_cache()
