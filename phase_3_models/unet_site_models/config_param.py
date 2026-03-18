@@ -112,6 +112,15 @@ os.makedirs(AUG_MASK_DIR, exist_ok=True)
 # CHECKPOINT_DIR = '/media/laura/Laura 102/fvc_composition/phase_3_models/unet_single_model/outputs_ecosystems/dense'
 # CHECKPOINT_DIR = '/home/laura/dense_aug'
 CHECKPOINT_DIR = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_site_models/outputs_ecosystems/medium/original'
+
+# Inference defaults (used by inference_raster_to_geojson.py)
+INFERENCE_MODEL_PATH = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth'
+INFERENCE_INPUT_RASTER = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/stacked/tiles_multispectral.22.tif'
+INFERENCE_OUTPUT_GEOJSON = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_site_models/wombat_predictions_stitch_medium_1024_120ep_raw_bestmodel_55_tile22/predictions.geojson'
+INFERENCE_TILE_SIZE = 512
+INFERENCE_THRESHOLD = 0.5
+INFERENCE_POSITIVE_CLASS_ID = 1
+
 INDICES_SAVE_PATHS = [
     # '/home/laura/dense_aug/subsampled_indices.json',
     '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_site_models/outputs_ecosystems/medium/original/subsampled_indices.json',

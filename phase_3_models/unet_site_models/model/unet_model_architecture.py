@@ -129,6 +129,11 @@ class UNetModel(nn.Module):
         x = self.final_conv(x) # 1x1 convolution to reduce channels to the number of classes
         return F.softmax(x, dim=1)   # Apply softmax along the channel dimension to get probabilities
 
+
+class UNet(UNetModel):
+    def __init__(self, in_channels=config_param.IN_CHANNELS, out_channels=config_param.OUT_CHANNELS, features=[64, 128, 256, 512, 1024], dropout_prob=0.3):
+        super().__init__(in_channels=in_channels, out_channels=out_channels, features=features, dropout_prob=dropout_prob)
+
 def unet_model_print():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

@@ -1,0 +1,26 @@
+# Keep docker build contexts small if you later add a Dockerfile
+.git
+**/__pycache__/
+**/*.pyc
+**/.ipynb_checkpoints/
+
+# Large geo outputs (not needed in image builds)
+**/*.tif
+**/*.tiff
+**/*.cog.tif
+**/*.ovr
+**/*.geojson
+
+# ML artifacts
+**/*.pth
+**/*.ckpt
+
+# Local environments
+.env
+.venv
+venv/
+.conda/
+
+# OS/editor
+.DS_Store
+.vscode/

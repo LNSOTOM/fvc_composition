@@ -1,0 +1,9 @@
+services:
+  viewer:
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - .:/app:ro
+    ports:
+      - "8001:8001"
+    command: ["python3", "bin/range_http_server.py", "8001", "--bind", "0.0.0.0"]

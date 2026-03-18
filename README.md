@@ -22,6 +22,40 @@ install micromamba as a standalone CLI tool to manage Conda-compatible environme
 micromamba create -f environment.yml
 ```
 
+## Web viewer (COG + GeoJSON)
+
+The viewer in `ai_assist_viewer.html` loads a Cloud-Optimized GeoTIFF (COG) using HTTP `Range` requests (206 Partial Content). The default `python3 -m http.server` on Python 3.10 does not serve byte ranges, which prevents COG streaming.
+
+Run the Range-capable server from the repo root:
+
+```bash
+python3 bin/range_http_server.py 8001
+```
+
+Then open:
+
+- http://127.0.0.1:8001/ai_assist_viewer.html
+
+### Inference workflow (tiles 22 / 55)
+
+Step-by-step commands to run inference, generate COG + GeoJSON + thumbnails, and build STAC metadata are in:
+
+- INFERENCE_WORKFLOW.md
+
+### Run with Docker (recommended for sharing)
+
+This runs the Range-capable server inside a container and bind-mounts the repo so the viewer can access the COG + GeoJSON without baking large rasters into the image.
+
+```bash
+docker compose up
+```
+
+Then open:
+
+- http://127.0.0.1:8001/ai_assist_viewer.html
+
+If port `8001` is already in use on your machine, change the left side of the port mapping in `docker-compose.yml` (e.g. `8002:8001`).
+
 ## Dataset available
 - **You can find the whole raw dataset used for phase B** in workflow: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036860.svg)](https://doi.org/10.5281/zenodo.15036860)
 
