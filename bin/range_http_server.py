@@ -9,7 +9,7 @@ Why this exists:
 
 Usage:
   python3 bin/range_http_server.py 8001
-  # then open http://127.0.0.1:8001/ai_assist_viewer.html
+# then open http://127.0.0.1:8001/cnn_mappingAI_viewer.html
 
 Notes:
 - Supports single-range requests (the common case for COG).

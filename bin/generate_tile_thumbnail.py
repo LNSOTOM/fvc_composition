@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate a small RGB thumbnail (bands 5-3-1 by default) from a multispectral GeoTIFF.
 
-Designed for quick previews in ai_assist_viewer.html.
+Designed for quick previews in cnn_mappingAI_viewer.html.
 """
 
 import argparse

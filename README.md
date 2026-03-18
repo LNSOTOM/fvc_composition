@@ -24,7 +24,7 @@ micromamba create -f environment.yml
 
 ## Web viewer (COG + GeoJSON)
 
-The viewer in `ai_assist_viewer.html` loads a Cloud-Optimized GeoTIFF (COG) using HTTP `Range` requests (206 Partial Content). The default `python3 -m http.server` on Python 3.10 does not serve byte ranges, which prevents COG streaming.
+The viewer in `cnn_mappingAI_viewer.html` loads a Cloud-Optimized GeoTIFF (COG) using HTTP `Range` requests (206 Partial Content). The default `python3 -m http.server` on Python 3.10 does not serve byte ranges, which prevents COG streaming.
 
 Run the Range-capable server from the repo root:
 
@@ -34,7 +34,7 @@ python3 bin/range_http_server.py 8001
 
 Then open:
 
-- http://127.0.0.1:8001/ai_assist_viewer.html
+- http://127.0.0.1:8001/cnn_mappingAI_viewer.html
 
 ### Inference workflow (tiles 22 / 55)
 
@@ -52,7 +52,7 @@ docker compose up
 
 Then open:
 
-- http://127.0.0.1:8001/ai_assist_viewer.html
+- http://127.0.0.1:8001/cnn_mappingAI_viewer.html
 
 If port `8001` is already in use on your machine, change the left side of the port mapping in `docker-compose.yml` (e.g. `8002:8001`).
 

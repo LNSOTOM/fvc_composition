@@ -6,7 +6,7 @@ This repo contains a small end-to-end workflow to:
 2. Run model inference and export prediction polygons to GeoJSON
 3. Generate a small PNG thumbnail for the viewer sidebar
 4. Generate STAC metadata (`stac/`) so the viewer can resolve assets via STAC
-5. View everything in `ai_assist_viewer.html`
+5. View everything in `cnn_mappingAI_viewer.html`
 
 ## Prerequisites
 
@@ -148,7 +148,7 @@ python3 bin/range_http_server.py 8001
 
 Open:
 
-- <http://127.0.0.1:8001/ai_assist_viewer.html>
+- <http://127.0.0.1:8001/cnn_mappingAI_viewer.html>
 
 Use the **Tile** dropdown in the sidebar to switch between tile 22 and tile 55.
 

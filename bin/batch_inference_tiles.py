@@ -10,7 +10,7 @@ For each input tile GeoTIFF (e.g. tiles_multispectral.22.tif), this script:
 - generates a small PNG thumbnail for the viewer
 - generates STAC metadata (stac/ folder)
 
-It also writes tiles_index.json (repo-root by default) so ai_assist_viewer.html can
+It also writes tiles_index.json (repo-root by default) so cnn_mappingAI_viewer.html can
 populate the tile selector dynamically.
 """
 
