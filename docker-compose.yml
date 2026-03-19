@@ -1,9 +1,26 @@
 services:
   viewer:
-    image: python:3.11-slim
-    working_dir: /app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /workspace
     volumes:
-      - .:/app:ro
+      - .:/workspace
     ports:
       - "8001:8001"
-    command: ["python3", "bin/range_http_server.py", "8001", "--bind", "0.0.0.0"]
+    # Range-capable static server (required for COG streaming)
+    command: ["micromamba", "run", "-n", "fvc_composition", "python", "bin/range_http_server.py", "8001", "--bind", "0.0.0.0"]
+    shm_size: "2gb"
+
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    # ForestFormer3D-style: keep a container alive for interactive exec/debug
+    command: ["bash", "-lc", "sleep infinity"]
+    tty: true
+    stdin_open: true
+    shm_size: "2gb"

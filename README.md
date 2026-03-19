@@ -32,6 +32,11 @@ Run the Range-capable server from the repo root:
 python3 bin/range_http_server.py 8001
 ```
 
+Tips:
+
+- To hide the many `206 Partial Content` requests produced by COG streaming, run: `python3 bin/range_http_server.py 8001 --quiet`
+- To allow browser caching for static files (GeoJSON/PNGs and some probes), add e.g.: `--cache-seconds 3600`
+
 Then open:
 
 - http://127.0.0.1:8001/cnn_mappingAI_viewer.html
@@ -44,10 +49,10 @@ Step-by-step commands to run inference, generate COG + GeoJSON + thumbnails, and
 
 ### Run with Docker (recommended for sharing)
 
-This runs the Range-capable server inside a container and bind-mounts the repo so the viewer can access the COG + GeoJSON without baking large rasters into the image.
+This builds a reproducible environment (from `environment.yml`) and runs the Range-capable server inside a container. The repo is bind-mounted so the viewer can access local COG + GeoJSON without baking large rasters into the image.
 
 ```bash
-docker compose up
+docker compose up --build viewer
 ```
 
 Then open:
