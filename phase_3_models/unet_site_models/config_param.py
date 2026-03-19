@@ -121,6 +121,13 @@ INFERENCE_TILE_SIZE = 512
 INFERENCE_THRESHOLD = 0.5
 INFERENCE_POSITIVE_CLASS_ID = 1
 
+# Low-site inference (checkpoint + stacked tiles folder)
+INFERENCE_MODEL_PATH_LOW = '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_site_models/outputs_ecosystems/low/original/block_3_epoch_108.pth'
+INFERENCE_INPUT_RASTER_LOW = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/predictors/tiles_3072/stacked'
+
+# Tip: inference_raster_to_geojson.py accepts a directory as --input-raster and will write one GeoJSON per tile
+# into the output directory you provide.
+
 INDICES_SAVE_PATHS = [
     # '/home/laura/dense_aug/subsampled_indices.json',
     '/media/laura/Extreme SSD/code/fvc_composition/phase_3_models/unet_site_models/outputs_ecosystems/medium/original/subsampled_indices.json',

@@ -1,5 +1,20 @@
-import os
+"""Run tiled U-Net inference and export polygons to GeoJSON.
+
+This script is inference-only and intentionally does NOT import `config_param.py`.
+`config_param.py` contains training-side effects (e.g. directory creation / mask scans),
+which can make inference brittle.
+
+Use `--variant` presets to match class label conventions:
+- low:    BE=0, NPV=1, PV=2
+- low_sparse: BE=0, NPV=1, PV=2 (sparse sampling)
+- medium: BE=0, NPV=1, PV=2, SI=3
+- medium_sparse: BE=0, NPV=1, PV=2, SI=3 (medium class scheme on sparse sampling)
+- dense:  BE=0, NPV=1, PV=2, SI=3, WI=4
+"""
+
 import argparse
+from pathlib import Path
+from typing import Optional
 
 import torch
 import numpy as np
@@ -10,45 +25,166 @@ import geopandas as gpd
 from shapely.geometry import shape
 from tqdm import tqdm
 
-from phase_3_models.unet_site_models.model.unet_module import UNetModule
-from phase_3_models.unet_site_models import config_param
+from phase_3_models.unet_site_models.model.unet_model_architecture_inference import UNetModel
+
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-MODEL_PATH = getattr(config_param, "INFERENCE_MODEL_PATH", "models/best_model.ckpt")
-INPUT_RASTER = getattr(config_param, "INFERENCE_INPUT_RASTER", "data/orthomosaic.tif")
-OUTPUT_GEOJSON = getattr(config_param, "INFERENCE_OUTPUT_GEOJSON", "outputs/predictions.geojson")
 
-TILE_SIZE = getattr(config_param, "INFERENCE_TILE_SIZE", 512)
-THRESHOLD = getattr(config_param, "INFERENCE_THRESHOLD", 0.5)
-POSITIVE_CLASS_ID = getattr(config_param, "INFERENCE_POSITIVE_CLASS_ID", 1)
-INCLUDE_CLASS_ZERO = getattr(config_param, "INFERENCE_INCLUDE_CLASS_ZERO", True)
-MIN_POLYGON_AREA = getattr(config_param, "INFERENCE_MIN_POLYGON_AREA", 0.0)
-VALID_CLASSES = getattr(config_param, "INFERENCE_VALID_CLASSES", "0,1,2,3")
-SIEVE_SIZE = getattr(config_param, "INFERENCE_SIEVE_SIZE", 0)
-SI_MIN_POLYGON_AREA = getattr(config_param, "INFERENCE_SI_MIN_POLYGON_AREA", 0.0)
-SI_MAX_POLYGON_AREA = getattr(config_param, "INFERENCE_SI_MAX_POLYGON_AREA", 0.0)
+VARIANT_PRESETS: dict[str, dict] = {
+    "low": {
+        "class_labels": {"BE": 0, "NPV": 1, "PV": 2},
+    },
+    "low_sparse": {
+        # Sparse sampling, but using the low 3-class scheme.
+        "class_labels": {"BE": 0, "NPV": 1, "PV": 2},
+    },
+    "medium": {
+        "class_labels": {"BE": 0, "NPV": 1, "PV": 2, "SI": 3},
+    },
+    "medium_sparse": {
+        # Low sampling density, but using the 4-class scheme compatible with the medium checkpoint.
+        "class_labels": {"BE": 0, "NPV": 1, "PV": 2, "SI": 3},
+    },
+    "dense": {
+        "class_labels": {"BE": 0, "NPV": 1, "PV": 2, "SI": 3, "WI": 4},
+    },
+}
 
-MODEL_IN_CHANNELS = getattr(config_param, "IN_CHANNELS", 3)
-MODEL_OUT_CHANNELS = getattr(config_param, "OUT_CHANNELS", 1)
+
+DEFAULT_TILE_SIZE = 512
+DEFAULT_THRESHOLD = 0.5
+DEFAULT_POSITIVE_CLASS_ID = 1
+DEFAULT_INCLUDE_CLASS_ZERO = True
+DEFAULT_MIN_POLYGON_AREA = 0.0
+DEFAULT_SIEVE_SIZE = 0
+DEFAULT_SI_MIN_POLYGON_AREA = 0.0
+DEFAULT_SI_MAX_POLYGON_AREA = 0.0
+
+DEFAULT_IN_CHANNELS = 5
 
 
-def parse_args():
+def parse_class_id_map(raw: Optional[str]) -> dict[int, int]:
+    raw = (raw or "").strip()
+    if not raw:
+        return {}
+
+    mapping: dict[int, int] = {}
+    parts = [p.strip() for p in raw.split(",") if p.strip()]
+    for part in parts:
+        if ":" not in part:
+            raise ValueError(
+                "--class-id-map must be comma-separated 'src:dst' pairs, e.g. '1:2,2:1'"
+            )
+        src_s, dst_s = [x.strip() for x in part.split(":", 1)]
+        src = int(src_s)
+        dst = int(dst_s)
+        if src in mapping:
+            raise ValueError(f"Duplicate mapping for class id {src} in --class-id-map")
+        mapping[src] = dst
+    return mapping
+
+
+def apply_class_id_map(mask: np.ndarray, mapping: dict[int, int]) -> np.ndarray:
+    if not mapping:
+        return mask
+
+    if mask.dtype.kind not in {"u", "i"}:
+        mask = mask.astype(np.int32, copy=False)
+
+    max_seen = int(np.max(mask)) if mask.size else 0
+    max_key = max(mapping.keys(), default=0)
+    max_val = max(mapping.values(), default=0)
+    size = max(max_seen, max_key, max_val) + 1
+
+    lut = np.arange(size, dtype=mask.dtype)
+    for src, dst in mapping.items():
+        if src < 0 or dst < 0:
+            raise ValueError("--class-id-map does not support negative class ids")
+        if src >= size:
+            # Expand LUT if needed
+            new_size = src + 1
+            new_lut = np.arange(new_size, dtype=lut.dtype)
+            new_lut[: lut.size] = lut
+            lut = new_lut
+        lut[src] = dst
+
+    # If mask contains values beyond lut, expand once more.
+    if int(np.max(mask)) >= lut.size:
+        new_size = int(np.max(mask)) + 1
+        new_lut = np.arange(new_size, dtype=lut.dtype)
+        new_lut[: lut.size] = lut
+        lut = new_lut
+
+    return lut[mask]
+
+
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run tiled U-Net inference and export polygons to GeoJSON")
-    parser.add_argument("--model-path", default=MODEL_PATH)
-    parser.add_argument("--input-raster", default=INPUT_RASTER)
-    parser.add_argument("--output-geojson", default=OUTPUT_GEOJSON)
-    parser.add_argument("--tile-size", type=int, default=TILE_SIZE)
-    parser.add_argument("--threshold", type=float, default=THRESHOLD)
-    parser.add_argument("--positive-class-id", type=int, default=POSITIVE_CLASS_ID)
-    parser.add_argument("--include-class-zero", action="store_true", default=INCLUDE_CLASS_ZERO)
+
+    parser.add_argument(
+        "--variant",
+        choices=sorted(VARIANT_PRESETS.keys()),
+        default="medium",
+        help=(
+            "Inference preset controlling default classes/out-channels "
+            "(default: medium)"
+        ),
+    )
+
+    parser.add_argument("--model-path", default="", help="Path to a .pth checkpoint")
+    parser.add_argument(
+        "--input-raster",
+        default="",
+        help="Path to input .tif OR a directory containing .tif tiles",
+    )
+    parser.add_argument(
+        "--output-geojson",
+        default="",
+        help="Output .geojson file (single input) OR output directory (directory input)",
+    )
+    parser.add_argument("--tile-size", type=int, default=DEFAULT_TILE_SIZE)
+    parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
+    parser.add_argument("--positive-class-id", type=int, default=DEFAULT_POSITIVE_CLASS_ID)
+    parser.add_argument("--include-class-zero", action="store_true", default=DEFAULT_INCLUDE_CLASS_ZERO)
     parser.add_argument("--exclude-class-zero", action="store_false", dest="include_class_zero")
-    parser.add_argument("--min-polygon-area", type=float, default=MIN_POLYGON_AREA)
-    parser.add_argument("--valid-classes", type=str, default=VALID_CLASSES)
-    parser.add_argument("--sieve-size", type=int, default=SIEVE_SIZE)
-    parser.add_argument("--si-min-polygon-area", type=float, default=SI_MIN_POLYGON_AREA)
-    parser.add_argument("--si-max-polygon-area", type=float, default=SI_MAX_POLYGON_AREA)
-    parser.add_argument("--in-channels", type=int, default=MODEL_IN_CHANNELS)
-    parser.add_argument("--out-channels", type=int, default=MODEL_OUT_CHANNELS)
+    parser.add_argument("--min-polygon-area", type=float, default=DEFAULT_MIN_POLYGON_AREA)
+    parser.add_argument(
+        "--valid-classes",
+        type=str,
+        default=None,
+        help=(
+            "Comma-separated class ids. If omitted, defaults based on --variant "
+            "(low: 0,1,2; medium: 0,1,2,3; dense: 0,1,2,3,4)."
+        ),
+    )
+    parser.add_argument("--sieve-size", type=int, default=DEFAULT_SIEVE_SIZE)
+    parser.add_argument("--si-min-polygon-area", type=float, default=DEFAULT_SI_MIN_POLYGON_AREA)
+    parser.add_argument("--si-max-polygon-area", type=float, default=DEFAULT_SI_MAX_POLYGON_AREA)
+    parser.add_argument(
+        "--in-channels",
+        type=int,
+        default=DEFAULT_IN_CHANNELS,
+        help="Model input channels; if omitted, inferred from checkpoint when possible",
+    )
+    parser.add_argument(
+        "--out-channels",
+        type=int,
+        default=None,
+        help=(
+            "Model output channels; if omitted, inferred from checkpoint when possible, "
+            "otherwise defaults to number of classes in --variant"
+        ),
+    )
+
+    parser.add_argument(
+        "--class-id-map",
+        type=str,
+        default="",
+        help=(
+            "Optional class id remapping applied after prediction, before polygonization. "
+            "Format: 'src:dst,src2:dst2'. Example to swap NPV/PV: '1:2,2:1'."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -66,38 +202,63 @@ def parse_valid_classes(raw_value):
     return sorted(set(classes))
 
 
-def load_model(model_path, in_channels, out_channels):
-    model = UNetModule()
+def _normalize_state_dict(state_dict: dict) -> dict:
+    # Common checkpoint formats:
+    # - torch.save(UNetModule().state_dict())  -> keys start with "model."
+    # - Lightning checkpoints                  -> may have top-level "state_dict"
+    # We want keys that match UNetModel ("downs...", "final_conv...")
+    if any(k.startswith("model.") for k in state_dict.keys()):
+        return {k.replace("model.", "", 1): v for k, v in state_dict.items()}
+    return state_dict
+
+
+def _infer_channels_from_state_dict(state_dict: dict) -> tuple[Optional[int], Optional[int]]:
+    in_ch: Optional[int] = None
+    out_ch: Optional[int] = None
+
+    w0 = state_dict.get("downs.0.conv.0.weight")
+    if isinstance(w0, torch.Tensor) and w0.ndim == 4:
+        in_ch = int(w0.shape[1])
+
+    w_last = state_dict.get("final_conv.weight")
+    if isinstance(w_last, torch.Tensor) and w_last.ndim == 4:
+        out_ch = int(w_last.shape[0])
+
+    return in_ch, out_ch
+
+
+def load_model(model_path: str, in_channels: int, out_channels: int) -> tuple[torch.nn.Module, int, int]:
     checkpoint = torch.load(model_path, map_location=DEVICE)
+    raw_state = checkpoint.get("state_dict", checkpoint)
+    state_dict = _normalize_state_dict(raw_state)
 
-    state_dict = checkpoint.get("state_dict", checkpoint)
-    try:
-        model.load_state_dict(state_dict)
-    except RuntimeError:
-        adapted_state_dict = {k.replace("model.", "", 1): v for k, v in state_dict.items()}
-        model.model.load_state_dict(adapted_state_dict)
+    inferred_in, inferred_out = _infer_channels_from_state_dict(state_dict)
+    resolved_in = inferred_in if inferred_in is not None else int(in_channels)
+    resolved_out = inferred_out if inferred_out is not None else int(out_channels)
 
+    model = UNetModel(in_channels=resolved_in, out_channels=resolved_out)
+    model.load_state_dict(state_dict, strict=True)
     model.to(DEVICE)
     model.eval()
-    return model
+    return model, resolved_in, resolved_out
 
 
-def preprocess(image):
+def preprocess(image: np.ndarray, in_channels: int) -> torch.Tensor:
     image = image.astype(np.float32)
     image = np.nan_to_num(image, nan=0.0, posinf=0.0, neginf=0.0)
 
     if image.ndim != 3:
         raise ValueError(f"Expected tile with 3 dimensions [C,H,W] or [H,W,C], got shape {image.shape}")
 
-    if image.shape[0] != MODEL_IN_CHANNELS and image.shape[-1] == MODEL_IN_CHANNELS:
+    if image.shape[0] != in_channels and image.shape[-1] == in_channels:
         image = np.transpose(image, (2, 0, 1))
 
     return torch.from_numpy(image).unsqueeze(0)
 
 
 @torch.no_grad()
-def predict_tile(model, tile):
-    tensor = preprocess(tile).to(DEVICE)
+def predict_tile(model: torch.nn.Module, tile: np.ndarray, in_channels: int) -> np.ndarray:
+    tensor = preprocess(tile, in_channels=in_channels).to(DEVICE)
     output = model(tensor)
 
     if output.shape[1] > 1:
@@ -113,11 +274,11 @@ def predict_tile(model, tile):
     return mask.squeeze().cpu().numpy().astype(np.uint8)
 
 
-predict_tile.threshold = THRESHOLD
-predict_tile.positive_class_id = POSITIVE_CLASS_ID
+predict_tile.threshold = DEFAULT_THRESHOLD
+predict_tile.positive_class_id = DEFAULT_POSITIVE_CLASS_ID
 
 
-def run_inference(model, input_raster, tile_size, in_channels):
+def run_inference(model: torch.nn.Module, input_raster: str, tile_size: int, in_channels: int):
     with rasterio.open(input_raster) as src:
         transform = src.transform
         crs = src.crs
@@ -141,11 +302,36 @@ def run_inference(model, input_raster, tile_size, in_channels):
 
                 tile = src.read(band_indices, window=window)
 
-                pred = predict_tile(model, tile)
+                pred = predict_tile(model, tile, in_channels=in_channels)
                 h, w = pred.shape
                 full_mask[y:y + h, x:x + w] = pred
 
     return full_mask, transform, crs
+
+
+def _iter_input_rasters(input_path: str) -> list[str]:
+    p = Path(input_path)
+    if p.is_dir():
+        return [str(x) for x in sorted(p.glob("*.tif"))]
+    return [str(p)]
+
+
+def _resolve_output_path(output_geojson: str, input_raster: str, is_batch: bool) -> str:
+    out = Path(output_geojson)
+    if is_batch:
+        out.mkdir(parents=True, exist_ok=True)
+        stem = Path(input_raster).stem
+        return str(out / f"{stem}_predictions.geojson")
+    # single input: output is a file path
+    if out.suffix.lower() != ".geojson":
+        # allow user to pass a directory even for single input
+        out.mkdir(parents=True, exist_ok=True)
+        stem = Path(input_raster).stem
+        return str(out / f"{stem}_predictions.geojson")
+    parent = out.parent
+    if str(parent):
+        parent.mkdir(parents=True, exist_ok=True)
+    return str(out)
 
 
 def mask_to_polygons(
@@ -158,6 +344,7 @@ def mask_to_polygons(
     sieve_size=0,
     si_min_polygon_area=0.0,
     si_max_polygon_area=0.0,
+    class_id_to_name: Optional[dict[int, str]] = None,
 ):
     features = []
 
@@ -197,7 +384,12 @@ def mask_to_polygons(
 
             features.append({
                 "geometry": geometry,
-                "class_id": class_id,
+                "class_id": int(class_id),
+                **(
+                    {"class_name": class_id_to_name.get(int(class_id), f"Unknown-{class_id}")}
+                    if isinstance(class_id_to_name, dict)
+                    else {}
+                ),
             })
             class_feature_counts[class_id] = class_feature_counts.get(class_id, 0) + 1
 
@@ -218,50 +410,85 @@ def mask_to_polygons(
 if __name__ == "__main__":
     args = parse_args()
 
+    if not args.model_path:
+        raise SystemExit("--model-path is required")
+    if not args.input_raster:
+        raise SystemExit("--input-raster is required")
+    if not args.output_geojson:
+        raise SystemExit("--output-geojson is required")
+
     predict_tile.threshold = args.threshold
     predict_tile.positive_class_id = args.positive_class_id
 
-    output_dir = os.path.dirname(args.output_geojson)
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
+    preset = VARIANT_PRESETS[args.variant]
+    class_id_to_name = {int(v): str(k) for k, v in preset["class_labels"].items()}
+    preset_valid = ",".join(str(v) for v in sorted(preset["class_labels"].values()))
+    valid_classes = parse_valid_classes(args.valid_classes if args.valid_classes is not None else preset_valid)
+    out_channels = int(args.out_channels) if args.out_channels is not None else len(valid_classes)
 
-    model = load_model(args.model_path, args.in_channels, args.out_channels)
+    class_id_map = parse_class_id_map(args.class_id_map)
 
-    print("Running inference...")
-    mask, transform, crs = run_inference(
-        model,
-        input_raster=args.input_raster,
-        tile_size=args.tile_size,
-        in_channels=args.in_channels,
+    # NOTE: --class-id-map is intended to convert *model output ids* into the canonical ids
+    # used by the chosen --variant (and your viewer/QGIS styling). Therefore we remap only
+    # the predicted mask values. We intentionally do NOT remap `valid_classes` nor
+    # `class_id_to_name`.
+
+    model, resolved_in_channels, resolved_out_channels = load_model(
+        args.model_path,
+        in_channels=int(args.in_channels),
+        out_channels=out_channels,
     )
 
-    print("Converting to polygons...")
-    valid_classes = parse_valid_classes(args.valid_classes)
+    input_rasters = _iter_input_rasters(args.input_raster)
+    is_batch = Path(args.input_raster).is_dir()
 
-    invalid_present = sorted(int(v) for v in np.unique(mask) if int(v) not in valid_classes)
-    if invalid_present:
-        print(f"Warning: mask contains class values outside --valid-classes {valid_classes}: {invalid_present}")
+    if is_batch and Path(args.output_geojson).suffix.lower() == ".geojson":
+        raise SystemExit(
+            "When --input-raster is a directory, --output-geojson must be a directory too."
+        )
 
-    gdf = mask_to_polygons(
-        mask,
-        transform,
-        crs,
-        include_class_zero=args.include_class_zero,
-        min_polygon_area=args.min_polygon_area,
-        valid_classes=valid_classes,
-        sieve_size=args.sieve_size,
-        si_min_polygon_area=args.si_min_polygon_area,
-        si_max_polygon_area=args.si_max_polygon_area,
-    )
+    for raster_path in input_rasters:
+        out_geojson = _resolve_output_path(args.output_geojson, raster_path, is_batch=is_batch)
 
-    if not gdf.empty and gdf.crs is not None and gdf.crs.to_string() != "EPSG:4326":
-        gdf = gdf.to_crs("EPSG:4326")
+        print(f"Running inference on: {raster_path}")
+        mask, transform, crs = run_inference(
+            model,
+            input_raster=raster_path,
+            tile_size=args.tile_size,
+            in_channels=resolved_in_channels,
+        )
 
-    unique_values, counts = np.unique(mask, return_counts=True)
-    print("Mask classes (value:count):", dict(zip(unique_values.tolist(), counts.tolist())))
-    print(f"Polygon features: {len(gdf)}")
+        if class_id_map:
+            mask = apply_class_id_map(mask, class_id_map)
 
-    print("Saving GeoJSON...")
-    gdf.to_file(args.output_geojson, driver="GeoJSON")
+        print("Converting to polygons...")
+        invalid_present = sorted(int(v) for v in np.unique(mask) if int(v) not in valid_classes)
+        if invalid_present:
+            print(
+                f"Warning: mask contains class values outside --valid-classes {valid_classes}: {invalid_present}"
+            )
+
+        gdf = mask_to_polygons(
+            mask,
+            transform,
+            crs,
+            include_class_zero=args.include_class_zero,
+            min_polygon_area=args.min_polygon_area,
+            valid_classes=valid_classes,
+            sieve_size=args.sieve_size,
+            si_min_polygon_area=args.si_min_polygon_area,
+            si_max_polygon_area=args.si_max_polygon_area,
+            class_id_to_name=class_id_to_name,
+        )
+
+        if not gdf.empty and gdf.crs is not None and gdf.crs.to_string() != "EPSG:4326":
+            gdf = gdf.to_crs("EPSG:4326")
+
+        unique_values, counts = np.unique(mask, return_counts=True)
+        print("Mask classes (value:count):", dict(zip(unique_values.tolist(), counts.tolist())))
+        print(f"Polygon features: {len(gdf)}")
+
+        print(f"Saving GeoJSON -> {out_geojson}")
+        gdf.to_file(out_geojson, driver="GeoJSON")
 
     print("Done!")

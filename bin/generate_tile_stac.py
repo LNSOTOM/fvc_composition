@@ -25,6 +25,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--tile-id", required=True, help="Tile id string (e.g. 22, 55)")
     parser.add_argument("--tile-dir", required=True, help="Directory containing predictor/predictions outputs")
     parser.add_argument(
+        "--variant",
+        choices=["low", "low_sparse", "medium", "medium_sparse", "dense"],
+        default="medium",
+        help="Dataset variant label used for titles, ids, and default class lists (default: medium)",
+    )
+    parser.add_argument(
         "--collection-id",
         default="wombat-fvc-medium",
         help="STAC collection id (default: wombat-fvc-medium)",
@@ -130,7 +136,16 @@ def main() -> int:
 
         proj_shape = [int(src.height), int(src.width)]
 
-    item_id = f"wombat-medium-tile{tile_id}"
+    variant = str(args.variant).lower()
+    if variant in {"low", "low_sparse"}:
+        default_class_ids = [0, 1, 2]
+        default_class_names = ["BE", "NPV", "PV"]
+    else:
+        # medium_sparse + medium + dense default to the 4-class scheme.
+        default_class_ids = [0, 1, 2, 3]
+        default_class_names = ["BE", "NPV", "PV", "SI"]
+
+    item_id = f"wombat-{variant}-tile{tile_id}"
     item_filename = f"item_tile{tile_id}.json"
 
     catalog = {
@@ -153,8 +168,8 @@ def main() -> int:
         "stac_extensions": [],
         "type": "Collection",
         "id": args.collection_id,
-        "title": "Wombat FVC Predictions (Medium Tile)",
-        "description": f"Predictor COG and FVC prediction polygons for Wombat tile {tile_id}.",
+        "title": f"Wombat FVC Predictions ({variant.capitalize()} Tiles)",
+        "description": f"Predictor COG and FVC prediction polygons for Wombat {variant} tile {tile_id}.",
         "keywords": [
             "FVC",
             "fractional vegetation cover",
@@ -175,8 +190,8 @@ def main() -> int:
             "temporal": {"interval": [[timestamp, timestamp]]},
         },
         "summaries": {
-            "fvc:class_id": [0, 1, 2, 3],
-            "fvc:class_name": ["BE", "NPV", "PV", "SI"],
+            "fvc:class_id": default_class_ids,
+            "fvc:class_name": default_class_names,
             "data_type": [dtype],
             "platform": ["UAS"],
         },
@@ -204,11 +219,11 @@ def main() -> int:
             "datetime": timestamp,
             "created": timestamp,
             "updated": timestamp,
-            "title": f"Wombat medium tile {tile_id}",
+            "title": f"Wombat {variant} tile {tile_id}",
             **({"proj:epsg": int(epsg)} if epsg is not None else {}),
             "proj:shape": proj_shape,
             "proj:transform": proj_transform,
-            "fvc:classes": ["BE", "NPV", "PV", "SI"],
+            "fvc:classes": default_class_names,
         },
         "collection": args.collection_id,
         "assets": {
