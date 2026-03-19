@@ -7,12 +7,69 @@ import numpy as np
 import os
 
 
+def _pick_first(tags: dict, keys: list[str]) -> str | None:
+    for k in keys:
+        for kk in (k, k.lower(), k.upper()):
+            v = tags.get(kk)
+            if v is None:
+                continue
+            s = str(v).strip()
+            if s:
+                return s
+    return None
+
+
+def _format_nm(value: str) -> str | None:
+    try:
+        nm = float(str(value).strip())
+    except Exception:
+        return None
+    if nm <= 0:
+        return None
+    if abs(nm - round(nm)) < 1e-6:
+        return str(int(round(nm)))
+    return f"{nm:g}"
+
+
+def _band_description_from_metadata(src: rasterio.io.DatasetReader, band_index: int) -> str:
+    # Prefer GDAL/rasterio band descriptions if present.
+    try:
+        descs = list(src.descriptions or [])
+        d = descs[band_index - 1] if band_index - 1 < len(descs) else None
+        if d and str(d).strip():
+            return str(d).strip()
+    except Exception:
+        pass
+
+    # Fallback to per-band tags commonly used for multispectral products.
+    try:
+        tags = src.tags(band_index) or {}
+        description = _pick_first(tags, ["description", "band_description", "long_name"])
+        if description:
+            return description
+        name = _pick_first(tags, ["band_name", "bandname", "name"])
+        wavelength = _pick_first(tags, ["wavelength", "center_wavelength", "central_wavelength"])
+        nm = _format_nm(wavelength) if wavelength else None
+        if name and nm:
+            return f"Band {band_index:02d}: {name} [{nm} nm]"
+        if name:
+            return f"Band {band_index:02d}: {name}"
+        if nm:
+            return f"Band {band_index:02d}: [{nm} nm]"
+    except Exception:
+        pass
+
+    return f"Band {band_index:02d}"
+
+
 # Define your input and output folders
 ## sample 30
-input_folder = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site1_supersite_DD0001/inputs/predictors/tiles_3072/raw/tiles_multispectral'
+# input_folder = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site1_supersite_DD0001/inputs/predictors/tiles_3072/raw/tiles_multispectral'
 # input_folder = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site1_supersite_DD0001/inputs/predictors/tiles_3072/raw/random_sample35/tiles_multispectral'
+input_folder = '/media/laura/laura_usb/uas_data/DD0013/inputs/predictors/tiles_3072/raw/tiles_multispectral'
+
 ## extra 5
-output_folder = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site1_supersite_DD0001/inputs/predictors/tiles_3072/raw/composite_colour_raster_3b'
+output_folder = '/media/laura/laura_usb/uas_data/DD0013/inputs/predictors/tiles_3072/raw/composite_colour_raster_3b'
 
 # Define the nodata values for input and output
 nodata_value_input = -32767.0
@@ -67,6 +124,7 @@ for filename in os.listdir(input_folder):
             
             # save normalized bands 
             bands_uint8 = [normalized_band10, normalized_band6, normalized_band2]
+            input_band_order = [10, 6, 2]
 
             # Update the metadata for output
             out_meta = src.meta.copy()
@@ -80,6 +138,22 @@ for filename in os.listdir(input_folder):
             with rasterio.open(output_path, 'w', **out_meta) as dest:
                 for i, band in enumerate(bands_uint8, start=1):
                     dest.write(band, i)
+
+                # Preserve metadata band descriptions from the source (in output band order).
+                dest.descriptions = tuple(
+                    _band_description_from_metadata(src, b) for b in input_band_order
+                )
+
+                # Copy dataset and per-band tags where available.
+                try:
+                    dest.update_tags(**(src.tags() or {}))
+                except Exception:
+                    pass
+                for out_i, in_b in enumerate(input_band_order, start=1):
+                    try:
+                        dest.update_tags(out_i, **(src.tags(in_b) or {}))
+                    except Exception:
+                        pass
 
             print(f"Processed and saved: {output_filename}")
 
