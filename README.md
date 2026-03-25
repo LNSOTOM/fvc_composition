@@ -86,7 +86,7 @@ Open:
 
 If port `8001` is already in use, change the left side of the port mapping in `docker-compose.yml` (e.g. `8002:8001`).
 
-## U-Net setup + parameter counts
+## 🚀 U-Net setup + parameter counts
 
 Parameter counts below were computed by loading each checkpoint into the inference U-Net and summing `model.parameters()` ("authoritative").
 
