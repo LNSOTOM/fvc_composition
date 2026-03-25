@@ -39,6 +39,52 @@ Run from the repo root:
 python phase_3_models/unet_site_models/main_site_specific_models.py
 ```
 
+## Validation / test metrics (training)
+
+When training site-specific U-Net models via `phase_3_models/unet_site_models/main_site_specific_models.py`, metrics are written to the training `output_dir` defined inside that script.
+
+Outputs you can use for **validation** and **test** reporting include:
+
+- Per-block metrics (text): `final_model_metrics_block_*.txt` and `best_model_metrics_block_*.txt`
+- Per-block metrics (JSON): `block_*_val_metrics.json` and `block_*_best_val_metrics.json`
+- Loss curves: `loss_metrics.txt` and `average_training_validation_loss_plot_across_blocks.png`
+- Confusion matrices / aggregated summaries are also written under the same `output_dir` (filenames depend on the evaluator utilities).
+
+Checkpoints (best model per block) are saved under `config_param.CHECKPOINT_DIR`.
+
+If you enabled TensorBoard logging, the log directory is set in `setup_logging_and_checkpoints()` inside `main_site_specific_models.py` and can be viewed with:
+
+```bash
+tensorboard --logdir <tb_logs_path>
+```
+
+## Inference workflow (tiles 22 / 55)
+
+Step-by-step commands to run inference, generate COG + GeoJSON + thumbnails, and build STAC metadata are in:
+
+- INFERENCE_WORKFLOW.md
+
+## U-Net setup + parameter counts
+
+Parameter counts below were computed by loading each checkpoint into the inference U-Net and summing `model.parameters()` ("authoritative").
+
+Command used:
+
+```bash
+python phase_3_models/unet_site_models/count_checkpoint_params.py --model-path \
+  "phase_3_models/unet_site_models/outputs_ecosystems/low/original/block_3_epoch_108.pth" \
+  "phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth" \
+  "phase_3_models/unet_site_models/outputs_ecosystems/dense/original/block_3_epoch_105.pth"
+```
+
+Model setup (all checkpoints): Standard U-Net, depth 5, features `[64, 128, 256, 512, 1024]`, input bands = 5.
+
+| Ecosystem | Checkpoint | Output classes | Total params | final_conv params | Rest params | Buffers (BN stats) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Low | [phase_3_models/unet_site_models/outputs_ecosystems/low/original/block_3_epoch_108.pth](phase_3_models/unet_site_models/outputs_ecosystems/low/original/block_3_epoch_108.pth) | 3 | 124,375,491 | 195 | 124,375,296 | 24,086 |
+| Medium | [phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth](phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth) | 4 | 124,375,556 | 260 | 124,375,296 | 24,086 |
+| Dense | [phase_3_models/unet_site_models/outputs_ecosystems/dense/original/block_3_epoch_105.pth](phase_3_models/unet_site_models/outputs_ecosystems/dense/original/block_3_epoch_105.pth) | 5 | 124,375,621 | 325 | 124,375,296 | 24,086 |
+
 ## Web viewer (COG + GeoJSON)
 
 The viewer in `cnn_mappingAI_viewer.html` loads a Cloud-Optimized GeoTIFF (COG) using HTTP `Range` requests (206 Partial Content). The default `python3 -m http.server` on Python 3.10 does not serve byte ranges, which prevents COG streaming.
@@ -72,52 +118,6 @@ Then open:
 
 If port `8001` is already in use on your machine, change the left side of the port mapping in `docker-compose.yml` (e.g. `8002:8001`).
 
-### Inference workflow (tiles 22 / 55)
-
-Step-by-step commands to run inference, generate COG + GeoJSON + thumbnails, and build STAC metadata are in:
-
-- INFERENCE_WORKFLOW.md
-
-## Validation / test metrics (training)
-
-When training site-specific U-Net models via `phase_3_models/unet_site_models/main_site_specific_models.py`, metrics are written to the training `output_dir` defined inside that script.
-
-Outputs you can use for **validation** and **test** reporting include:
-
-- Per-block metrics (text): `final_model_metrics_block_*.txt` and `best_model_metrics_block_*.txt`
-- Per-block metrics (JSON): `block_*_val_metrics.json` and `block_*_best_val_metrics.json`
-- Loss curves: `loss_metrics.txt` and `average_training_validation_loss_plot_across_blocks.png`
-- Confusion matrices / aggregated summaries are also written under the same `output_dir` (filenames depend on the evaluator utilities).
-
-Checkpoints (best model per block) are saved under `config_param.CHECKPOINT_DIR`.
-
-If you enabled TensorBoard logging, the log directory is set in `setup_logging_and_checkpoints()` inside `main_site_specific_models.py` and can be viewed with:
-
-```bash
-tensorboard --logdir <tb_logs_path>
-```
-
-## U-Net setup + parameter counts
-
-Parameter counts below were computed by loading each checkpoint into the inference U-Net and summing `model.parameters()` ("authoritative").
-
-Command used:
-
-```bash
-python phase_3_models/unet_site_models/count_checkpoint_params.py --model-path \
-  "phase_3_models/unet_site_models/outputs_ecosystems/low/original/block_3_epoch_108.pth" \
-  "phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth" \
-  "phase_3_models/unet_site_models/outputs_ecosystems/dense/original/block_3_epoch_105.pth"
-```
-
-Model setup (all checkpoints): Standard U-Net, depth 5, features `[64, 128, 256, 512, 1024]`, input bands = 5.
-
-| Ecosystem | Checkpoint | Output classes | Total params | final_conv params | Rest params | Buffers (BN stats) |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| Low | [phase_3_models/unet_site_models/outputs_ecosystems/low/original/block_3_epoch_108.pth](phase_3_models/unet_site_models/outputs_ecosystems/low/original/block_3_epoch_108.pth) | 3 | 124,375,491 | 195 | 124,375,296 | 24,086 |
-| Medium | [phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth](phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth) | 4 | 124,375,556 | 260 | 124,375,296 | 24,086 |
-| Dense | [phase_3_models/unet_site_models/outputs_ecosystems/dense/original/block_3_epoch_105.pth](phase_3_models/unet_site_models/outputs_ecosystems/dense/original/block_3_epoch_105.pth) | 5 | 124,375,621 | 325 | 124,375,296 | 24,086 |
-
 ## Dataset available
 - **You can find the whole raw dataset used for phase B** in workflow: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036860.svg)](https://doi.org/10.5281/zenodo.15036860)
 
@@ -144,9 +144,6 @@ Sotomayor, L. N., Megan, L., Krishna, L., Sophia, H., Molly, M., & Arko, L. (202
 This code can be cited and downloaded from: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036626.svg)](https://doi.org/10.5281/zenodo.15036626)
 
 Sotomayor, L. N. (2025). fvcCOVER: Code for image processing, build reference/annotation data and semantic segmentation modelling for mapping fractional vegetation cover in UAS RGB and multispectral imagery. Zenodo.
-
-### Method
-Coming Paper in Peer Review titled: 'Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation'.
 
 ## Acknowledgments
 - **Orthomosaics from drone imagery**: the raw RGB (1 cm) and multispectral (5 cm) orthomosaics at **phase A** in workflow can be found:
