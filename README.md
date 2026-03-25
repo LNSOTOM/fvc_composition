@@ -22,6 +22,23 @@ install micromamba as a standalone CLI tool to manage Conda-compatible environme
 micromamba create -f environment.yml
 ```
 
+### Train (site-specific U-Net)
+
+Training for the site-specific models is driven by:
+
+- `phase_3_models/unet_site_models/main_site_specific_models.py`
+
+Before running, update paths and training settings in:
+
+- `phase_3_models/unet_site_models/config_param.py` (data folders, class labels, number of classes, checkpoint dir, device, epochs, etc.)
+- `phase_3_models/unet_site_models/main_site_specific_models.py` (default output/log directories are currently hard-coded)
+
+Run from the repo root:
+
+```bash
+python phase_3_models/unet_site_models/main_site_specific_models.py
+```
+
 ## Web viewer (COG + GeoJSON)
 
 The viewer in `cnn_mappingAI_viewer.html` loads a Cloud-Optimized GeoTIFF (COG) using HTTP `Range` requests (206 Partial Content). The default `python3 -m http.server` on Python 3.10 does not serve byte ranges, which prevents COG streaming.
@@ -40,6 +57,20 @@ Tips:
 Then open:
 
 - http://127.0.0.1:8001/cnn_mappingAI_viewer.html
+
+### Run with Docker (recommended for sharing)
+
+This builds a reproducible environment (from `environment.yml`) and runs the Range-capable server inside a container. The repo is bind-mounted so the viewer can access local COG + GeoJSON without baking large rasters into the image.
+
+```bash
+docker compose up --build viewer
+```
+
+Then open:
+
+- http://127.0.0.1:8001/cnn_mappingAI_viewer.html
+
+If port `8001` is already in use on your machine, change the left side of the port mapping in `docker-compose.yml` (e.g. `8002:8001`).
 
 ### Inference workflow (tiles 22 / 55)
 
@@ -67,20 +98,6 @@ Model setup (all checkpoints): Standard U-Net, depth 5, features `[64, 128, 256,
 | Low | [phase_3_models/unet_site_models/outputs_ecosystems/low/original/block_3_epoch_108.pth](phase_3_models/unet_site_models/outputs_ecosystems/low/original/block_3_epoch_108.pth) | 3 | 124,375,491 | 195 | 124,375,296 | 24,086 |
 | Medium | [phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth](phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth) | 4 | 124,375,556 | 260 | 124,375,296 | 24,086 |
 | Dense | [phase_3_models/unet_site_models/outputs_ecosystems/dense/original/block_3_epoch_105.pth](phase_3_models/unet_site_models/outputs_ecosystems/dense/original/block_3_epoch_105.pth) | 5 | 124,375,621 | 325 | 124,375,296 | 24,086 |
-
-### Run with Docker (recommended for sharing)
-
-This builds a reproducible environment (from `environment.yml`) and runs the Range-capable server inside a container. The repo is bind-mounted so the viewer can access local COG + GeoJSON without baking large rasters into the image.
-
-```bash
-docker compose up --build viewer
-```
-
-Then open:
-
-- http://127.0.0.1:8001/cnn_mappingAI_viewer.html
-
-If port `8001` is already in use on your machine, change the left side of the port mapping in `docker-compose.yml` (e.g. `8002:8001`).
 
 ## Dataset available
 - **You can find the whole raw dataset used for phase B** in workflow: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036860.svg)](https://doi.org/10.5281/zenodo.15036860)
