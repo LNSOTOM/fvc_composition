@@ -2,12 +2,12 @@
 
 **_Code for image processing, build reference/annotation data and semantic segmentation modelling for mapping fractional vegetation cover in UAS RGB and multispectral imagery._**
 
-This is the official workflow implementation of the paper:
+⚛️ This is the official workflow implementation of the paper:
 
 Sotomayor, L.N., *et al.* (2025). **Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation**.  
 *Landscape Ecology*, 40(8), 169. DOI: [10.1007/s10980-025-02193-y](https://doi.org/10.1007/s10980-025-02193-y)
 
-🌱 If you find this project helpful, please cite our paper:
+🌱 If you use this repository in your research or publications, please cite our paper:
 
 BibTeX:
 
