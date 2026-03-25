@@ -108,7 +108,7 @@ Model setup (all checkpoints): Standard U-Net, depth 5, features `[64, 128, 256,
 | Dense | [phase_3_models/unet_site_models/outputs_ecosystems/dense/original/block_3_epoch_105.pth](phase_3_models/unet_site_models/outputs_ecosystems/dense/original/block_3_epoch_105.pth) | 5 | 124,375,621 | 325 | 124,375,296 | 24,086 |
 
 
-## Dataset available
+## 💾 Dataset available
 - **You can find the whole raw dataset used for phase B** in workflow: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036860.svg)](https://doi.org/10.5281/zenodo.15036860)
 
 Sotomayor, L. N., Megan, L., Krishna, L., Sophia, H., Molly, M., & Arko, L. (2025). Fractional Vegetation Cover Mapping - UAS RGB and Multispectral Imagery, CNN algorithms, Semi-Arid Australian Ecosystems Coverage [Data set]. Zenodo.
@@ -130,7 +130,7 @@ Sotomayor, L. N., Megan, L., Krishna, L., Sophia, H., Molly, M., & Arko, L. (202
 
 <!-- [FVC classes based on growth form and structure ](https://figshare.com/projects/Reference_data_for_semi-arid_environments/227859) -->
 
-## Cite code for fvcCOVER
+## 👩‍💻 Cite code for fvcCOVER
 This code can be cited and downloaded from: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036626.svg)](https://doi.org/10.5281/zenodo.15036626)
 
 Sotomayor, L. N. (2025). fvcCOVER: Code for image processing, build reference/annotation data and semantic segmentation modelling for mapping fractional vegetation cover in UAS RGB and multispectral imagery. Zenodo.
