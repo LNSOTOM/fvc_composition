@@ -1,5 +1,4 @@
-# fvcCOVER
-**_Code for image processing, build reference/annotation data and semantic segmentation modelling for mapping fractional vegetation cover in UAS RGB and multispectral imagery._**
+# fvcCOVER: Code for image processing, build reference/annotation data and semantic segmentation modelling for mapping fractional vegetation cover in UAS RGB and multispectral imagery.
 
 ⚛️ This is the official workflow implementation of the paper:
 
