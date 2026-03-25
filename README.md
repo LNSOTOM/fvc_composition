@@ -47,6 +47,27 @@ Step-by-step commands to run inference, generate COG + GeoJSON + thumbnails, and
 
 - INFERENCE_WORKFLOW.md
 
+## U-Net setup + parameter counts
+
+Parameter counts below were computed by loading each checkpoint into the inference U-Net and summing `model.parameters()` ("authoritative").
+
+Command used:
+
+```bash
+python phase_3_models/unet_site_models/count_checkpoint_params.py --model-path \
+  "phase_3_models/unet_site_models/outputs_ecosystems/low/original/block_3_epoch_108.pth" \
+  "phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth" \
+  "phase_3_models/unet_site_models/outputs_ecosystems/dense/original/block_3_epoch_105.pth"
+```
+
+Model setup (all checkpoints): Standard U-Net, depth 5, features `[64, 128, 256, 512, 1024]`, input bands = 5.
+
+| Ecosystem | Checkpoint | Output classes | Total params | final_conv params | Rest params | Buffers (BN stats) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Low | [phase_3_models/unet_site_models/outputs_ecosystems/low/original/block_3_epoch_108.pth](phase_3_models/unet_site_models/outputs_ecosystems/low/original/block_3_epoch_108.pth) | 3 | 124,375,491 | 195 | 124,375,296 | 24,086 |
+| Medium | [phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth](phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth) | 4 | 124,375,556 | 260 | 124,375,296 | 24,086 |
+| Dense | [phase_3_models/unet_site_models/outputs_ecosystems/dense/original/block_3_epoch_105.pth](phase_3_models/unet_site_models/outputs_ecosystems/dense/original/block_3_epoch_105.pth) | 5 | 124,375,621 | 325 | 124,375,296 | 24,086 |
+
 ### Run with Docker (recommended for sharing)
 
 This builds a reproducible environment (from `environment.yml`) and runs the Range-capable server inside a container. The repo is bind-mounted so the viewer can access local COG + GeoJSON without baking large rasters into the image.
