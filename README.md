@@ -87,36 +87,25 @@ Model setup (all checkpoints): Standard U-Net, depth 5, features `[64, 128, 256,
 
 ## Web viewer (COG + GeoJSON)
 
-The viewer in `cnn_mappingAI_viewer.html` loads a Cloud-Optimized GeoTIFF (COG) using HTTP `Range` requests (206 Partial Content). The default `python3 -m http.server` on Python 3.10 does not serve byte ranges, which prevents COG streaming.
+The viewer in `cnn_mappingAI_viewer.html` loads a Cloud-Optimized GeoTIFF (COG) using HTTP `Range` requests (206 Partial Content), so you need a Range-capable server.
 
-Run the Range-capable server from the repo root:
+Local (from repo root):
 
 ```bash
 python3 bin/range_http_server.py 8001
 ```
 
-Tips:
-
-- To hide the many `206 Partial Content` requests produced by COG streaming, run: `python3 bin/range_http_server.py 8001 --quiet`
-- To allow browser caching for static files (GeoJSON/PNGs and some probes), add e.g.: `--cache-seconds 3600`
-
-Then open:
-
-- http://127.0.0.1:8001/cnn_mappingAI_viewer.html
-
-### Run with Docker (recommended for sharing)
-
-This builds a reproducible environment (from `environment.yml`) and runs the Range-capable server inside a container. The repo is bind-mounted so the viewer can access local COG + GeoJSON without baking large rasters into the image.
+Docker (reproducible):
 
 ```bash
 docker compose up --build viewer
 ```
 
-Then open:
+Open:
 
 - http://127.0.0.1:8001/cnn_mappingAI_viewer.html
 
-If port `8001` is already in use on your machine, change the left side of the port mapping in `docker-compose.yml` (e.g. `8002:8001`).
+If port `8001` is already in use, change the left side of the port mapping in `docker-compose.yml` (e.g. `8002:8001`).
 
 ## Dataset available
 - **You can find the whole raw dataset used for phase B** in workflow: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036860.svg)](https://doi.org/10.5281/zenodo.15036860)
