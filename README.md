@@ -1,10 +1,11 @@
-# fvcCOVER 
+# fvcCOVER
+
 **_Code for image processing, build reference/annotation data and semantic segmentation modelling for mapping fractional vegetation cover in UAS RGB and multispectral imagery._**
 
 This is the official workflow implementation of the paper:
 
 Sotomayor, L.N., *et al.* (2025). **Mapping fractional vegetation cover in UAS RGB and multispectral imagery in semi-arid Australian ecosystems using CNN-based semantic segmentation**.  
-*Landscape Ecology*, 40, 169. https://doi.org/10.1007/s10980-025-02193-y
+*Landscape Ecology*, 40(8), 169. DOI: [10.1007/s10980-025-02193-y](https://doi.org/10.1007/s10980-025-02193-y)
 
 🌱 If you find this project helpful, please cite our paper:
 
@@ -27,13 +28,13 @@ BibTeX:
 <!-- ![fvcCover](https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/fvc_mapping_predictions.png) -->
 <img src="https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/fvc_mapping_predictions.png" width="500">
 
-## CNN-based workflow for FVC mapping application:
+## CNN-based workflow for FVC mapping application
 
 <img src="https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/cnn_workflow_sites.png" width="400">
 <!-- ![mutlispectralMultipleClasses](https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/cnn_workflow_sites.png) -->
 
 
-## 0. Installation
+## fvcCOVER Installation setup
 
 ```diff
 #rebuild environment with dependencies 
@@ -102,7 +103,7 @@ docker compose up --build viewer
 
 Open:
 
-- http://127.0.0.1:8001/cnn_mappingAI_viewer.html
+- [http://127.0.0.1:8001/cnn_mappingAI_viewer.html](http://127.0.0.1:8001/cnn_mappingAI_viewer.html)
 
 If port `8001` is already in use, change the left side of the port mapping in `docker-compose.yml` (e.g. `8002:8001`).
 
@@ -129,6 +130,7 @@ Model setup (all checkpoints): Standard U-Net, depth 5, features `[64, 128, 256,
 
 
 ## 💾 Dataset available
+
 - **You can find the whole raw dataset used for phase B** in workflow: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036860.svg)](https://doi.org/10.5281/zenodo.15036860)
 
 Sotomayor, L. N., Megan, L., Krishna, L., Sophia, H., Molly, M., & Arko, L. (2025). Fractional Vegetation Cover Mapping - UAS RGB and Multispectral Imagery, CNN algorithms, Semi-Arid Australian Ecosystems Coverage [Data set]. Zenodo.
@@ -151,11 +153,13 @@ Sotomayor, L. N., Megan, L., Krishna, L., Sophia, H., Molly, M., & Arko, L. (202
 <!-- [FVC classes based on growth form and structure ](https://figshare.com/projects/Reference_data_for_semi-arid_environments/227859) -->
 
 ## 👩‍💻 Cite code for fvcCOVER
+
 This code can be cited and downloaded from: [![DOI](https://zenodo.org/badge/DOI/110.5281/zenodo.15036626.svg)](https://doi.org/10.5281/zenodo.15036626)
 
 Sotomayor, L. N. (2025). fvcCOVER: Code for image processing, build reference/annotation data and semantic segmentation modelling for mapping fractional vegetation cover in UAS RGB and multispectral imagery. Zenodo.
 
 ## Acknowledgments
+
 - **Orthomosaics from drone imagery**: the raw RGB (1 cm) and multispectral (5 cm) orthomosaics at **phase A** in workflow can be found:
 TERN Landscapes, TERN Surveillance Monitoring, Stenson, M., Sparrow, B., & Lucieer, A. (2022).
 Drone RGB and Multispectral Imagery from TERN plots across Australia. Version 1. Terrestrial Ecosystem Research Network. Dataset. 
