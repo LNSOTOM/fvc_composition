@@ -13,7 +13,7 @@ Sotomayor, L.N., *et al.* (2025). **Mapping fractional vegetation cover in UAS R
 <!-- ![mutlispectralMultipleClasses](https://github.com/LNSOTOM/fvc_composition/blob/main/phase_1_image_processing/img/cnn_workflow_sites.png) -->
 
 
-## Installation
+## 0. Installation
 
 ```diff
 #rebuild environment with dependencies 
@@ -22,7 +22,7 @@ install micromamba as a standalone CLI tool to manage Conda-compatible environme
 micromamba create -f environment.yml
 ```
 
-## Train (site-specific U-Net)
+## 1. Train (site-specific U-Net)
 
 Training for the site-specific models is driven by:
 
@@ -39,7 +39,7 @@ Run from the repo root:
 python phase_3_models/unet_site_models/main_site_specific_models.py
 ```
 
-## Validation / test metrics (training)
+## 2. Validation / test metrics (training)
 
 When training site-specific U-Net models via `phase_3_models/unet_site_models/main_site_specific_models.py`, metrics are written to the training `output_dir` defined inside that script.
 
@@ -58,13 +58,13 @@ If you enabled TensorBoard logging, the log directory is set in `setup_logging_a
 tensorboard --logdir <tb_logs_path>
 ```
 
-## Inference workflow (tiles 22 / 55)
+## 3. Inference workflow (tiles 22 / 55)
 
 Step-by-step commands to run inference, generate COG + GeoJSON + thumbnails, and build STAC metadata are in:
 
 - [INFERENCE_WORKFLOW.md](INFERENCE_WORKFLOW.md)
 
-## Web viewer (COG + GeoJSON)
+## 4. Web viewer (COG + GeoJSON)
 
 The viewer in `cnn_mappingAI_viewer.html` loads a Cloud-Optimized GeoTIFF (COG) using HTTP `Range` requests (206 Partial Content), so you need a Range-capable server.
 
