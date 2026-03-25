@@ -78,6 +78,25 @@ Step-by-step commands to run inference, generate COG + GeoJSON + thumbnails, and
 
 - INFERENCE_WORKFLOW.md
 
+## Validation / test metrics (training)
+
+When training site-specific U-Net models via `phase_3_models/unet_site_models/main_site_specific_models.py`, metrics are written to the training `output_dir` defined inside that script.
+
+Outputs you can use for **validation** and **test** reporting include:
+
+- Per-block metrics (text): `final_model_metrics_block_*.txt` and `best_model_metrics_block_*.txt`
+- Per-block metrics (JSON): `block_*_val_metrics.json` and `block_*_best_val_metrics.json`
+- Loss curves: `loss_metrics.txt` and `average_training_validation_loss_plot_across_blocks.png`
+- Confusion matrices / aggregated summaries are also written under the same `output_dir` (filenames depend on the evaluator utilities).
+
+Checkpoints (best model per block) are saved under `config_param.CHECKPOINT_DIR`.
+
+If you enabled TensorBoard logging, the log directory is set in `setup_logging_and_checkpoints()` inside `main_site_specific_models.py` and can be viewed with:
+
+```bash
+tensorboard --logdir <tb_logs_path>
+```
+
 ## U-Net setup + parameter counts
 
 Parameter counts below were computed by loading each checkpoint into the inference U-Net and summing `model.parameters()` ("authoritative").
