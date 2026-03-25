@@ -22,7 +22,7 @@ install micromamba as a standalone CLI tool to manage Conda-compatible environme
 micromamba create -f environment.yml
 ```
 
-### Train (site-specific U-Net)
+## Train (site-specific U-Net)
 
 Training for the site-specific models is driven by:
 
@@ -62,7 +62,7 @@ tensorboard --logdir <tb_logs_path>
 
 Step-by-step commands to run inference, generate COG + GeoJSON + thumbnails, and build STAC metadata are in:
 
-- INFERENCE_WORKFLOW.md
+- [INFERENCE_WORKFLOW.md](INFERENCE_WORKFLOW.md)
 
 ## U-Net setup + parameter counts
 
