@@ -40,6 +40,8 @@ class TilePaths:
     predictor_epsg4326: Path
     predictor_cog: Path
     predictions_geojson: Path
+    predictions_mask_tif: Path
+    predictions_shp: Path
     thumbnail_png: Path
     stac_dir: Path
 
@@ -91,7 +93,14 @@ def parse_args() -> argparse.Namespace:
         help="Model checkpoint to use",
     )
     parser.add_argument("--in-channels", type=int, default=5, help="Model input channels (default: 5)")
-    parser.add_argument("--valid-classes", default="0,1,2,3", help="Valid class ids (default: 0,1,2,3)")
+    parser.add_argument(
+        "--valid-classes",
+        default="",
+        help=(
+            "Valid class ids as a comma-separated list. If omitted, defaults based on --variant "
+            "(low: 0,1,2; medium: 0,1,2,3; dense: 0,1,2,3,4)."
+        ),
+    )
 
     parser.add_argument(
         "--class-id-map",
@@ -100,6 +109,18 @@ def parse_args() -> argparse.Namespace:
             "Optional class id remapping applied after prediction, before polygonization. "
             "Format: 'src:dst,src2:dst2' (e.g. '1:2,2:1' to swap NPV/PV)."
         ),
+    )
+
+    parser.add_argument(
+        "--write-mask-tif",
+        action="store_true",
+        help="Also write a predicted class-mask GeoTIFF (predictions_mask.tif) per tile",
+    )
+
+    parser.add_argument(
+        "--write-shp",
+        action="store_true",
+        help="Also write prediction polygons as an ESRI Shapefile (.shp) per tile",
     )
 
     parser.add_argument(
@@ -232,8 +253,10 @@ def build_tile_paths(tile_id: str, output_root: Path, output_prefix: str) -> Til
         predictor_raw=out_dir / f"predictor_tile_{tile_id}.tif",
         predictor_epsg4326=out_dir / f"predictor_tile_{tile_id}_epsg4326.tif",
         predictor_cog=out_dir / f"predictor_tile_{tile_id}_epsg4326_cog.tif",
-        predictions_geojson=out_dir / "predictions.geojson",
-        thumbnail_png=out_dir / "thumbnail_531.png",
+        predictions_geojson=out_dir / f"predictions_tile_{tile_id}.geojson",
+        predictions_mask_tif=out_dir / f"predictions_mask_tile_{tile_id}.tif",
+        predictions_shp=out_dir / f"predictions_tile_{tile_id}.shp",
+        thumbnail_png=out_dir / f"thumbnail_531_tile_{tile_id}.png",
         stac_dir=out_dir / "stac",
     )
 
@@ -306,10 +329,13 @@ def step_inference(
     valid_classes: str,
     variant: str,
     class_id_map: str,
+    write_mask_tif: bool,
+    write_shp: bool,
     overwrite: bool,
 ) -> None:
-    if paths.predictions_geojson.exists() and not overwrite:
-        return
+    if not overwrite:
+        if paths.predictions_geojson.exists() and (not write_mask_tif or paths.predictions_mask_tif.exists()):
+            return
 
     _ensure_parent(paths.predictions_geojson)
     script = cwd / "phase_3_models" / "unet_site_models" / "inference_raster_to_geojson.py"
@@ -323,6 +349,8 @@ def step_inference(
         str(input_raster),
         "--output-geojson",
         str(paths.predictions_geojson),
+        "--tile-id",
+        str(paths.tile_id),
         "--variant",
         str(variant),
         "--in-channels",
@@ -330,6 +358,12 @@ def step_inference(
         "--valid-classes",
         valid_classes,
     ]
+
+    if write_mask_tif:
+        cmd += ["--output-mask", str(paths.predictions_mask_tif)]
+
+    if write_shp:
+        cmd += ["--output-shp", str(paths.predictions_shp)]
 
     if class_id_map:
         cmd += ["--class-id-map", class_id_map]
@@ -383,15 +417,40 @@ def step_stac(
     _run(cmd, cwd=cwd)
 
 
-def write_tiles_index(index_path: Path, tile_ids: Iterable[str], output_root: Path, output_prefix: str) -> None:
+def _to_repo_relative_url(path: Path, repo_root: Path) -> str:
+    """Convert a filesystem path into a repo-relative URL-ish path.
+
+    The viewer fetches assets via HTTP from the repo root (range_http_server.py).
+    Absolute filesystem paths won't resolve in the browser, so we prefer paths
+    relative to repo_root when possible.
+    """
+
+    try:
+        rel = path.resolve().relative_to(repo_root.resolve())
+        return rel.as_posix()
+    except Exception:
+        # If the output is outside the repo root, we cannot make it work in the
+        # browser without changing the server root. Keep the original string.
+        return path.as_posix()
+
+
+def write_tiles_index(
+    index_path: Path,
+    tile_ids: Iterable[str],
+    output_root: Path,
+    output_prefix: str,
+    repo_root: Path,
+) -> None:
     tiles = []
     for tile_id in sorted(tile_ids, key=lambda x: int(x) if x.isdigit() else x):
         out_dir = output_root / f"{output_prefix}{tile_id}"
+        base_url = _to_repo_relative_url(out_dir, repo_root=repo_root)
+        thumb_url = _to_repo_relative_url(out_dir / f"thumbnail_531_tile_{tile_id}.png", repo_root=repo_root)
         tiles.append(
             {
                 "tile_id": str(tile_id),
-                "base_path": str(out_dir.as_posix()) + "/",
-                "thumbnail": str((out_dir / "thumbnail_531.png").as_posix()),
+                "base_path": base_url + "/",
+                "thumbnail": thumb_url,
             }
         )
 
@@ -451,6 +510,17 @@ def main() -> int:
     variant = str(args.variant).lower()
     stac_collection_id = str(args.stac_collection_id).strip() or f"wombat-fvc-{variant}"
 
+    resolved_valid_classes = str(args.valid_classes).strip()
+    if not resolved_valid_classes:
+        if variant in {"low", "low_sparse"}:
+            resolved_valid_classes = "0,1,2"
+        elif variant in {"medium", "medium_sparse"}:
+            resolved_valid_classes = "0,1,2,3"
+        elif variant in {"dense"}:
+            resolved_valid_classes = "0,1,2,3,4"
+        else:
+            resolved_valid_classes = "0,1,2,3"
+
     for tile_id in sorted(tile_ids, key=lambda x: int(x) if x.isdigit() else x):
         src = tiles[tile_id]
         paths = build_tile_paths(tile_id, output_root=output_root, output_prefix=args.output_prefix)
@@ -500,12 +570,24 @@ def main() -> int:
                 model_path=model_path,
                 input_raster=input_raster,
                 in_channels=int(args.in_channels),
-                valid_classes=str(args.valid_classes),
+                valid_classes=resolved_valid_classes,
                 variant=variant,
                 class_id_map=str(args.class_id_map),
+                write_mask_tif=bool(args.write_mask_tif),
+                write_shp=bool(args.write_shp),
                 overwrite=args.overwrite,
             )
             step_thumbnail(paths, cwd=cwd, python_exe=python_exe, overwrite=args.overwrite)
+
+            # If we now write a tile-specific thumbnail name, remove the legacy one
+            # so each output folder stays tidy.
+            if args.cleanup_intermediates:
+                try:
+                    legacy_thumb = paths.out_dir / "thumbnail_531.png"
+                    if legacy_thumb.exists():
+                        legacy_thumb.unlink()
+                except Exception:
+                    pass
             step_stac(
                 paths,
                 cwd=cwd,
@@ -516,9 +598,11 @@ def main() -> int:
             )
 
             # Optionally delete staged raw tile to save disk.
-            if args.cleanup_intermediates and stage_mode != "none":
+            if args.cleanup_intermediates:
                 try:
-                    if paths.predictor_raw.exists() and paths.predictor_raw.is_file():
+                    # If a previous run staged the raw tile, remove it so the
+                    # output folder contains only viewer-friendly products.
+                    if paths.predictor_raw.exists() or paths.predictor_raw.is_symlink():
                         paths.predictor_raw.unlink()
                 except Exception:
                     pass
@@ -533,8 +617,31 @@ def main() -> int:
 
     if args.write_tiles_index:
         index_path = Path(args.write_tiles_index)
-        write_tiles_index(index_path, processed, output_root=output_root, output_prefix=args.output_prefix)
+        write_tiles_index(
+            index_path,
+            processed,
+            output_root=output_root,
+            output_prefix=args.output_prefix,
+            repo_root=cwd,
+        )
         print(f"Wrote tiles index: {index_path}")
+
+        # Also write a dataset-local tiles_index.json inside the output root.
+        # This avoids collisions when running multiple datasets sequentially
+        # (repo-root tiles_index.json would otherwise be overwritten each time).
+        try:
+            output_root_index = (output_root / "tiles_index.json")
+            if output_root_index.resolve() != index_path.resolve():
+                write_tiles_index(
+                    output_root_index,
+                    processed,
+                    output_root=output_root,
+                    output_prefix=args.output_prefix,
+                    repo_root=cwd,
+                )
+                print(f"Wrote tiles index: {output_root_index}")
+        except Exception:
+            pass
 
     print(f"Done. Processed {len(processed)} tiles.")
     return 0

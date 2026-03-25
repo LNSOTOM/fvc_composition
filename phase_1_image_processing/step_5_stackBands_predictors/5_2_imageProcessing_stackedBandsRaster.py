@@ -1,3 +1,5 @@
+
+#%%
 ## PHASE 1_Image Processing
 #STEP 5
 # Step 5_2: Stack Bands (10b to 5b)
@@ -121,6 +123,11 @@ def _band_descriptions_for_selection(
 # input_folder = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site2_DD0010_18/inputs/predictors/tiles_multispectral'
 # output_folder_5b = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site2_DD0010_18/inputs/predictors/predictors_multispectral_5b/'
 
+input_folder = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/multispec/res_01/raw/tiles_multispectral'
+output_folder_5b = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/multispec/res_01/stacked/'
+
+
+
 ##site3 - with water  [DENSE]
 # input_folder = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/inputs/masks/tiles_256/raw/fvc_class/annotation_predictor_raster_10b/raster_10b_93/'
 # output_folder_5b = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_1_DD0012/inputs/predictors/tiles_256/raw/predictors_5b/'
@@ -134,8 +141,8 @@ def _band_descriptions_for_selection(
 # output_folder_5b = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_1_DD0011/inputs/predictors/tiles_3072/raw/tiles_multispectral/annotation_predictor_raster_5b/'
 
 ##site5 -  Vegetation [LOW] (site DD0013)
-input_folder = '/media/laura/laura_usb/uas_data/DD0013/inputs/predictors/tiles_3072/raw/tiles_multispectral'
-output_folder_5b = '/media/laura/laura_usb/uas_data/DD0013/inputs/predictors/tiles_3072/stacked/'
+# input_folder = '/media/laura/laura_usb/uas_data/DD0013/inputs/predictors/tiles_3072/raw/tiles_multispectral'
+# output_folder_5b = '/media/laura/laura_usb/uas_data/DD0013/inputs/predictors/tiles_3072/stacked/'
 
 
 # Check for directory existence, if not, create

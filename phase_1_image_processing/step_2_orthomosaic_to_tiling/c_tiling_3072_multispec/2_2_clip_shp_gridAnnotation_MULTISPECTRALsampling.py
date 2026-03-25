@@ -1,3 +1,5 @@
+
+#%%
 ## PHASE 1_Image Processing
 #STEP 2
 # Step 2_2: Split orthomosaic raster to 3072x3072 px --> 10m x 10m (option b)
@@ -59,6 +61,11 @@ def clip_raster_feature(input_raster_path, grid_feature, output_path):
 # grid_shapefile_path = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site1_supersite_DD0001/inputs/masks/tiles_3072/raw/pv_class/annotations/griding/grid_annotation_3072.shp'
 # output_raster_folder = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site1_supersite_DD0001/inputs/predictors/tiles_3072/raw/tiles_multispectral'
 
+input_raster_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/orthomosaic/20220519_SASMDD001_dual_ortho_01_bilinear.tif'
+grid_shapefile_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/masks/tiles_3072/raw/pv_class/annotations/griding/grid_annotation_extraLabels_3072.shp'
+# grid_shapefile_path = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site1_supersite_DD0001/inputs/masks/tiles_3072/raw/pv_class/annotations/griding/grid_annotation_3072.shp'
+output_raster_folder = '/media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/multispec/res_01/raw/tiles_multispectral'
+
 #site1_2 - similar to supersite - DD0010_18 [MEDIUM]
 # input_raster_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site2_DD0010_18/orthomosaic/20220518_SASMDD0010_18_dual_ortho_01_bilinear.tif'
 # grid_shapefile_path = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site2_DD0010_18/inputs/masks/tiles_3072/raw/pv_class/annotations/gridding/grid_annotation_3072.shp'
@@ -70,9 +77,9 @@ def clip_raster_feature(input_raster_path, grid_feature, output_path):
 # output_raster_folder = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site4_DD0011/inputs/predictors/raw/tiles_multispectral'
 
 #site3_1 - with water - DD0012 [DENSE] 
-input_raster_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_DD0012/orthomosaic/20220517_SASMDD0012_dual_ortho_01_bilinear.tif'
-grid_shapefile_path = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site3_DD0012/inputs/masks/tiles_3072/raw/pv_class/gridding/grid_annotation_3072.shp'
-output_raster_folder = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site3_DD0012/inputs/predictors/tiles_3072/raw/tiles_multispectral'
+# input_raster_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site3_DD0012/orthomosaic/20220517_SASMDD0012_dual_ortho_01_bilinear.tif'
+# grid_shapefile_path = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site3_DD0012/inputs/masks/tiles_3072/raw/pv_class/gridding/grid_annotation_3072.shp'
+# output_raster_folder = '/home/laura/Documents/uas_data/Calperum/randomSamplingData/site3_DD0012/inputs/predictors/tiles_3072/raw/tiles_multispectral'
 
 #site3_2 -similar to site 12 - DD0008 [DENSE]
 # input_raster_path = '/media/laura/Extreme SSD/qgis/calperumResearch/site5_DD0008/orthomosaic/20220516_SASMDD0008_dual_ortho_01_bilinear.tif'
@@ -86,3 +93,4 @@ annotated_value = 1  # The value in the 'annotated' field used for filtering
 
 
 clip_raster_by_annotated_grid(input_raster_path, grid_shapefile_path, output_raster_folder, grid_id_field, annotated_field, annotated_value)
+# %%

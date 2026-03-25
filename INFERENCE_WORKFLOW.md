@@ -156,7 +156,7 @@ Use the **Tile** dropdown in the sidebar to switch between tile 22 and tile 55.
 
 If you have a folder with many predictor tiles named like `tiles_multispectral.<id>.tif`, you can run the full pipeline for *all* tiles in one command.
 
-This will create one output folder per tile under `phase_3_models/unet_site_models/` and it will also write `tiles_index.json` at the repo root so the viewer automatically lists all available tiles.
+This will create one output folder per tile under `phase_3_models/unet_site_models/` (or under `--output-root` if provided) and it will also write `tiles_index.json` at the repo root so the viewer automatically lists all available tiles.
 
 ```bash
 python bin/batch_inference_tiles.py \
@@ -165,6 +165,35 @@ python bin/batch_inference_tiles.py \
   --in-channels 5 \
   --valid-classes "0,1,2,3" \
   --stage-mode symlink \
+  --continue-on-error
+```
+
+```bash
+python bin/batch_inference_tiles.py \
+  --input-dir "//media/laura/Extreme SSD/qgis/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/multispec/res_01/stacked" \
+  --output-root "phase_3_models/unet_site_models/wombat_mappingAI_viewer/medium_multispec5b" \
+  --model-path "phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth" \
+  --in-channels 5 \
+  --valid-classes "0,1,2,3" \
+  --stage-mode none \
+  --cleanup-intermediates \
+  --write-mask-tif \
+  --write-shp \
+  --continue-on-error
+```
+
+```bash
+python bin/batch_inference_tiles.py \
+  --input-dir "/data/calperumResearch/site1_1_DD0001/imagery/inputs/predictors/tiles_3072/multispec/res_01/stacked" \
+  --output-root "phase_3_models/unet_site_models/wombat_mappingAI_viewer/lowModel_multispec5b" \
+  --variant low \
+  --model-path "phase_3_models/unet_site_models/outputs_ecosystems/low/original/block_3_epoch_108.pth" \
+  --in-channels 5 \
+  --valid-classes "0,1,2" \
+  --stage-mode none \
+  --cleanup-intermediates \
+  --write-mask-tif \
+  --write-shp \
   --continue-on-error
 ```
 

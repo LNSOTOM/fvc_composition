@@ -82,15 +82,30 @@ def main() -> int:
         raise FileNotFoundError(f"Tile dir not found: {tile_dir}")
 
     predictor_name = f"predictor_tile_{tile_id}_epsg4326_cog.tif"
-    predictions_name = "predictions.geojson"
+    predictions_name_new = f"predictions_tile_{tile_id}.geojson"
+    predictions_name_legacy = "predictions.geojson"
+    mask_name_new = f"predictions_mask_tile_{tile_id}.tif"
+    mask_name_legacy = "predictions_mask.tif"
 
     predictor_path = tile_dir / predictor_name
-    predictions_path = tile_dir / predictions_name
+    predictions_path_new = tile_dir / predictions_name_new
+    predictions_path_legacy = tile_dir / predictions_name_legacy
+    predictions_path = predictions_path_new if predictions_path_new.exists() else predictions_path_legacy
+
+    mask_path_new = tile_dir / mask_name_new
+    mask_path_legacy = tile_dir / mask_name_legacy
+    mask_path = mask_path_new if mask_path_new.exists() else mask_path_legacy
+
+    predictions_name = predictions_path.name
+    mask_name = mask_path.name
 
     if not predictor_path.exists():
         raise FileNotFoundError(f"Predictor COG not found: {predictor_path}")
     if not predictions_path.exists():
-        raise FileNotFoundError(f"Predictions GeoJSON not found: {predictions_path}")
+        raise FileNotFoundError(
+            "Predictions GeoJSON not found (tried both naming schemes): "
+            f"{predictions_path_new} and {predictions_path_legacy}"
+        )
 
     stac_dir = tile_dir / "stac"
     stac_dir.mkdir(parents=True, exist_ok=True)
@@ -241,6 +256,18 @@ def main() -> int:
                 "roles": ["data", "labels"],
                 "title": "FVC prediction polygons",
             },
+            **(
+                {
+                    "mask": {
+                        "href": f"../{mask_name}",
+                        "type": "image/tiff; application=geotiff",
+                        "roles": ["data", "labels"],
+                        "title": "Predicted class mask (GeoTIFF)",
+                    }
+                }
+                if mask_path.exists()
+                else {}
+            ),
         },
         "links": [
             {"rel": "root", "href": "catalog.json", "type": "application/json"},

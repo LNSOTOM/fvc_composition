@@ -142,6 +142,33 @@ def parse_args() -> argparse.Namespace:
         default="",
         help="Output .geojson file (single input) OR output directory (directory input)",
     )
+
+    parser.add_argument(
+        "--output-mask",
+        default="",
+        help=(
+            "Optional output class-mask GeoTIFF path (single input) OR output directory (directory input). "
+            "If provided, writes a single-band uint8 raster with predicted class ids."
+        ),
+    )
+
+    parser.add_argument(
+        "--output-shp",
+        default="",
+        help=(
+            "Optional output ESRI Shapefile .shp path (single input) OR output directory (directory input). "
+            "Writes polygons equivalent to the GeoJSON output."
+        ),
+    )
+
+    parser.add_argument(
+        "--tile-id",
+        default="",
+        help=(
+            "Optional tile id to attach to each GeoJSON feature as properties.tile_id and properties.tile_number. "
+            "Useful when running per-tile outputs via batch scripts."
+        ),
+    )
     parser.add_argument("--tile-size", type=int, default=DEFAULT_TILE_SIZE)
     parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
     parser.add_argument("--positive-class-id", type=int, default=DEFAULT_POSITIVE_CLASS_ID)
@@ -334,6 +361,62 @@ def _resolve_output_path(output_geojson: str, input_raster: str, is_batch: bool)
     return str(out)
 
 
+def _resolve_output_mask_path(output_mask: str, input_raster: str, is_batch: bool) -> str:
+    out = Path(output_mask)
+    if is_batch:
+        out.mkdir(parents=True, exist_ok=True)
+        stem = Path(input_raster).stem
+        return str(out / f"{stem}_mask.tif")
+
+    if not out.suffix:
+        out.mkdir(parents=True, exist_ok=True)
+        stem = Path(input_raster).stem
+        return str(out / f"{stem}_mask.tif")
+
+    parent = out.parent
+    if str(parent):
+        parent.mkdir(parents=True, exist_ok=True)
+    return str(out)
+
+
+def _resolve_output_shp_path(output_shp: str, input_raster: str, is_batch: bool) -> str:
+    out = Path(output_shp)
+    if is_batch:
+        out.mkdir(parents=True, exist_ok=True)
+        stem = Path(input_raster).stem
+        return str(out / f"{stem}_predictions.shp")
+
+    if out.is_dir() or (not out.suffix):
+        out.mkdir(parents=True, exist_ok=True)
+        stem = Path(input_raster).stem
+        return str(out / f"{stem}_predictions.shp")
+
+    parent = out.parent
+    if str(parent):
+        parent.mkdir(parents=True, exist_ok=True)
+    return str(out)
+
+
+def save_mask_geotiff(mask: np.ndarray, transform, crs, output_path: str) -> None:
+    out_path = Path(output_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    profile = {
+        "driver": "GTiff",
+        "height": int(mask.shape[0]),
+        "width": int(mask.shape[1]),
+        "count": 1,
+        "dtype": rasterio.uint8,
+        "crs": crs,
+        "transform": transform,
+        "compress": "DEFLATE",
+        "predictor": 2,
+    }
+
+    with rasterio.open(out_path, "w", **profile) as dst:
+        dst.write(mask.astype(np.uint8, copy=False), 1)
+
+
 def mask_to_polygons(
     mask,
     transform,
@@ -449,6 +532,12 @@ if __name__ == "__main__":
 
     for raster_path in input_rasters:
         out_geojson = _resolve_output_path(args.output_geojson, raster_path, is_batch=is_batch)
+        out_mask = ""
+        if str(args.output_mask).strip():
+            out_mask = _resolve_output_mask_path(args.output_mask, raster_path, is_batch=is_batch)
+        out_shp = ""
+        if str(args.output_shp).strip():
+            out_shp = _resolve_output_shp_path(args.output_shp, raster_path, is_batch=is_batch)
 
         print(f"Running inference on: {raster_path}")
         mask, transform, crs = run_inference(
@@ -460,6 +549,10 @@ if __name__ == "__main__":
 
         if class_id_map:
             mask = apply_class_id_map(mask, class_id_map)
+
+        if out_mask:
+            print(f"Saving mask GeoTIFF -> {out_mask}")
+            save_mask_geotiff(mask, transform, crs, out_mask)
 
         print("Converting to polygons...")
         invalid_present = sorted(int(v) for v in np.unique(mask) if int(v) not in valid_classes)
@@ -484,11 +577,23 @@ if __name__ == "__main__":
         if not gdf.empty and gdf.crs is not None and gdf.crs.to_string() != "EPSG:4326":
             gdf = gdf.to_crs("EPSG:4326")
 
+        tile_id_raw = str(args.tile_id).strip()
+        if tile_id_raw:
+            gdf["tile_id"] = tile_id_raw
+            try:
+                gdf["tile_number"] = int(tile_id_raw)
+            except Exception:
+                gdf["tile_number"] = tile_id_raw
+
         unique_values, counts = np.unique(mask, return_counts=True)
         print("Mask classes (value:count):", dict(zip(unique_values.tolist(), counts.tolist())))
         print(f"Polygon features: {len(gdf)}")
 
         print(f"Saving GeoJSON -> {out_geojson}")
         gdf.to_file(out_geojson, driver="GeoJSON")
+
+        if out_shp:
+            print(f"Saving Shapefile -> {out_shp}")
+            gdf.to_file(out_shp, driver="ESRI Shapefile")
 
     print("Done!")
