@@ -126,6 +126,8 @@ If you want this viewer under an existing portfolio app and domain, that app mus
 
 If the viewer data is too large for a Heroku slug, publish the viewer bundle to Cloudflare R2 and point the site route at the public R2 prefix.
 
+Full viewer upload instructions are also available in `bin/README_fvc_viewer.md` next to `bin/upload_viewer_to_r2.py`.
+
 Install the extra dependency if your environment predates this change:
 
 ```bash
