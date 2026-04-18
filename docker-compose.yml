@@ -8,8 +8,7 @@ services:
       - .:/workspace
     ports:
       - "8001:8001"
-    # Range-capable static server (required for COG streaming)
-    command: ["micromamba", "run", "-n", "fvc_composition", "python", "bin/range_http_server.py", "8001", "--bind", "0.0.0.0"]
+    command: ["micromamba", "run", "-n", "fvc_composition", "python", "app.py"]
     shm_size: "2gb"
 
   dev:

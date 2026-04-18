@@ -13,6 +13,6 @@ RUN micromamba create -y -f /tmp/environment.yml \
 
 WORKDIR /workspace
 
-# Default: run the Range-capable viewer server
+# Default: run the deployable viewer app
 EXPOSE 8001
-CMD ["micromamba", "run", "-n", "fvc_composition", "python", "bin/range_http_server.py", "8001", "--bind", "0.0.0.0"]
+CMD ["micromamba", "run", "-n", "fvc_composition", "python", "app.py"]

@@ -86,12 +86,12 @@ Step-by-step commands to run inference, generate COG + GeoJSON + thumbnails, and
 
 ## 4. Web viewer (COG + GeoJSON)
 
-The viewer in `cnn_mappingAI_viewer.html` loads a Cloud-Optimized GeoTIFF (COG) using HTTP `Range` requests (206 Partial Content), so you need a Range-capable server.
+The viewer in `cnn_mappingAI_viewer.html` loads a Cloud-Optimized GeoTIFF (COG) using HTTP `Range` requests (206 Partial Content), so it must be served by an HTTP server that preserves byte-range responses.
 
 Local (from repo root):
 
 ```bash
-python3 bin/range_http_server.py 8001
+python app.py
 ```
 
 Docker (reproducible):
@@ -102,9 +102,25 @@ docker compose up --build viewer
 
 Open:
 
-- [http://127.0.0.1:8001/cnn_mappingAI_viewer.html](http://127.0.0.1:8001/cnn_mappingAI_viewer.html)
+- [http://127.0.0.1:8001/fvc_composition-viewer/](http://127.0.0.1:8001/fvc_composition-viewer/)
 
 If port `8001` is already in use, change the left side of the port mapping in `docker-compose.yml` (e.g. `8002:8001`).
+
+## 5. Heroku container deploy
+
+This repo includes `app.py` and `heroku.yml` so the viewer can be deployed as a containerized Heroku app while keeping the viewer route stable at `/fvc_composition-viewer/`.
+
+```bash
+heroku stack:set container -a <your-heroku-app>
+heroku container:push web -a <your-heroku-app>
+heroku container:release web -a <your-heroku-app>
+```
+
+After release, open:
+
+- `https://<your-heroku-app>.herokuapp.com/fvc_composition-viewer/`
+
+If you want this viewer under an existing portfolio app and domain, that app must either serve this repo's files under the same route or reverse-proxy this deployed viewer path.
 
 ## 🚀 U-Net setup + parameter counts
 
