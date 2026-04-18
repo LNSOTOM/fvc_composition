@@ -28,6 +28,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+import rasterio
+
 
 TILE_RE = re.compile(r"tiles_multispectral[._](\d+)\.tif$", re.IGNORECASE)
 
@@ -288,6 +290,12 @@ def step_build_cog(paths: TilePaths, cwd: Path, overwrite: bool) -> None:
     if paths.predictor_cog.exists() and not overwrite:
         return
 
+    with rasterio.open(paths.predictor_epsg4326) as src:
+        dtype_names = {str(dtype).lower() for dtype in src.dtypes}
+
+    is_float = any(dtype.startswith("float") for dtype in dtype_names)
+    predictor_value = "FLOATING_POINT" if is_float else "2"
+
     _ensure_parent(paths.predictor_cog)
     _run(
         [
@@ -299,11 +307,11 @@ def step_build_cog(paths: TilePaths, cwd: Path, overwrite: bool) -> None:
             "-co",
             "LEVEL=9",
             "-co",
-            "PREDICTOR=FLOATING_POINT",
+            f"PREDICTOR={predictor_value}",
             "-co",
             "OVERVIEW_COMPRESS=DEFLATE",
             "-co",
-            "OVERVIEW_PREDICTOR=FLOATING_POINT",
+            f"OVERVIEW_PREDICTOR={predictor_value}",
             "-co",
             "RESAMPLING=BILINEAR",
             "-co",
@@ -434,6 +442,90 @@ def _to_repo_relative_url(path: Path, repo_root: Path) -> str:
         return path.as_posix()
 
 
+def _find_existing_path(candidates: list[Path]) -> Path | None:
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _iter_geojson_positions(value):
+    if isinstance(value, (list, tuple)):
+        if len(value) >= 2 and all(isinstance(coord, (int, float)) for coord in value[:2]):
+            yield float(value[0]), float(value[1])
+            return
+        for item in value:
+            yield from _iter_geojson_positions(item)
+
+
+def _load_bbox_from_stac(item_path: Path) -> list[float] | None:
+    if not item_path.exists():
+        return None
+    try:
+        payload = json.loads(item_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+    bbox = payload.get("bbox")
+    if not isinstance(bbox, list) or len(bbox) != 4:
+        return None
+
+    try:
+        return [float(value) for value in bbox]
+    except (TypeError, ValueError):
+        return None
+
+
+def _load_bbox_from_predictor(predictor_path: Path) -> list[float] | None:
+    if not predictor_path.exists():
+        return None
+    try:
+        with rasterio.open(predictor_path) as src:
+            bounds = src.bounds
+    except Exception:
+        return None
+
+    return [float(bounds.left), float(bounds.bottom), float(bounds.right), float(bounds.top)]
+
+
+def _load_bbox_from_predictions(predictions_path: Path) -> list[float] | None:
+    if not predictions_path.exists():
+        return None
+    try:
+        payload = json.loads(predictions_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+    features = payload.get("features") if isinstance(payload, dict) else None
+    if not isinstance(features, list):
+        return None
+
+    xs = []
+    ys = []
+    for feature in features:
+        geometry = feature.get("geometry") if isinstance(feature, dict) else None
+        if not isinstance(geometry, dict):
+            continue
+        for x, y in _iter_geojson_positions(geometry.get("coordinates")):
+            xs.append(x)
+            ys.append(y)
+
+    if not xs or not ys:
+        return None
+
+    return [min(xs), min(ys), max(xs), max(ys)]
+
+
+def _compute_asset_version(asset_paths: list[Path]) -> str:
+    latest_mtime = 0
+    for path in asset_paths:
+        try:
+            latest_mtime = max(latest_mtime, int(path.stat().st_mtime))
+        except OSError:
+            continue
+    return str(latest_mtime or 0)
+
+
 def write_tiles_index(
     index_path: Path,
     tile_ids: Iterable[str],
@@ -442,23 +534,89 @@ def write_tiles_index(
     repo_root: Path,
 ) -> None:
     tiles = []
+    asset_paths: list[Path] = []
     for tile_id in sorted(tile_ids, key=lambda x: int(x) if x.isdigit() else x):
         out_dir = output_root / f"{output_prefix}{tile_id}"
         base_url = _to_repo_relative_url(out_dir, repo_root=repo_root)
         thumb_url = _to_repo_relative_url(out_dir / f"thumbnail_531_tile_{tile_id}.png", repo_root=repo_root)
-        tiles.append(
-            {
-                "tile_id": str(tile_id),
-                "base_path": base_url + "/",
-                "thumbnail": thumb_url,
-            }
+        thumbnail_path = out_dir / f"thumbnail_531_tile_{tile_id}.png"
+        predictions_path = _find_existing_path(
+            [
+                out_dir / f"predictions_tile_{tile_id}.geojson",
+                out_dir / "predictions.geojson",
+            ]
         )
+        predictor_cog_path = out_dir / f"predictor_tile_{tile_id}_epsg4326_cog.tif"
+        stac_item_path = out_dir / "stac" / f"item_tile{tile_id}.json"
+
+        tile_entry = {
+            "tile_id": str(tile_id),
+            "base_path": base_url + "/",
+        }
+        if thumbnail_path.exists():
+            tile_entry["thumbnail"] = thumb_url
+
+        for candidate in (thumbnail_path, predictions_path, predictor_cog_path, stac_item_path):
+            if candidate is not None and candidate.exists():
+                asset_paths.append(candidate)
+
+        tiles.append(tile_entry)
 
     payload = {
         "schema_version": 1,
         "tiles": tiles,
+        "_meta": {
+            "asset_version": _compute_asset_version(asset_paths),
+        },
     }
     index_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def write_overview_footprints(
+    output_path: Path,
+    tile_ids: Iterable[str],
+    output_root: Path,
+    output_prefix: str,
+) -> None:
+    footprints = []
+    asset_paths: list[Path] = []
+
+    for tile_id in sorted(tile_ids, key=lambda x: int(x) if x.isdigit() else x):
+        out_dir = output_root / f"{output_prefix}{tile_id}"
+        stac_item_path = out_dir / "stac" / f"item_tile{tile_id}.json"
+        predictor_cog_path = out_dir / f"predictor_tile_{tile_id}_epsg4326_cog.tif"
+        predictions_path = _find_existing_path(
+            [
+                out_dir / f"predictions_tile_{tile_id}.geojson",
+                out_dir / "predictions.geojson",
+            ]
+        )
+        bbox = _load_bbox_from_stac(stac_item_path)
+        if bbox is None:
+            bbox = _load_bbox_from_predictor(predictor_cog_path)
+        if bbox is None and predictions_path is not None:
+            bbox = _load_bbox_from_predictions(predictions_path)
+        if bbox is None:
+            continue
+        footprints.append(
+            {
+                "tile_id": str(tile_id),
+                "bbox": bbox,
+            }
+        )
+        if stac_item_path.exists():
+            asset_paths.append(stac_item_path)
+        elif predictor_cog_path.exists():
+            asset_paths.append(predictor_cog_path)
+        elif predictions_path is not None and predictions_path.exists():
+            asset_paths.append(predictions_path)
+
+    payload = {
+        "schema_version": 1,
+        "asset_version": _compute_asset_version(asset_paths),
+        "footprints": footprints,
+    }
+    output_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
 def main() -> int:
@@ -640,6 +798,15 @@ def main() -> int:
                     repo_root=cwd,
                 )
                 print(f"Wrote tiles index: {output_root_index}")
+
+            output_root_overview = output_root / "overview_footprints.json"
+            write_overview_footprints(
+                output_root_overview,
+                processed,
+                output_root=output_root,
+                output_prefix=args.output_prefix,
+            )
+            print(f"Wrote overview footprints: {output_root_overview}")
         except Exception:
             pass
 

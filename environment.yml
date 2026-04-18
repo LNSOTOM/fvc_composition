@@ -34,6 +34,7 @@ dependencies:
   - pyproj
   - dask
   - pip:
+      - boto3>=1.35,<2
       - anywidget==0.6.5
       - iterative-stratification==0.1.9
       - leafmap==0.35.11
