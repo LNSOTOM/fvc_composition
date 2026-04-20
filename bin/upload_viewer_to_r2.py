@@ -6,6 +6,7 @@ import argparse
 import configparser
 import getpass
 import importlib
+import json
 import mimetypes
 import os
 import re
@@ -34,6 +35,7 @@ PUBLISH_EXTENSIONS = {
     ".webp",
 }
 TILE_SUFFIX_PATTERN = re.compile(r"tile(?P<tile_id>\d+)$")
+SOURCE_TILE_PATTERN = re.compile(r"tiles_multispectral[._](?P<tile_id>\d+)\.tif$", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -248,15 +250,60 @@ def dataset_has_overview_bundle_assets(dataset: Path) -> bool:
     return False
 
 
+def load_dataset_tile_inventory(dataset: Path) -> set[str] | None:
+    tiles_index_path = dataset / "tiles_index.json"
+    if not tiles_index_path.exists():
+        return None
+
+    try:
+        payload = json.loads(tiles_index_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+    source_tile_dir_value = payload.get("_meta", {}).get("source_tile_dir")
+    if not source_tile_dir_value:
+        return None
+
+    source_tile_dir = Path(source_tile_dir_value)
+    if not source_tile_dir.exists():
+        return None
+
+    tile_ids: set[str] = set()
+    for path in source_tile_dir.rglob("*"):
+        if not path.is_file():
+            continue
+        match = SOURCE_TILE_PATTERN.search(path.name)
+        if match:
+            tile_ids.add(match.group("tile_id"))
+
+    return tile_ids or None
+
+
 def validate_dataset_assets(datasets: list[Path]) -> tuple[list[str], list[str]]:
     warnings: list[str] = []
     errors: list[str] = []
 
     for dataset in datasets:
+        expected_tile_ids = load_dataset_tile_inventory(dataset)
         child_dirs = [path for path in sorted(dataset.iterdir()) if path.is_dir()]
         tile_dirs = [path for path in child_dirs if infer_tile_id(path) is not None]
         other_dirs = [path.name for path in child_dirs if infer_tile_id(path) is None]
         has_overview_bundle = dataset_has_overview_bundle_assets(dataset)
+
+        if expected_tile_ids is not None:
+            stale_tile_dirs = [path for path in tile_dirs if infer_tile_id(path) not in expected_tile_ids]
+            tile_dirs = [path for path in tile_dirs if infer_tile_id(path) in expected_tile_ids]
+            if stale_tile_dirs:
+                preview = ", ".join(path.name for path in stale_tile_dirs[:3])
+                suffix = "..." if len(stale_tile_dirs) > 3 else ""
+                warnings.append(
+                    f"{dataset.name}: ignored stale tile directories not present in source tile inventory: {preview}{suffix}"
+                )
+
+            published_tile_ids = {infer_tile_id(path) for path in tile_dirs if infer_tile_id(path) is not None}
+            missing_tile_ids = sorted(expected_tile_ids - published_tile_ids, key=lambda value: int(value))
+            for tile_id in missing_tile_ids:
+                warnings.append(f"{dataset.name}: missing published tile output for source tile {tile_id}")
 
         if not tile_dirs:
             if has_overview_bundle:
