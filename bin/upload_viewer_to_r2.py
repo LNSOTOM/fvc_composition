@@ -17,10 +17,11 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_VIEWER_ROOT = REPO_ROOT / "phase_3_models" / "unet_site_models" / "wombat_mappingAI_viewer"
 DEFAULT_HTML = REPO_ROOT / "cnn_mappingAI_viewer.html"
-DEFAULT_PREFIX = "terrascientia/fvc_composition-viewer"
+DEFAULT_PREFIX = "fvc_composition-viewer"
 DEFAULT_CACHE_CONTROL = "public, max-age=31536000, immutable"
 JSON_CACHE_CONTROL = "public, max-age=86400"
 NO_CACHE_CONTROL = "no-cache"
+DEFAULT_VIEWER_ROOT_RELATIVE = DEFAULT_VIEWER_ROOT.relative_to(REPO_ROOT)
 PUBLISH_EXTENSIONS = {
     ".html",
     ".json",
@@ -198,11 +199,10 @@ def collect_publish_files(
         for source in sorted(dataset.rglob("*")):
             if not source.is_file() or not is_publishable_file(source):
                 continue
-            relative_path = source.relative_to(REPO_ROOT)
             publish_files.append(
                 PublishFile(
                     source=source,
-                    relative_path=relative_path,
+                    relative_path=get_publish_relative_path(source, viewer_root),
                     cache_control=get_cache_control_for_file(source),
                 )
             )
@@ -220,21 +220,58 @@ def infer_tile_id(tile_dir: Path) -> str | None:
     return match.group("tile_id")
 
 
+def get_publish_relative_path(source: Path, viewer_root: Path) -> Path:
+    try:
+        return source.relative_to(REPO_ROOT)
+    except ValueError:
+        try:
+            source_relative = source.relative_to(viewer_root)
+        except ValueError:
+            return Path(source.name)
+        return DEFAULT_VIEWER_ROOT_RELATIVE / source_relative
+
+
+def dataset_has_overview_bundle_assets(dataset: Path) -> bool:
+    overview_patterns = (
+        "*overview*.tif",
+        "*overview*.tiff",
+        "*overview*.png",
+        "*overview*.jpg",
+        "*overview*.jpeg",
+        "*overview*.webp",
+        "*overview*.json",
+    )
+
+    for pattern in overview_patterns:
+        if next(dataset.rglob(pattern), None) is not None:
+            return True
+    return False
+
+
 def validate_dataset_assets(datasets: list[Path]) -> tuple[list[str], list[str]]:
     warnings: list[str] = []
     errors: list[str] = []
 
     for dataset in datasets:
-        tile_dirs = [path for path in sorted(dataset.iterdir()) if path.is_dir()]
+        child_dirs = [path for path in sorted(dataset.iterdir()) if path.is_dir()]
+        tile_dirs = [path for path in child_dirs if infer_tile_id(path) is not None]
+        other_dirs = [path.name for path in child_dirs if infer_tile_id(path) is None]
+        has_overview_bundle = dataset_has_overview_bundle_assets(dataset)
+
         if not tile_dirs:
+            if has_overview_bundle:
+                continue
             warnings.append(f"{dataset.name}: no tile directories found")
             continue
 
-        sample_tiles = tile_dirs[:3]
-        for tile_dir in sample_tiles:
+        if other_dirs and not has_overview_bundle:
+            preview = ", ".join(other_dirs[:3])
+            suffix = "..." if len(other_dirs) > 3 else ""
+            warnings.append(f"{dataset.name}: ignored non-tile directories during validation: {preview}{suffix}")
+
+        for tile_dir in tile_dirs:
             tile_id = infer_tile_id(tile_dir)
             if tile_id is None:
-                warnings.append(f"{dataset.name}: could not infer tile id from {tile_dir.name}")
                 continue
 
             has_predictions = any(
@@ -432,8 +469,6 @@ def upload_files(client, bucket: str, prefix: str, files: list[PublishFile], dry
 def main() -> int:
     args = parse_args()
 
-    bucket = resolve_bucket_name(args.bucket or "")
-
     prefix = normalize_prefix(args.prefix)
     viewer_root = Path(args.viewer_root).resolve()
     html_path = Path(args.html).resolve()
@@ -464,9 +499,11 @@ def main() -> int:
     print(f"Prepared {len(files)} files for upload from {len(datasets)} dataset(s).")
 
     if args.dry_run:
-        upload_files(None, bucket, prefix, files, dry_run=True)
+        dry_run_bucket = (args.bucket or "").strip() or "<bucket>"
+        upload_files(None, dry_run_bucket, prefix, files, dry_run=True)
         return 0
 
+    bucket = resolve_bucket_name(args.bucket or "")
     bucket, account_id, access_key, secret_key, profile_name = resolve_r2_connection_settings(
         bucket,
         args.profile,

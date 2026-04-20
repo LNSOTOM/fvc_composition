@@ -218,6 +218,126 @@ python bin/batch_inference_tiles.py \
 
 Notes:
 
+## Whole orthomosaic streaming inference
+
+Recommended order for a full 10-band orthomosaic:
+
+1. Create a color composite for visual QA / STAC preview.
+2. Optionally create a separate 5-band predictor raster with bands `2,4,6,8,10`.
+3. Run streaming inference either on the original 10-band orthomosaic using `--input-bands "2,4,6,8,10"`, or on the 5-band predictor raster.
+
+### 1) Create the composite color first
+
+For the original 10-band MicaSense dual orthomosaic, the direct false-color preview is:
+
+```bash
+python phase_1_image_processing/step_5_stackBands_predictors/create_composite_colour_cli.py \
+  --input "/media/laura/8402326D023263F8/calperumResearch/SASMDD0001/20220519/micasense_dual/level_1/20220519_SASMDD001_dual_ortho_01_bilinear.tif" \
+  --output "phase_1_image_processing/step_5_stackBands_predictors/outputs/site1_false_color_1062_cog.tif" \
+  --bands "10,6,2" \
+  --pmin 1 \
+  --pmax 99 \
+  --output-driver COG
+```
+
+### 2) Optional: create a 5-band predictor raster
+
+This replaces the hard-coded `5_2_imageProcessing_stackedBandsRaster.py` path and keeps the legacy predictor band order `2,4,6,8,10`.
+
+```bash
+python phase_1_image_processing/step_5_stackBands_predictors/create_stacked_bands_cli.py \
+  --input "/media/laura/8402326D023263F8/calperumResearch/SASMDD0001/20220519/micasense_dual/level_1/20220519_SASMDD001_dual_ortho_01_bilinear.tif" \
+  --output "phase_1_image_processing/step_5_stackBands_predictors/outputs/site1_predictor_246810.tif" \
+  --bands "2,4,6,8,10" \
+  --output-driver GTiff
+```
+
+### 3) Run streaming inference
+
+If you want to run inference directly on a full orthomosaic instead of first
+splitting it into `tiles_3072`, use:
+
+- `phase_3_models/unet_site_models/inference_FVCmapping_streaming.py`
+
+This script reads one `--window-size` chunk at a time and writes the predicted
+class mask directly to disk, so it works on large rasters without holding the
+entire orthomosaic in memory.
+
+Example using the site 1 multispectral orthomosaic and the medium checkpoint:
+
+```bash
+python phase_3_models/unet_site_models/inference_FVCmapping_streaming.py \
+  --variant medium \
+  --model-path "phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth" \
+  --input-raster "/media/laura/8402326D023263F8/calperumResearch/SASMDD0001/20220519/micasense_dual/level_1/20220519_SASMDD001_dual_ortho_01_bilinear.tif" \
+  --output-mask "phase_3_models/unet_site_models/outputs_full_ortho/site1_medium_mask.tif" \
+  --output-mask-cog "phase_3_models/unet_site_models/outputs_full_ortho/site1_medium_mask_cog.tif" \
+  --window-size 256 \
+  --input-bands "2,4,6,8,10" \
+  --in-channels 5 \
+  --valid-classes "0,1,2,3"
+```
+
+Example using the separate 5-band predictor raster instead of the original 10-band orthomosaic:
+
+```bash
+python phase_3_models/unet_site_models/inference_FVCmapping_streaming.py \
+  --variant medium \
+  --model-path "phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth" \
+  --input-raster "phase_1_image_processing/step_5_stackBands_predictors/outputs/site1_predictor_246810.tif" \
+  --output-mask "phase_3_models/unet_site_models/outputs_full_ortho/site1_medium_mask.tif" \
+  --output-mask-cog "phase_3_models/unet_site_models/outputs_full_ortho/site1_medium_mask_cog.tif" \
+  --window-size 256 \
+  --in-channels 5 \
+  --valid-classes "0,1,2,3"
+```
+
+Notes:
+
+- The input raster must already be in the predictor band layout expected by the checkpoint.
+- For original 10-band MicaSense dual orthomosaics, use `--input-bands "2,4,6,8,10"` to match the legacy predictor selection, or first create a separate 5-band predictor raster.
+- `--output-mask-cog` is optional; use it when you want a web/STAC-friendly COG copy.
+
+## Parameterized color composite generation
+
+To build a georeferenced 3-band color composite from a multispectral raster or a
+directory of rasters, use:
+
+- `phase_1_image_processing/step_5_stackBands_predictors/create_composite_colour_cli.py`
+
+This script estimates stretch percentiles from a downsampled preview, then
+streams the full raster window-by-window. It preserves georeferencing and can
+write a Cloud-Optimized GeoTIFF suitable for use as a STAC asset.
+
+Example false-color composite from the original 10-band orthomosaic using bands
+`10,6,2`:
+
+```bash
+python phase_1_image_processing/step_5_stackBands_predictors/create_composite_colour_cli.py \
+  --input "/media/laura/8402326D023263F8/calperumResearch/SASMDD0001/20220519/micasense_dual/level_1/20220519_SASMDD001_dual_ortho_01_bilinear.tif" \
+  --output "phase_1_image_processing/step_5_stackBands_predictors/outputs/site1_false_color_cog.tif" \
+  --bands "10,6,2" \
+  --pmin 1 \
+  --pmax 99 \
+  --output-driver COG
+```
+
+Example batch mode over a directory of predictor tiles:
+
+```bash
+python phase_1_image_processing/step_5_stackBands_predictors/create_composite_colour_cli.py \
+  --input "/media/laura/8402326D023263F8/calperumResearch/site1_1_DD0001/inputs/predictors/tiles_3072/multispec/res_01/stacked" \
+  --output "phase_1_image_processing/step_5_stackBands_predictors/outputs/site1_tiles_false_color" \
+  --bands "5,3,1" \
+  --output-driver COG
+```
+
+Notes:
+
+- Use `10,6,2` for the legacy false-color composite from the original 10-band MicaSense product.
+- Use `5,3,1` when the input is already the 5-band stacked predictor raster.
+- Directory input writes one output file per input GeoTIFF with the `composite_percentile_` prefix by default.
+
 - `--stage-mode symlink` avoids duplicating large `.tif` inputs, but some drives/mounts don’t allow symlinks (you’ll see “Operation not permitted”). If so, use `--stage-mode copy` (or just re-run: the batch script will fall back to copying automatically).
 - Use `--overwrite` if you want to regenerate outputs for tiles that already exist.
 - Use `--python` if the batch script is launched in a different environment than the one you want for inference.
