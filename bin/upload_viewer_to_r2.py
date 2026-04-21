@@ -27,6 +27,8 @@ PUBLISH_EXTENSIONS = {
     ".html",
     ".json",
     ".geojson",
+    ".gpkg",
+    ".pmtiles",
     ".tif",
     ".tiff",
     ".png",
@@ -90,6 +92,15 @@ def parse_args() -> argparse.Namespace:
         "--strict",
         action="store_true",
         help="Fail if sampled tiles are missing predictor COG, STAC, or thumbnail assets.",
+    )
+    parser.add_argument(
+        "--extra-publish",
+        action="append",
+        default=[],
+        help=(
+            "Extra file to upload outside the dataset folders. Use SOURCE to keep the repo-relative path, "
+            "or SOURCE:TARGET to override the published relative path."
+        ),
     )
     return parser.parse_args()
 
@@ -175,6 +186,7 @@ def collect_publish_files(
     viewer_root: Path,
     datasets: list[Path],
     include_root_index: bool,
+    extra_publish_specs: list[str] | None = None,
 ) -> list[PublishFile]:
     if not html_path.exists():
         raise SystemExit(f"Viewer HTML not found: {html_path}")
@@ -209,10 +221,47 @@ def collect_publish_files(
                 )
             )
 
+    for spec in extra_publish_specs or []:
+        publish_files.append(parse_extra_publish_file(spec))
+
     deduped: dict[Path, PublishFile] = {}
     for entry in publish_files:
         deduped[entry.relative_path] = entry
     return list(deduped.values())
+
+
+def parse_extra_publish_file(spec: str) -> PublishFile:
+    raw = str(spec or "").strip()
+    if not raw:
+        raise SystemExit("--extra-publish cannot be empty.")
+
+    source_spec, separator, target_spec = raw.partition(":")
+    source = Path(source_spec).expanduser()
+    if not source.is_absolute():
+        source = (REPO_ROOT / source).resolve()
+    else:
+        source = source.resolve()
+
+    if not source.exists() or not source.is_file():
+        raise SystemExit(f"Extra publish file not found: {source}")
+    if not is_publishable_file(source):
+        raise SystemExit(f"Extra publish file has unsupported extension: {source}")
+
+    if separator:
+        relative_path = Path(target_spec.strip())
+        if not str(relative_path).strip():
+            raise SystemExit(f"Extra publish target cannot be empty: {raw}")
+    else:
+        try:
+            relative_path = source.relative_to(REPO_ROOT)
+        except ValueError:
+            relative_path = Path(source.name)
+
+    return PublishFile(
+        source=source,
+        relative_path=relative_path,
+        cache_control=get_cache_control_for_file(source),
+    )
 
 
 def infer_tile_id(tile_dir: Path) -> str | None:
@@ -454,6 +503,10 @@ def content_type_for(path: Path) -> str:
         return guessed
     if path.suffix.lower() == ".geojson":
         return "application/geo+json"
+    if path.suffix.lower() == ".gpkg":
+        return "application/geopackage+sqlite3"
+    if path.suffix.lower() == ".pmtiles":
+        return "application/vnd.pmtiles"
     return "application/octet-stream"
 
 
@@ -542,6 +595,7 @@ def main() -> int:
         viewer_root=viewer_root,
         datasets=datasets,
         include_root_index=args.include_root_index,
+        extra_publish_specs=args.extra_publish,
     )
     print(f"Prepared {len(files)} files for upload from {len(datasets)} dataset(s).")
 

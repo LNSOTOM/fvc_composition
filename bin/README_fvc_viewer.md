@@ -165,9 +165,36 @@ python bin/upload_viewer_to_r2.py \
 
 Notes:
 
-- The uploader publishes only web-facing files: `cnn_mappingAI_viewer.html`, `.json`, `.geojson`, `.tif`, `.tiff`, and image assets. It skips shapefile sidecars because the viewer does not load them.
+- The uploader publishes only web-facing files: `cnn_mappingAI_viewer.html`, `.json`, `.geojson`, `.gpkg`, `.pmtiles`, `.tif`, `.tiff`, and image assets. It skips shapefile sidecars because the viewer does not load them.
 - The script validates a sample of each dataset before upload and warns when expected viewer assets such as COGs, STAC items, or thumbnails are missing.
 - Use `--strict` if you want the upload to fail on those warnings.
+
+## Convert GPKG to PMTiles
+
+If you want browser-side vector rendering with MapLibre plus PMTiles support, convert a GeoPackage to `.pmtiles` first:
+
+```bash
+cd /home/laura/Documents/code/fvc_composition
+
+python bin/convert_gpkg_to_pmtiles.py \
+  --input-gpkg phase_3_models/unet_site_models/outputs_full_ortho/overview_inference_medium_site.gpkg \
+  --output-pmtiles phase_3_models/unet_site_models/outputs_full_ortho/overview_inference_medium_site.pmtiles \
+  --overwrite \
+  --name "Medium overview inference" \
+  --description "Medium-site overview inference vector tiles"
+```
+
+Then upload the `.pmtiles` file to R2 with the existing uploader, for example:
+
+```bash
+cd /home/laura/Documents/code/fvc_composition
+
+python bin/upload_viewer_to_r2.py \
+  --dataset medium_multispec5b \
+  --extra-publish phase_3_models/unet_site_models/outputs_full_ortho/overview_inference_medium_site.pmtiles
+```
+
+Cloudflare R2 can host the resulting `.pmtiles` object directly. Browser rendering then requires a client that supports PMTiles, such as MapLibre GL JS with the PMTiles protocol/plugin.
 
 After the R2 bucket is public, your public viewer prefix will look like:
 

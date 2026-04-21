@@ -106,6 +106,52 @@ python phase_3_models/unet_site_models/inference_raster_to_geojson.py \
   --valid-classes "0,1,2,3"
 ```
 
+## 4b) Full orthophoto streaming inference
+
+For the full orthophoto, use the streaming mask writer so the prediction runs window-by-window and preserves source nodata as output nodata `255`.
+
+```bash
+cd /home/laura/Documents/code/fvc_composition && \
+/home/laura/miniconda3/bin/conda run -p /home/laura/.local/share/mamba/envs/fvc_composition \
+python -m phase_3_models.unet_site_models.inference_FVCmapping_streaming \
+  --variant medium \
+  --model-path phase_3_models/unet_site_models/outputs_ecosystems/medium/original/block_2_epoch_55.pth \
+  --input-raster /media/laura/8402326D023263F8/calperumResearch/SASMDD0001/20220519/micasense_dual/level_1/20220519_SASMDD001_dual_ortho_01_bilinear.tif \
+  --output-mask phase_3_models/unet_site_models/outputs_full_ortho/SASMDD0001_20220519_medium_epoch55_mask.tif \
+  --output-mask-cog phase_3_models/unet_site_models/outputs_full_ortho/SASMDD0001_20220519_medium_epoch55_mask_cog.tif \
+  --in-channels 5 \
+  --input-bands 2,4,6,8,10 \
+  --window-size 256 \
+  --overwrite
+```
+
+Convert the resulting mask GeoTIFF to GeoJSON polygons with:
+
+```bash
+cd /home/laura/Documents/code/fvc_composition && \
+/home/laura/miniconda3/bin/conda run -p /home/laura/.local/share/mamba/envs/fvc_composition \
+python -m phase_3_models.unet_site_models.mask_geotiff_to_geojson \
+  --input-mask phase_3_models/unet_site_models/outputs_full_ortho/SASMDD0001_20220519_medium_epoch55_mask.tif \
+  --output-geojson phase_3_models/unet_site_models/outputs_full_ortho/SASMDD0001_20220519_medium_epoch55_mask.geojson \
+  --output-crs EPSG:4326 \
+  --variant medium \
+  --valid-classes 0,1,2,3 \
+  --mask-nodata 255
+
+```
+
+If you need a copy in the mask's original CRS for comparison, rerun with:
+
+```bash
+python -m phase_3_models.unet_site_models.mask_geotiff_to_geojson \
+  --input-mask phase_3_models/unet_site_models/outputs_full_ortho/SASMDD0001_20220519_medium_epoch55_mask.tif \
+  --output-geojson phase_3_models/unet_site_models/outputs_full_ortho/SASMDD0001_20220519_medium_epoch55_mask_epsg7854.geojson \
+  --output-crs EPSG:7854 \
+  --variant medium \
+  --valid-classes 0,1,2,3 \
+  --mask-nodata 255
+```
+
 ## 5) Create sidebar thumbnails
 
 This creates a small PNG preview of the predictor (false-color 5-3-1 by default).

@@ -174,9 +174,28 @@ def _ensure_writable_output(path: Path, overwrite: bool) -> None:
         raise FileExistsError(f"Output already exists: {path}. Pass --overwrite to replace it.")
 
 
-def _update_class_counts(class_counts: dict[int, int], array: np.ndarray) -> None:
+def _build_valid_data_mask(src: rasterio.io.DatasetReader, window: Window, input_bands: list[int]) -> np.ndarray:
+    band_masks = src.read_masks(input_bands, window=window)
+    valid_data_mask = np.all(band_masks > 0, axis=0)
+
+    source_nodata = src.nodata
+    if source_nodata is not None:
+        tile = src.read(input_bands, window=window)
+        if np.issubdtype(tile.dtype, np.floating) and np.isnan(source_nodata):
+            valid_data_mask &= np.all(~np.isnan(tile), axis=0)
+        else:
+            valid_data_mask &= np.all(tile != source_nodata, axis=0)
+        if np.issubdtype(tile.dtype, np.floating):
+            valid_data_mask &= np.all(np.isfinite(tile), axis=0)
+
+    return valid_data_mask
+
+
+def _update_class_counts(class_counts: dict[int, int], array: np.ndarray, *, ignore_value: int | None = None) -> None:
     values, counts = np.unique(array, return_counts=True)
     for value, count in zip(values.tolist(), counts.tolist()):
+        if ignore_value is not None and int(value) == int(ignore_value):
+            continue
         class_counts[int(value)] = class_counts.get(int(value), 0) + int(count)
 
 
@@ -258,18 +277,37 @@ def run_streaming_inference(
                         width=min(window_size, src.width - x),
                         height=min(window_size, src.height - y),
                     )
+                    valid_data_mask = _build_valid_data_mask(src, window, input_bands)
+
+                    if not np.any(valid_data_mask):
+                        pred = np.full(
+                            (int(window.height), int(window.width)),
+                            fill_value=int(mask_nodata),
+                            dtype=np.uint8,
+                        )
+                        dst.write(pred, 1, window=window)
+                        progress.update(1)
+                        continue
+
                     tile = src.read(input_bands, window=window)
+                    if not np.all(valid_data_mask):
+                        tile = tile.astype(np.float32, copy=False)
+                        tile[:, ~valid_data_mask] = 0
+
                     pred = predict_tile(model, tile, in_channels=in_channels)
 
                     if class_id_map:
                         pred = apply_class_id_map(pred, class_id_map)
 
                     pred = pred.astype(np.uint8, copy=False)
+                    pred[~valid_data_mask] = np.uint8(mask_nodata)
                     dst.write(pred, 1, window=window)
-                    _update_class_counts(class_counts, pred)
+                    _update_class_counts(class_counts, pred, ignore_value=int(mask_nodata))
 
                     for value in np.unique(pred).tolist():
                         value = int(value)
+                        if value == int(mask_nodata):
+                            continue
                         if value not in valid_classes:
                             invalid_classes.add(value)
 
