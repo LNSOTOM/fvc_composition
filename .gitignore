@@ -162,3 +162,9 @@ dmypy.json
 *.json*
 *.csv*
 *.html*
+
+# Keep source and selected geospatial data tracked.
+!*.py
+!*.shp
+!*.geojson
+!*.gpkg
