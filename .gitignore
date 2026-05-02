@@ -168,3 +168,7 @@ dmypy.json
 !*.shp
 !*.geojson
 !*.gpkg
+
+# Site-specific generated/input files
+*SASMDD0001*
+*overview_*
